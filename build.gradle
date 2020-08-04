@@ -78,8 +78,7 @@ allprojects {
                 "--with-vendor-bug-url=https://github.com/corretto/corretto-${project.version.major}/issues/",
                 '--with-vendor-name=Amazon.com Inc.',
                 '--with-vendor-url=https://aws.amazon.com/corretto/',
-                "--with-vendor-version-string=Corretto-${project.version.full}",
-                "--with-boot-jdk=/home/verghese/.jdk/jdk14/"
+                "--with-vendor-version-string=Corretto-${project.version.full}"
         ]
 
         // Valid value: null, release, debug, fastdebug, slowdebug
