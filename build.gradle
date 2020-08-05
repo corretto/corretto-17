@@ -43,7 +43,7 @@ allprojects {
          security: tokens[2],
          build   : tokens[3],
          revision: tokens[4],
-         upstream: "${tokens[0]}.${tokens[1]}.${tokens[2]}.${tokens[3]}"]
+         upstream: "${tokens[0]}.${tokens[1]}.${tokens[2]}.${tokens[3]}".toString()]
     }.call()
     buildDir = 'corretto-build'
 
