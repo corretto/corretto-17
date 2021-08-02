@@ -1,0 +1,272 @@
+/*
+* Copyright (c) 2019, Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+* This code is free software; you can redistribute it and/or modify it
+* under the terms of the GNU General Public License version 2 only, as
+* published by the Free Software Foundation. Amazon designates this
+* particular file as subject to the "Classpath" exception as provided
+* by Oracle in the LICENSE file that accompanied this code.
+*
+* This code is distributed in the hope that it will be useful, but WITHOUT
+* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+* version 2 for more details (a copy is included in the LICENSE file that
+* accompanied this code).
+*
+* You should have received a copy of the GNU General Public License version
+* 2 along with this work; if not, write to the Free Software Foundation,
+* Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+*/
+
+// Tasks can refer to version information using the project.version
+// property. For an example of its usage, see ':installers:linux:rpm:buildLogic'
+// where the version numbers are used to populate a templated RPM spec file.
+
+import org.apache.tools.ant.taskdefs.condition.Os
+
+allprojects {
+    apply plugin: 'base'
+
+    configurations {
+        compile {
+            transitive = false
+        }
+    }
+
+    version = {
+        def full = file('version.txt').text.trim()
+        def tokens = full.tokenize(".")
+        [full    : full,
+         major   : tokens[0],
+         minor   : tokens[1],
+         security: tokens[2],
+         build   : tokens[3],
+         revision: tokens[4],
+         upstream: "${tokens[0]}.${tokens[1]}.${tokens[2]}.${tokens[3]}".toString()]
+    }.call()
+    buildDir = 'corretto-build'
+
+    ext {
+        buildRoot = file("$buildDir/buildRoot")
+        distributionDir = file("$buildDir/distributions")
+        packageInfo = [
+                url       : "https://github.com/corretto/corretto-${project.version.major}",
+                vendor    : 'Amazon',
+                packager  : 'Amazon',
+                description  : 'Amazon Corretto\'s packaging of the runtime core elements of the OpenJDK 11 code.',
+                license   : 'ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with ' +
+                        'exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ' +
+                        'ISC and FTL and RSA.',
+                maintainer: 'Amazon Corretto Team <corretto-team@amazon.com>',
+                buildHost : 'build.amazon.com'
+        ]
+        jdkTools = ['java', 'keytool', 'rmid', 'rmiregistry', 'jjs', 'pack200', 'unpack200', 'javac', 'jaotc', 'jlink',
+            'jmod', 'jhsdb', 'jar', 'jarsigner', 'javadoc', 'javap', 'jcmd', 'jconsole', 'jdb', 'jdeps', 'jdeprscan',
+            'jimage', 'jinfo', 'jmap', 'jps', 'jrunscript', 'jshell', 'jstack', 'jstat', 'jstatd', 'rmic', 'serialver']
+        // artifact names
+        caCerts = "cacerts"
+        sourceTar = "amazon-corretto-source-${project.version.full}.tar.gz"
+
+        correttoCommonFlags = [
+                "--with-freetype=bundled",
+                '--with-jvm-features=zgc',
+                "--with-version-build=${project.version.build}",
+                '--with-version-pre=',
+                "--with-version-string=${version.major}.${version.minor}.${version.security}",
+                "--with-vendor-bug-url=https://github.com/corretto/corretto-jdk/issues/",
+                '--with-vendor-vm-bug-url=https://github.com/corretto/corretto-jdk/issues/',
+                '--with-vendor-name=Amazon.com Inc.',
+                '--with-vendor-url=https://aws.amazon.com/corretto/',
+                "--with-vendor-version-string=Corretto-${project.version.full}"
+        ]
+
+        def versionOpt = project.findProperty("corretto.versionOpt")
+        if (versionOpt) {
+            correttoCommonFlags += ["--with-version-opt=${versionOpt}"]
+        }
+
+        def versionDate = project.findProperty("corretto.versionDate")
+        if (versionDate) {
+            correttoCommonFlags += ["--with-version-date=${versionDate}"]
+        }
+
+        // Valid value: null, release, debug, fastdebug, slowdebug
+        def correttoDebugLevel = "release" // Default: release
+        switch(project.findProperty("corretto.debug_level")) {
+            case null:
+            case "release":
+                correttoCommonFlags += ['--with-debug-level=release', '--with-native-debug-symbols=none']
+                break
+            case "fastdebug":
+                correttoDebugLevel = "fastdebug"
+                correttoCommonFlags += ['--with-debug-level=fastdebug', '--with-native-debug-symbols=zipped']
+                break
+            case "debug":
+            case "slowdebug":
+                correttoDebugLevel = "slowdebug"
+                correttoCommonFlags += ['--with-debug-level=slowdebug', '--with-native-debug-symbols=external']
+                break
+            default:
+                throw new RuntimeException("Invalid corretto.debug_level")
+        }
+
+        // customized flags. Identify the index of double dashes as the start of a flag
+        String extraConfig = project.findProperty("corretto.extra_config")
+        def lastIndex = -1
+        if (extraConfig != null) {
+            for (int index = extraConfig.indexOf("--"); index >= 0; index = extraConfig.indexOf("--", index + 1)) {
+                if (lastIndex != -1) {
+                    correttoCommonFlags += extraConfig.substring(lastIndex, index).trim()
+                }
+                lastIndex = index
+            }
+            if (lastIndex != -1) {
+                correttoCommonFlags += extraConfig.substring(lastIndex).trim()
+            }
+        }
+
+        // Determine the system architecture
+        def jdkArch = ""
+        def os = ""
+        if (Os.isFamily(Os.FAMILY_MAC)) {
+            os = 'macosx'
+            jdkArch = "x86_64"
+        } else if (Os.isFamily(Os.FAMILY_UNIX)) {
+            os = 'linux'
+            jdkArch = ['uname', '-m'].execute().text.trim()
+            // `uname -m` returns the host arch in a linux x86 docker instance. Pass a flag
+            // to enable
+            if (project.hasProperty("x86") && Boolean.parseBoolean(project.getProperty('x86'))) {
+                jdkArch = "x86"
+            }
+        } else if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+            os = 'windows'
+            def arch = System.getenv('PROCESSOR_ARCHITECTURE')
+            if (arch == 'AMD64') {
+                jdkArch = "x86_64"
+            } else { //x86
+                throw new GradleException("${arch} is not suported")
+            }
+        } else {
+            throw new GradleException("OS is not supported")
+        }
+
+        // Ext property: correttoArch
+        switch (jdkArch) {
+            case 'x86':
+            case 'aarch64':
+                correttoArch = jdkArch
+                break
+            case 'x86_64':
+                correttoArch = 'x64'
+                break
+            default:
+                throw new GradleException("${jdkArch} is not supported")
+        }
+
+        // Call toString explicitly to avoid lazy evaluation
+        jdkImageName = "${os}-${jdkArch}-server-${correttoDebugLevel}".toString()
+        // no debug level suffix for release build
+        if (correttoDebugLevel == "release") {
+            correttoJdkArchiveName = "amazon-corretto-${project.version.full}-${os}-${correttoArch}".toString()
+        } else {
+            correttoJdkArchiveName =
+                    "amazon-corretto-${project.version.full}-${os}-${correttoArch}-${correttoDebugLevel}".toString()
+        }
+        correttoTestImageArchiveName = "amazon-corretto-testimage-${project.version.full}-${os}-${correttoArch}".toString()
+    }
+}
+
+project(':prebuild') {
+    apply plugin: 'java'
+
+    configurations {
+        cacerts
+    }
+
+    ext {
+        cacertDir = "$distributionDir/${project.caCerts}"
+    }
+
+    def preBuildSrc = "src"
+    def classPath = "classes"
+    def generateToolMain = "build.tools.generatecacerts.GenerateCacerts"
+
+    task copyToolSrc(type: Copy) {
+        description 'Copy utility tool source to the project root'
+        from fileTree("$rootDir/make/jdk/src/classes") {
+            include 'build/tools/generatecacerts/*'
+        }
+        into preBuildSrc
+    }
+
+    task buildTool(type: JavaCompile) {
+        dependsOn copyToolSrc
+        source = fileTree(dir: preBuildSrc, include: '**/*.java')
+        destinationDir = file(classPath)
+        classpath = files(classPath)
+    }
+
+    task generateJdkCacerts(type: JavaExec) {
+        dependsOn buildTool
+        def jdkCaDir = "$rootDir/make/data/cacerts"
+
+        description = 'Generate Cacerts from JDK source'
+        classpath = files(classPath)
+        main = generateToolMain
+        args = [jdkCaDir, project.caCerts]
+    }
+
+    task importAmazonCacerts(type: Exec) {
+        dependsOn generateJdkCacerts
+        // Default password for JSSE key store
+        def keystore_password = "changeit"
+        commandLine 'keytool', '-importkeystore', '-noprompt',
+                '-srckeystore', "$rootDir/amazon-cacerts",
+                '-srcstorepass', keystore_password,
+                '-destkeystore', caCerts,
+                '-deststorepass', keystore_password
+    }
+
+    task copyCacerts(type: Copy) {
+        dependsOn importAmazonCacerts
+        from caCerts
+        into distributionDir
+    }
+
+    artifacts {
+        cacerts file: file("$distributionDir/${caCerts}"), builtBy: copyCacerts
+    }
+}
+
+project(':openjdksrc') {
+    /**
+     * Compresses a snapshot of the source code used to perform the build.
+     */
+    task sourceDistributionTarball(type: Tar) {
+        description 'Assemble source files required for building and distributing Corretto.'
+        compression Compression.GZIP
+        archiveName sourceTar
+        from fileTree(rootDir) {
+            include 'LICENSE',
+                    'ADDITIONAL_LICENSE_INFO',
+                    'README',
+                    'ASSEMBLY_EXCEPTION',
+                    'version.txt',
+                    'amazon-cacerts',
+                    'configure',
+                    'Makefile',
+                    'bin/**',
+                    'doc/**',
+                    'make/**',
+                    'src/**',
+                    'test/**'
+        }
+    }
+
+    artifacts {
+        archives sourceDistributionTarball
+    }
+}
+

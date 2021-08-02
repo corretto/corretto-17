@@ -1,0 +1,99 @@
+/*
+* Copyright (c) 2019, Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+* This code is free software; you can redistribute it and/or modify it
+* under the terms of the GNU General Public License version 2 only, as
+* published by the Free Software Foundation. Amazon designates this
+* particular file as subject to the "Classpath" exception as provided
+* by Oracle in the LICENSE file that accompanied this code.
+*
+* This code is distributed in the hope that it will be useful, but WITHOUT
+* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+* version 2 for more details (a copy is included in the LICENSE file that
+* accompanied this code).
+*
+* You should have received a copy of the GNU General Public License version
+* 2 along with this work; if not, write to the Free Software Foundation,
+* Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+*/
+
+dependencies {
+    compile project(path: ':openjdksrc', configuration: 'archives')
+    compile project(path: ':prebuild', configuration: 'cacerts')
+}
+
+// deps
+def depsMap = [:]
+project.configurations.compile.getFiles().each { depsMap[it.getName()] = it }
+
+task copySource(type: Copy) {
+    dependsOn project.configurations.compile
+    from tarTree(depsMap[sourceTar])
+    into buildRoot
+}
+
+
+task configureBuild(type: Exec) {
+    dependsOn copySource
+    workingDir buildRoot
+
+    // Platform specific flags
+    def command = ['bash', 'configure',
+           "--with-cacerts-file=${depsMap[caCerts]}",
+           "--with-boot-jdk=${project.getProperty('bootjdk_dir')}",
+           "--with-ucrt-dll-dir=${project.getProperty('ucrt_dll_dir')}",
+           "--with-jtreg=${project.getProperty('jtreg_dir')}",
+           "--with-msvcr-dll=${project.getProperty('vcruntime_dir')}/vcruntime140.dll",
+           "--with-zlib=bundled"
+    ]
+    // Common flags
+    command += project.correttoCommonFlags
+    commandLine command.flatten()
+}
+
+task executeBuild(type: Exec) {
+    dependsOn configureBuild
+    workingDir buildRoot
+
+    commandLine 'make', 'clean', 'images', 'test-image-hotspot-jtreg-native', 'test-image-jdk-jtreg-native'
+}
+
+task copyImage(type: Copy) {
+    dependsOn executeBuild
+
+    from "${executeBuild.workingDir}/build/${project.jdkImageName}/images"
+    into "$buildRoot/build"
+}
+
+task packageTestImage(type: Zip) {
+    dependsOn copyImage
+    archiveName "${project.correttoTestImageArchiveName}.zip"
+    from("${copyImage.destinationDir}/test") {
+        include '**'
+    }
+    into project.correttoTestImageArchiveName
+}
+
+task packageBuildResults(type: Zip) {
+    dependsOn packageTestImage
+    archiveName  = "unsigned-jdk-image.zip"
+
+    from("${copyImage.destinationDir}/jdk") {
+        exclude 'demo'
+    }
+    from(buildRoot) {
+        include 'ASSEMBLY_EXCEPTION'
+        include 'LICENSE'
+        include 'version.txt'
+        include 'ADDITIONAL_LICENSE_INFO'
+        include 'README'
+    }
+}
+
+build.dependsOn packageBuildResults
+
+artifacts {
+    archives packageBuildResults
+}
