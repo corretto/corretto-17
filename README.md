@@ -18,7 +18,7 @@ Please read these files: "LICENSE", "ADDITIONAL_LICENSE_INFO", "ASSEMBLY_EXCEPTI
 ### Branches
 
 _develop_
-: The default branch. The branch that consumes development and patches to upstream jdk16u. Corretto 16 builds are generated from this branch.
+: The default branch. The branch that consumes development and patches to upstream jdk17u. Corretto builds are generated from this branch.
 
 _upstream-jdk17_
 : The branch is similar to master at [openjdk/jdk17](https://github.com/openjdk/jdk17). This branch merges into release branches.
@@ -26,7 +26,7 @@ _upstream-jdk17_
 _upstream-jdk17u_
 i: The branch is similar to master at [openjdk/jdk17u](https://github.com/openjdk/jdk17u). This branch merges into develop.
 
-### OpenJDK Readme 
+### OpenJDK Readme
 ```
 
 Welcome to the JDK!
