@@ -145,6 +145,7 @@ task generateJdkDeb(type: Deb) {
     provides('java7-jdk')
     provides('java8-jdk')
     provides('java11-sdk')
+    provides('java17-sdk')
     // TODO: Move this to the jre when splitting the fat deb
     provides('java-runtime')
     provides('java5-runtime')
@@ -152,6 +153,7 @@ task generateJdkDeb(type: Deb) {
     provides('java7-runtime')
     provides('java8-runtime')
     provides('java11-runtime')
+    provides('java17-runtime')
     // TODO: Move this to the headless jre when splitting the fat deb
     provides('java-runtime-headless')
     provides('java5-runtime-headless')
@@ -159,6 +161,7 @@ task generateJdkDeb(type: Deb) {
     provides('java7-runtime-headless')
     provides('java8-runtime-headless')
     provides('java11-runtime-headless')
+    provides('java17-runtime-headless')
 
     from(jdkBinaryDir) {
         into jdkHome
