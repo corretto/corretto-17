@@ -23,4 +23,4 @@ jobs:
               uses: ./.github/actions/merge-repo
               with:
                 upstream: 'upstream-jdk17u'
-                merge-branch: 'develop-jdk17'
+                merge-branch: 'develop'
