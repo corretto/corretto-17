@@ -24,7 +24,7 @@ _upstream-jdk17_
 : The branch is similar to master at [openjdk/jdk17](https://github.com/openjdk/jdk17). This branch merges into release branches.
 
 _upstream-jdk17u_
-i: The branch is similar to master at [openjdk/jdk17u](https://github.com/openjdk/jdk17u). This branch merges into develop.
+: The branch is similar to master at [openjdk/jdk17u](https://github.com/openjdk/jdk17u). This branch merges into develop.
 
 ### OpenJDK Readme
 ```
