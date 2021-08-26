@@ -40,6 +40,8 @@ class VM_ShenandoahFinalUpdateRefs;
 class ShenandoahConcurrentGC : public ShenandoahGC {
   friend class VM_ShenandoahInitMark;
   friend class VM_ShenandoahFinalMarkStartEvac;
+  friend class VM_ShenandoahFullGC;
+  friend class VM_ShenandoahDegeneratedGC;
   friend class VM_ShenandoahInitUpdateRefs;
   friend class VM_ShenandoahFinalUpdateRefs;
   friend class VM_ShenandoahFinalRoots;

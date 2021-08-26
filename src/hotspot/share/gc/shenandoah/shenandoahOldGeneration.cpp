@@ -37,6 +37,7 @@
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahMarkClosures.hpp"
 #include "gc/shenandoah/shenandoahMark.inline.hpp"
+#include "gc/shenandoah/shenandoahMemoryManager.hpp"
 #include "gc/shenandoah/shenandoahOldGeneration.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahReferenceProcessor.hpp"
@@ -182,6 +183,12 @@ void ShenandoahOldGeneration::purge_satb_buffers(bool abandon) {
     ShenandoahPurgeSATBTask purge_satb_task(task_queues());
     heap->workers()->run_task(&purge_satb_task);
   }
+}
+
+void ShenandoahOldGeneration::reset_bytes_allocated_since_gc_start() {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  heap->young_gen_memory_manager()->update_copied_between_pools(bytes_allocated_since_gc_start());
+  heap->memory_manager()->update_copied_between_pools(bytes_allocated_since_gc_start());
 }
 
 bool ShenandoahOldGeneration::contains(oop obj) const {

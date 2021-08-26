@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 
+#include "gc/shenandoah/shenandoahMemoryManager.hpp"
 #include "gc/shenandoah/heuristics/shenandoahOldHeuristics.hpp"
 #include "utilities/quickSort.hpp"
 
@@ -206,6 +207,7 @@ void ShenandoahOldHeuristics::prepare_for_old_collections() {
       immediate_regions++;
       immediate_garbage += garbage;
     }
+    heap->old_gen_memory_manager()->report_garbage(total_garbage, total_garbage);
   }
 
   // TODO: Consider not running mixed collects if we recovered some threshold percentage of memory from immediate garbage.

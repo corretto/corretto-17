@@ -64,6 +64,7 @@ class ShenandoahFreeSet;
 class ShenandoahConcurrentMark;
 class ShenandoahFullGC;
 class ShenandoahMonitoringSupport;
+class ShenandoahMemoryManager;
 class ShenandoahPacer;
 class ShenandoahReferenceProcessor;
 class ShenandoahVerifier;
@@ -481,17 +482,24 @@ private:
 
   GCMemoryManager              _stw_memory_manager;
   GCMemoryManager              _cycle_memory_manager;
+  ShenandoahMemoryManager*     _memory_manager;
+  ShenandoahMemoryManager*     _young_gen_memory_manager;
+  ShenandoahMemoryManager*     _old_gen_memory_manager;
   ConcurrentGCTimer*           _gc_timer;
   SoftRefPolicy                _soft_ref_policy;
 
   // For exporting to SA
   int                          _log_min_obj_alignment_in_bytes;
 public:
-  ShenandoahMonitoringSupport* monitoring_support() { return _monitoring_support;    }
-  GCMemoryManager* cycle_memory_manager()           { return &_cycle_memory_manager; }
-  GCMemoryManager* stw_memory_manager()             { return &_stw_memory_manager;   }
-  SoftRefPolicy* soft_ref_policy()                  { return &_soft_ref_policy;      }
+  ShenandoahMonitoringSupport* monitoring_support()     { return _monitoring_support;       }
+  GCMemoryManager* cycle_memory_manager()               { return &_cycle_memory_manager;    }
+  GCMemoryManager* stw_memory_manager()                 { return &_stw_memory_manager;      }
+  ShenandoahMemoryManager* memory_manager()             { return _memory_manager;           }
+  ShenandoahMemoryManager* young_gen_memory_manager()   { return _young_gen_memory_manager; }
+  ShenandoahMemoryManager* old_gen_memory_manager()     { return _old_gen_memory_manager;   }
+  SoftRefPolicy* soft_ref_policy()                      { return &_soft_ref_policy;         }
 
+  ShenandoahMemoryManager* memory_manager(GenerationMode generation_mode);
   GrowableArray<GCMemoryManager*> memory_managers();
   GrowableArray<MemoryPool*> memory_pools();
   MemoryUsage memory_usage();

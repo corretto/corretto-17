@@ -50,6 +50,7 @@
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahInitLogger.hpp"
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
+#include "gc/shenandoah/shenandoahMemoryManager.hpp"
 #include "gc/shenandoah/shenandoahMemoryPool.hpp"
 #include "gc/shenandoah/shenandoahMetrics.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
@@ -529,6 +530,8 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _old_gen_memory_pool(NULL),
   _stw_memory_manager("Shenandoah Pauses", "end of GC pause"),
   _cycle_memory_manager("Shenandoah Cycles", "end of GC cycle"),
+  _young_gen_memory_manager(NULL),
+  _old_gen_memory_manager(NULL),
   _gc_timer(new (ResourceObj::C_HEAP, mtGC) ConcurrentGCTimer()),
   _soft_ref_policy(),
   _log_min_obj_alignment_in_bytes(LogMinObjAlignmentInBytes),
@@ -2583,7 +2586,7 @@ void ShenandoahHeap::safepoint_synchronize_end() {
 
 void ShenandoahHeap::entry_uncommit(double shrink_before, size_t shrink_until) {
   static const char *msg = "Concurrent uncommit";
-  ShenandoahConcurrentPhase gc_phase(msg, ShenandoahPhaseTimings::conc_uncommit, true /* log_heap_usage */);
+  ShenandoahConcurrentPhase gc_phase(msg, ShenandoahPhaseTimings::conc_uncommit, GLOBAL, 0L, true /* log_heap_usage */);
   EventMark em("%s", msg);
 
   op_uncommit(shrink_before, shrink_until);
@@ -2604,9 +2607,17 @@ bool ShenandoahHeap::should_inject_alloc_failure() {
 }
 
 void ShenandoahHeap::initialize_serviceability() {
+  _memory_manager = new ShenandoahGlobalMemoryManager(this);
   if (mode()->is_generational()) {
     _young_gen_memory_pool = new ShenandoahYoungGenMemoryPool(this);
     _old_gen_memory_pool = new ShenandoahOldGenMemoryPool(this);
+    _young_gen_memory_manager = new ShenandoahYoungGenMemoryManager(this);
+    _old_gen_memory_manager = new ShenandoahOldGenMemoryManager(this);
+    _young_gen_memory_manager->add_pool(_young_gen_memory_pool);
+    _old_gen_memory_manager->add_pool(_old_gen_memory_pool);
+    _memory_manager->add_pool(_young_gen_memory_pool);
+    _memory_manager->add_pool(_old_gen_memory_pool);
+    // Keeping the old memory managers
     _cycle_memory_manager.add_pool(_young_gen_memory_pool);
     _cycle_memory_manager.add_pool(_old_gen_memory_pool);
     _stw_memory_manager.add_pool(_young_gen_memory_pool);
@@ -2615,13 +2626,35 @@ void ShenandoahHeap::initialize_serviceability() {
     _memory_pool = new ShenandoahMemoryPool(this);
     _cycle_memory_manager.add_pool(_memory_pool);
     _stw_memory_manager.add_pool(_memory_pool);
+    _memory_manager->add_pool(_memory_pool);
   }
 }
+
+ShenandoahMemoryManager* ShenandoahHeap::memory_manager(GenerationMode generation_mode) {
+  if (_gc_mode->is_generational()) {
+    switch (generation_mode) {
+      case YOUNG:
+        return _young_gen_memory_manager;
+      case OLD:
+        return _old_gen_memory_manager;
+      case GLOBAL:
+      default:
+        break;
+    }
+  }
+  return _memory_manager;
+}
+
 
 GrowableArray<GCMemoryManager*> ShenandoahHeap::memory_managers() {
   GrowableArray<GCMemoryManager*> memory_managers(2);
   memory_managers.append(&_cycle_memory_manager);
   memory_managers.append(&_stw_memory_manager);
+  memory_managers.append(_memory_manager);
+  if (mode()->is_generational()) {
+    memory_managers.append(_young_gen_memory_manager);
+    memory_managers.append(_old_gen_memory_manager);
+  }
   return memory_managers;
 }
 
