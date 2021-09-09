@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Red Hat, Inc. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ * Copyright (c) 2021, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -19,20 +18,21 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
-package gc.epsilon;
+#include <jni.h>
+#include <string.h>
+#include <stdint.h>
 
-/**
- * @test TestHelloWorld
- * @requires vm.gc.Epsilon
- * @summary Basic sanity test for Epsilon
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseEpsilonGC
- *                   gc.epsilon.TestHelloWorld
- */
+JNIEXPORT jlong JNICALL
+Java_TestStringCriticalWithDedup_pin(JNIEnv *env, jclass unused, jstring s) {
+  const jchar* a = (*env)->GetStringCritical(env, s, NULL);
+  return (jlong)(uintptr_t)a;
+}
 
-public class TestHelloWorld {
-  public static void main(String[] args) throws Exception {
-    System.out.println("Hello World");
-  }
+JNIEXPORT void JNICALL
+Java_TestStringCriticalWithDedup_unpin(JNIEnv *env, jclass unused, jstring s, jlong v) {
+  jchar* a = (jchar*)(uintptr_t)v;
+  (*env)->ReleaseStringCritical(env, s, a);
 }
