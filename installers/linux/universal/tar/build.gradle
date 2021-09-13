@@ -108,12 +108,38 @@ task packageTestImage(type: Tar) {
         include '**'
     }
     into project.correttoTestImageArchiveName
+}
 
+task packageDebugImage(type: Tar) {
+    description 'Package debug results'
+    dependsOn packageTestImage
+    archiveName "${project.correttoJdkArchiveName}-debug.tar.gz"
+    compression Compression.GZIP
+    from(buildRoot) {
+        include 'ADDITIONAL_LICENSE_INFO'
+        include 'ASSEMBLY_EXCEPTION'
+        include 'LICENSE'
+        include 'README.md'
+        include 'version.txt'
+        into project.correttoJdkArchiveName
+    }
+    from(jdkResultingImage) {
+        include 'bin/*.diz'
+        into project.correttoJdkArchiveName
+    }
+
+    // Copy legal directory specifically to set permission correctly.
+    // See https://github.com/corretto/corretto-11/issues/129
+    from("${jdkResultingImage}/legal") {
+        include '**'
+        fileMode 0444
+        into "${project.correttoJdkArchiveName}/legal"
+    }
 }
 
 task packageBuildResults(type: Tar) {
     description 'Compresses the JDK image and puts the results in build/distributions.'
-    dependsOn packageTestImage
+    dependsOn packageDebugImage
     archiveName "${project.correttoJdkArchiveName}.tar.gz"
     compression Compression.GZIP
     from(buildRoot) {
@@ -126,6 +152,7 @@ task packageBuildResults(type: Tar) {
     }
     from(jdkResultingImage) {
         include 'bin/**'
+        exclude 'bin/*.diz'
         include 'conf/**'
         include 'include/**'
         include 'jmods/**'
