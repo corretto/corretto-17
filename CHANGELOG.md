@@ -2,6 +2,18 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+Release Date: 09-15-2021
+
+**Target Platforms**
+
++  macOS 10.13 and later, x86_64, aarch64
+
+The following issues are addressed in 17.0.0.35.2.
+
+| Issue Name | Platform | Description | Link |
+| --- | --- | --- | --- |
+| Corretto-17#11 Regression related to JDK-8246094: [macos] Sound Recording and playback is not working | Macos | Use Info.plist from upstream | [Corretto-17#11](https://github.com/corretto/corretto-17/issues/11)
+
 Release Date: 08-23-2021
 
 **Target Platforms**
