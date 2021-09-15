@@ -113,7 +113,7 @@ task packageTestImage(type: Tar) {
 task packageDebugImage(type: Tar) {
     description 'Package debug results'
     dependsOn packageTestImage
-    archiveName "${project.correttoJdkArchiveName}-debug.tar.gz"
+    archiveName "${project.correttoDebugSymbolsArchiveName}.tar.gz"
     compression Compression.GZIP
     from(buildRoot) {
         include 'ADDITIONAL_LICENSE_INFO'
@@ -121,11 +121,11 @@ task packageDebugImage(type: Tar) {
         include 'LICENSE'
         include 'README.md'
         include 'version.txt'
-        into project.correttoJdkArchiveName
+        into project.correttoDebugSymbolsArchiveName
     }
     from(jdkResultingImage) {
         include 'bin/*.diz'
-        into project.correttoJdkArchiveName
+        into project.correttoDebugSymbolsArchiveName
     }
 
     // Copy legal directory specifically to set permission correctly.
@@ -133,7 +133,7 @@ task packageDebugImage(type: Tar) {
     from("${jdkResultingImage}/legal") {
         include '**'
         fileMode 0444
-        into "${project.correttoJdkArchiveName}/legal"
+        into "${project.correttoDebugSymbolsArchiveName}/legal"
     }
 }
 
