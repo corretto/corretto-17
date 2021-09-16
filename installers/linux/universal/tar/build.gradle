@@ -110,7 +110,7 @@ task packageTestImage(type: Tar) {
     into project.correttoTestImageArchiveName
 }
 
-task packageDebugImage(type: Tar) {
+task packageDebugSymbols(type: Tar) {
     description 'Package debug results'
     dependsOn packageTestImage
     archiveName "${project.correttoDebugSymbolsArchiveName}.tar.gz"
@@ -139,7 +139,7 @@ task packageDebugImage(type: Tar) {
 
 task packageBuildResults(type: Tar) {
     description 'Compresses the JDK image and puts the results in build/distributions.'
-    dependsOn packageDebugImage
+    dependsOn packageDebugSymbols
     archiveName "${project.correttoJdkArchiveName}.tar.gz"
     compression Compression.GZIP
     from(buildRoot) {

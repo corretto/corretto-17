@@ -76,12 +76,29 @@ task packageTestImage(type: Zip) {
     into project.correttoTestImageArchiveName
 }
 
-task packageBuildResults(type: Zip) {
+task packageDebugSymbols(type: Zip) {
     dependsOn packageTestImage
+    archiveName "${project.correttoDebugSymbolsImageArchiveName}.zip"
+
+    from("${copyImage.destinationDir}/jdk") {
+        include 'bin/*.diz'
+    }
+    from(buildRoot) {
+        include 'ASSEMBLY_EXCEPTION'
+        include 'LICENSE'
+        include 'version.txt'
+        include 'ADDITIONAL_LICENSE_INFO'
+        include 'README'
+    }
+}
+
+task packageBuildResults(type: Zip) {
+    dependsOn packageDebugSymbols
     archiveName  = "unsigned-jdk-image.zip"
 
     from("${copyImage.destinationDir}/jdk") {
         exclude 'demo'
+        exclude 'bin/*.diz'
     }
     from(buildRoot) {
         include 'ASSEMBLY_EXCEPTION'
