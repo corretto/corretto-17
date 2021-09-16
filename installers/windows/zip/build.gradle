@@ -78,7 +78,7 @@ task packageTestImage(type: Zip) {
 
 task packageDebugSymbols(type: Zip) {
     dependsOn packageTestImage
-    archiveName "${project.correttoDebugSymbolsImageArchiveName}.zip"
+    archiveName "${project.correttoDebugSymbolsArchiveName}.zip"
 
     from("${copyImage.destinationDir}/jdk") {
         include 'bin/*.diz'
