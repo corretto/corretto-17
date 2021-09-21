@@ -38,6 +38,10 @@ double TimeHelper::counter_to_millis(jlong counter) {
   return counter_to_seconds(counter) * 1000.0;
 }
 
+double TimeHelper::counter_to_nanos(jlong counter) {
+  return counter_to_seconds(counter) * NANOUNITS;
+}
+
 jlong TimeHelper::millis_to_counter(jlong millis) {
   jlong freq = os::elapsed_frequency() / MILLIUNITS;
   return millis * freq;
@@ -46,6 +50,11 @@ jlong TimeHelper::millis_to_counter(jlong millis) {
 jlong TimeHelper::micros_to_counter(jlong micros) {
   jlong freq = os::elapsed_frequency() / MICROUNITS;
   return micros * freq;
+}
+
+jlong TimeHelper::nanos_to_counter(jlong nanos) {
+  jlong freq = os::elapsed_frequency() / NANOUNITS;
+  return nanos * freq;
 }
 
 void elapsedTimer::add(elapsedTimer t) {
@@ -72,6 +81,10 @@ double elapsedTimer::seconds() const {
 
 jlong elapsedTimer::milliseconds() const {
   return (jlong)TimeHelper::counter_to_millis(_counter);
+}
+
+jlong elapsedTimer::nanoseconds() const {
+  return (jlong)TimeHelper::counter_to_nanos(_counter);
 }
 
 jlong elapsedTimer::active_ticks() const {
@@ -102,6 +115,12 @@ jlong TimeStamp::milliseconds() const {
   assert(is_updated(), "must not be clear");
   jlong new_count = os::elapsed_counter();
   return (jlong)TimeHelper::counter_to_millis(new_count - _counter);
+}
+
+jlong TimeStamp::nanoseconds() const {
+  assert(is_updated(), "must not be clear");
+  jlong new_count = os::elapsed_counter();
+  return (jlong)TimeHelper::counter_to_nanos(new_count - _counter);
 }
 
 jlong TimeStamp::ticks_since_update() const {
