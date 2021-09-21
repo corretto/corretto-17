@@ -158,8 +158,9 @@ public:
   void   initialize_gc_stat_info();
 
   bool   is_gc_memory_manager()         { return true; }
-  jlong  gc_time_ms()                   { return _accumulated_timer.milliseconds(); }
-  size_t gc_count()                     { return _num_collections; }
+  jlong  gc_time_ms()           { return _accumulated_timer.milliseconds(); }
+  size_t gc_count()             { return _num_collections; }
+  jlong  gc_time_ns()           { return _accumulated_timer.nanoseconds(); }
   int    num_gc_threads()               { return _num_gc_threads; }
   void   set_num_gc_threads(int count)  { _num_gc_threads = count; }
 
