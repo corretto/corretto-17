@@ -83,13 +83,6 @@ task packageDebugSymbols(type: Zip) {
     from("${copyImage.destinationDir}/jdk") {
         include 'bin/*.diz'
     }
-    from(buildRoot) {
-        include 'ASSEMBLY_EXCEPTION'
-        include 'LICENSE'
-        include 'version.txt'
-        include 'ADDITIONAL_LICENSE_INFO'
-        include 'README'
-    }
 }
 
 task packageBuildResults(type: Zip) {

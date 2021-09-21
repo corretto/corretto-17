@@ -115,25 +115,9 @@ task packageDebugSymbols(type: Tar) {
     dependsOn packageTestImage
     archiveName "${project.correttoDebugSymbolsArchiveName}.tar.gz"
     compression Compression.GZIP
-    from(buildRoot) {
-        include 'ADDITIONAL_LICENSE_INFO'
-        include 'ASSEMBLY_EXCEPTION'
-        include 'LICENSE'
-        include 'README.md'
-        include 'version.txt'
-        into project.correttoDebugSymbolsArchiveName
-    }
     from(jdkResultingImage) {
         include 'bin/*.diz'
         into project.correttoDebugSymbolsArchiveName
-    }
-
-    // Copy legal directory specifically to set permission correctly.
-    // See https://github.com/corretto/corretto-11/issues/129
-    from("${jdkResultingImage}/legal") {
-        include '**'
-        fileMode 0444
-        into "${project.correttoDebugSymbolsArchiveName}/legal"
     }
 }
 
