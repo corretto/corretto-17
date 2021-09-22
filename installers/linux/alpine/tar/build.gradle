@@ -126,9 +126,9 @@ task packageDebugSymbols(type: Tar) {
     archiveName "amazon-corretto-debugsymbols-${project.version.full}-alpine-linux-${arch_alias}.tar.gz"
     compression Compression.GZIP
     from(jdkResultingImage) {
-        include 'bin/*.diz'
+        include '**/*.diz'
+        into "amazon-corretto-debugsymbols-${project.version.full}-alpine-linux-${arch_alias}"
     }
-    into "amazon-corretto-debugsymbols-${project.version.full}-alpine-linux-${arch_alias}"
 }
 
 task packageBuildResults(type: Tar) {
@@ -146,7 +146,6 @@ task packageBuildResults(type: Tar) {
     }
     from(jdkResultingImage) {
         include 'bin/**'
-        exclude 'bin/*.diz'
         include 'conf/**'
         include 'include/**'
         include 'jmods/**'
@@ -154,6 +153,7 @@ task packageBuildResults(type: Tar) {
         include 'lib/**'
         include 'man/man1/**'
         include 'release'
+        exclude '**/*.diz'
     }
     into "amazon-corretto-${project.version.full}-alpine-linux-${arch_alias}"
 }

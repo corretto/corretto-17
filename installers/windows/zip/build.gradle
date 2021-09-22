@@ -81,7 +81,8 @@ task packageDebugSymbols(type: Zip) {
     archiveName "${project.correttoDebugSymbolsArchiveName}.zip"
 
     from("${copyImage.destinationDir}/jdk") {
-        include 'bin/*.diz'
+        include '**/*.diz'
+        into project.correttoTestImageArchiveName
     }
 }
 
@@ -91,7 +92,7 @@ task packageBuildResults(type: Zip) {
 
     from("${copyImage.destinationDir}/jdk") {
         exclude 'demo'
-        exclude 'bin/*.diz'
+        exclude '**/*.diz'
     }
     from(buildRoot) {
         include 'ASSEMBLY_EXCEPTION'
