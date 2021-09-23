@@ -117,6 +117,7 @@ task packageDebugSymbols(type: Tar) {
     compression Compression.GZIP
     from(jdkResultingImage) {
         include 'bin/*.diz'
+        include 'lib/*.diz'
         into project.correttoDebugSymbolsArchiveName
     }
 }
@@ -136,13 +137,13 @@ task packageBuildResults(type: Tar) {
     }
     from(jdkResultingImage) {
         include 'bin/**'
-        exclude 'bin/*.diz'
         include 'conf/**'
         include 'include/**'
         include 'jmods/**'
         include 'lib/**'
         include 'man/man1/**'
         include 'release'
+        exclude '**/*.diz'
         into project.correttoJdkArchiveName
     }
 
