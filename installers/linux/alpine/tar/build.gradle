@@ -126,7 +126,8 @@ task packageDebugSymbols(type: Tar) {
     archiveName "amazon-corretto-debugsymbols-${project.version.full}-alpine-linux-${arch_alias}.tar.gz"
     compression Compression.GZIP
     from(jdkResultingImage) {
-        include '**/*.diz'
+        include 'bin/*.diz'
+        include 'lib/*.diz'
         into "amazon-corretto-debugsymbols-${project.version.full}-alpine-linux-${arch_alias}"
     }
 }

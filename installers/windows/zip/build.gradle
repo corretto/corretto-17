@@ -81,8 +81,9 @@ task packageDebugSymbols(type: Zip) {
     archiveName "${project.correttoDebugSymbolsArchiveName}.zip"
 
     from("${copyImage.destinationDir}/jdk") {
-        include '**/*.diz'
-        into project.correttoTestImageArchiveName
+        include 'bin/*.diz'
+        include 'lib/*.diz'
+        into project.correttoDebugSymbolsArchiveName
     }
 }
 

@@ -116,7 +116,8 @@ task packageDebugSymbols(type: Tar) {
     archiveName "${project.correttoDebugSymbolsArchiveName}.tar.gz"
     compression Compression.GZIP
     from(jdkResultingImage) {
-        include '**/*.diz'
+        include 'bin/*.diz'
+        include 'lib/*.diz'
         into project.correttoDebugSymbolsArchiveName
     }
 }

@@ -161,7 +161,8 @@ task packageDebugSymbols(type: Tar) {
     archiveName "${project.correttoDebugSymbolsArchiveName}.tar.gz"
     compression Compression.GZIP
     from("${jdkResultingImage}/${correttoMacDir}") {
-        include "Contents/Home/**/*.diz"
+        include "Contents/Homebin/bin/*.diz"
+        include "Contents/Homebin/lib/*.diz"
     }
     into "${buildDir}/${correttoMacDir}"
     into project.correttoDebugSymbolsArchiveName
