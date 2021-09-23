@@ -804,7 +804,6 @@ JVM_ENTRY(jboolean, jmm_SetBoolAttribute(JNIEnv *env, jmmBoolAttribute att, jboo
   }
 JVM_END
 
-
 static jlong get_gc_attribute(GCMemoryManager* mgr, jmmLongAttribute att) {
   switch (att) {
   case JMM_GC_TIME_MS:
@@ -814,8 +813,7 @@ static jlong get_gc_attribute(GCMemoryManager* mgr, jmmLongAttribute att) {
     return mgr->gc_count();
 
   case JMM_GC_EXT_ATTRIBUTE_INFO_SIZE:
-    // current implementation only has 1 ext attribute
-    return 1;
+    return mgr->ext_attribute_info_size();
 
   default:
     assert(0, "Unrecognized GC attribute");
@@ -1774,20 +1772,18 @@ JVM_END
 // Returns the number of GC extension attributes filled in the info array; or
 // -1 if info is not big enough
 //
-JVM_ENTRY(jint, jmm_GetGCExtAttributeInfo(JNIEnv *env, jobject mgr, jmmExtAttributeInfo* info, jint count))
-  // All GC memory managers have 1 attribute (number of GC threads)
+JVM_ENTRY(jint, jmm_GetGCExtAttributeInfo(JNIEnv *env, jobject obj, jmmExtAttributeInfo* info, jint count))
   if (count == 0) {
     return 0;
   }
 
   if (info == NULL) {
    THROW_(vmSymbols::java_lang_NullPointerException(), 0);
-  }
+  }  
 
-  info[0].name = "GcThreadCount";
-  info[0].type = 'I';
-  info[0].description = "Number of GC threads";
-  return 1;
+  GCMemoryManager* mgr = get_gc_memory_manager_from_jobject(obj, CHECK_(0));
+
+  return mgr->ext_attribute_info(info, count);
 JVM_END
 
 // verify the given array is an array of java/lang/management/MemoryUsage objects
@@ -1893,9 +1889,10 @@ JVM_ENTRY(void, jmm_GetLastGCStat(JNIEnv *env, jobject obj, jmmGCStat *gc_stat))
   }
 
   if (gc_stat->gc_ext_attribute_values_size > 0) {
+    mgr->ext_attribute_values(gc_stat->gc_ext_attribute_values);
     // Current implementation only has 1 attribute (number of GC threads)
     // The type is 'I'
-    gc_stat->gc_ext_attribute_values[0].i = mgr->num_gc_threads();
+    //gc_stat->gc_ext_attribute_values[0].i = mgr->num_gc_threads();
   }
 JVM_END
 

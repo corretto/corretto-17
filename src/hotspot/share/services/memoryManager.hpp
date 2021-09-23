@@ -164,9 +164,9 @@ public:
   int    num_gc_threads()               { return _num_gc_threads; }
   void   set_num_gc_threads(int count)  { _num_gc_threads = count; }
 
-  void   gc_begin(bool recordGCBeginTime, bool recordPreGCUsage,
-                  bool recordAccumulatedGCTime);
-  void   gc_end(bool recordPostGCUsage, bool recordAccumulatedGCTime,
+  virtual void   gc_begin(bool recordGCBeginTime, bool recordPreGCUsage,
+                bool recordAccumulatedGCTime);
+  virtual void   gc_end(bool recordPostGCUsage, bool recordAccumulatedGCTime,
                 bool recordGCEndTime, bool countCollection, GCCause::Cause cause,
                 bool allMemoryPoolsAffected);
 
@@ -175,6 +175,10 @@ public:
   // Copy out _last_gc_stat to the given destination, returning
   // the collection count. Zero signifies no gc has taken place.
   size_t get_last_gc_stat(GCStatInfo* dest);
+
+  virtual size_t ext_attribute_info_size() { return 1; }
+  virtual size_t ext_attribute_info(jmmExtAttributeInfo* info, jint count);
+  virtual size_t ext_attribute_values(jvalue* ext_attribute_values);
 
   void set_notification_enabled(bool enabled) { _notification_enabled = enabled; }
   bool is_notification_enabled() { return _notification_enabled; }
