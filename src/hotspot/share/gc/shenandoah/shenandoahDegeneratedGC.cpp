@@ -29,6 +29,7 @@
 #include "gc/shenandoah/shenandoahConcurrentMark.hpp"
 #include "gc/shenandoah/shenandoahDegeneratedGC.hpp"
 #include "gc/shenandoah/shenandoahFullGC.hpp"
+#include "gc/shenandoah/shenandoahGeneration.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahMetrics.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
@@ -42,9 +43,11 @@
 #include "runtime/vmThread.hpp"
 #include "utilities/events.hpp"
 
-ShenandoahDegenGC::ShenandoahDegenGC(ShenandoahDegenPoint degen_point) :
+ShenandoahDegenGC::ShenandoahDegenGC(ShenandoahDegenPoint degen_point, ShenandoahGeneration* generation) :
   ShenandoahGC(),
-  _degen_point(degen_point) {
+  _degen_point(degen_point),
+  _generation(generation),
+  _upgraded_to_full(false) {
 }
 
 bool ShenandoahDegenGC::collect(GCCause::Cause cause) {
@@ -79,7 +82,15 @@ void ShenandoahDegenGC::op_degenerated() {
   // Degenerated GC is STW, but it can also fail. Current mechanics communicates
   // GC failure via cancelled_concgc() flag. So, if we detect the failure after
   // some phase, we have to upgrade the Degenerate GC to Full GC.
-  heap->clear_cancelled_gc();
+  heap->clear_cancelled_gc(true /* clear oom handler */);
+
+  // We can't easily clear the old mark in progress flag because it must be done
+  // on a safepoint (not sure if that is a hard requirement). At any rate, once
+  // we are in a degenerated cycle, there should be no more old marking.
+  if (heap->is_concurrent_old_mark_in_progress()) {
+    heap->old_generation()->cancel_marking();
+  }
+  assert(heap->old_generation()->task_queues()->is_empty(), "Old gen task queues should be empty.");
 
   ShenandoahMetricsSnapshot metrics;
   metrics.snap_before();
@@ -99,13 +110,12 @@ void ShenandoahDegenGC::op_degenerated() {
 
       // Degenerated from concurrent root mark, reset the flag for STW mark
       if (heap->is_concurrent_mark_in_progress()) {
-        ShenandoahConcurrentMark::cancel();
-        heap->set_concurrent_mark_in_progress(false);
+        heap->cancel_concurrent_mark();
       }
 
       // Note that we can only do this for "outside-cycle" degens, otherwise we would risk
       // changing the cycle parameters mid-cycle during concurrent -> degenerated handover.
-      heap->set_unload_classes(heap->heuristics()->can_unload_classes());
+      heap->set_unload_classes(_generation->heuristics()->can_unload_classes());
 
       op_reset();
 
@@ -213,19 +223,18 @@ void ShenandoahDegenGC::op_degenerated() {
 }
 
 void ShenandoahDegenGC::op_reset() {
-  ShenandoahHeap::heap()->prepare_gc();
+  _generation->prepare_gc(false);
 }
 
 void ShenandoahDegenGC::op_mark() {
   assert(!ShenandoahHeap::heap()->is_concurrent_mark_in_progress(), "Should be reset");
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::degen_gc_stw_mark);
-  ShenandoahSTWMark mark(false /*full gc*/);
-  mark.clear();
+  ShenandoahSTWMark mark(_generation, false /*full gc*/);
   mark.mark();
 }
 
 void ShenandoahDegenGC::op_finish_mark() {
-  ShenandoahConcurrentMark mark;
+  ShenandoahConcurrentMark mark(_generation);
   mark.finish_mark();
 }
 
@@ -237,8 +246,9 @@ void ShenandoahDegenGC::op_prepare_evacuation() {
 
   // STW cleanup weak roots and unload classes
   heap->parallel_cleaning(false /*full gc*/);
+
   // Prepare regions and collection set
-  heap->prepare_regions_and_collection_set(false /*concurrent*/);
+  _generation->prepare_regions_and_collection_set(false /*concurrent*/);
 
   // Retire the TLABs, which will force threads to reacquire their TLABs after the pause.
   // This is needed for two reasons. Strong one: new allocations would be with new freeset,
@@ -322,15 +332,13 @@ void ShenandoahDegenGC::op_cleanup_complete() {
 }
 
 void ShenandoahDegenGC::op_degenerated_fail() {
-  log_info(gc)("Cannot finish degeneration, upgrading to Full GC");
-  ShenandoahHeap::heap()->shenandoah_policy()->record_degenerated_upgrade_to_full();
-
+  upgrade_to_full();
   ShenandoahFullGC full_gc;
   full_gc.op_full(GCCause::_shenandoah_upgrade_to_full_gc);
 }
 
 void ShenandoahDegenGC::op_degenerated_futile() {
-  ShenandoahHeap::heap()->shenandoah_policy()->record_degenerated_upgrade_to_full();
+  upgrade_to_full();
   ShenandoahFullGC full_gc;
   full_gc.op_full(GCCause::_shenandoah_upgrade_to_full_gc);
 }
@@ -351,4 +359,14 @@ const char* ShenandoahDegenGC::degen_event_message(ShenandoahDegenPoint point) c
       ShouldNotReachHere();
       return "ERROR";
   }
+}
+
+void ShenandoahDegenGC::upgrade_to_full() {
+  log_info(gc)("Degenerate GC upgrading to Full GC");
+  ShenandoahHeap::heap()->shenandoah_policy()->record_degenerated_upgrade_to_full();
+  _upgraded_to_full = true;
+}
+
+bool ShenandoahDegenGC::upgraded_to_full() {
+  return _upgraded_to_full;
 }

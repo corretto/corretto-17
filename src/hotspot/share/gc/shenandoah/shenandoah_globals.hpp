@@ -62,7 +62,8 @@
           "barriers are in in use. Possible values are:"                    \
           " satb - snapshot-at-the-beginning concurrent GC (three pass mark-evac-update);"  \
           " iu - incremental-update concurrent GC (three pass mark-evac-update);"  \
-          " passive - stop the world GC only (either degenerated or full)") \
+          " passive - stop the world GC only (either degenerated or full);" \
+          " generational - generational concurrent GC")                     \
                                                                             \
   product(ccstr, ShenandoahGCHeuristics, "adaptive",                        \
           "GC heuristics to use. This fine-tunes the GC mode selected, "    \
@@ -97,9 +98,10 @@
           range(0,100)                                                      \
                                                                             \
   product(uintx, ShenandoahMinFreeThreshold, 10, EXPERIMENTAL,              \
-          "How much heap should be free before most heuristics trigger the "\
-          "collection, even without other triggers. Provides the safety "   \
-          "margin for many heuristics. In percents of (soft) max heap size.")\
+          "Percentage of free heap memory below which most heuristics "     \
+          "trigger collection independent of other triggers. Provides "     \
+          "a safety margin for many heuristics. In percents of (soft) "     \
+          "max heap size.")                                                 \
           range(0,100)                                                      \
                                                                             \
   product(uintx, ShenandoahAllocationThreshold, 0, EXPERIMENTAL,            \
@@ -222,6 +224,10 @@
                                                                             \
   product(bool, ShenandoahElasticTLAB, true, DIAGNOSTIC,                    \
           "Use Elastic TLABs with Shenandoah")                              \
+                                                                            \
+  product(bool, ShenandoahUsePLAB, true, DIAGNOSTIC,                        \
+          "Use PLABs for object promotions with Shenandoah, "               \
+          "if in generational mode and UseTLAB is also set.")               \
                                                                             \
   product(uintx, ShenandoahEvacReserve, 5, EXPERIMENTAL,                    \
           "How much of heap to reserve for evacuations. Larger values make "\
@@ -366,8 +372,23 @@
                                                                             \
   product(bool, ShenandoahSelfFixing, true, DIAGNOSTIC,                     \
           "Fix references with load reference barrier. Disabling this "     \
-          "might degrade performance.")
-
+          "might degrade performance.")                                     \
+                                                                            \
+  product(bool, ShenandoahUseSimpleCardScanning, false, DIAGNOSTIC,         \
+          "Testing: use simplified, very inefficient but much less complex" \
+          " card table scanning.")                                          \
+                                                                            \
+  product(bool, ShenandoahPromoteTenuredObjects, true, DIAGNOSTIC,          \
+          "Turn on/off evacuating individual tenured young objects "        \
+          " to the old generation.")                                        \
+                                                                            \
+  product(bool, ShenandoahPromoteTenuredRegions, true, DIAGNOSTIC,          \
+          "Turn on/off transitioning tenured young regions "                \
+          " to the old generation.")                                        \
+                                                                            \
+  product(bool, ShenandoahAllowOldMarkingPreemption, true, DIAGNOSTIC,      \
+          "Allow young generation collections to suspend concurrent"        \
+          " marking in the old generation.")
 // end of GC_SHENANDOAH_FLAGS
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAH_GLOBALS_HPP

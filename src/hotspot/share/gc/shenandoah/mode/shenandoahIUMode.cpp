@@ -23,10 +23,7 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/shenandoah/heuristics/shenandoahAdaptiveHeuristics.hpp"
-#include "gc/shenandoah/heuristics/shenandoahAggressiveHeuristics.hpp"
-#include "gc/shenandoah/heuristics/shenandoahCompactHeuristics.hpp"
-#include "gc/shenandoah/heuristics/shenandoahStaticHeuristics.hpp"
+#include "gc/shenandoah/heuristics/shenandoahHeuristics.hpp"
 #include "gc/shenandoah/mode/shenandoahIUMode.hpp"
 #include "logging/log.hpp"
 #include "logging/logTag.hpp"
@@ -62,22 +59,4 @@ void ShenandoahIUMode::initialize_flags() const {
   SHENANDOAH_CHECK_FLAG_SET(ShenandoahCloneBarrier);
   SHENANDOAH_CHECK_FLAG_SET(ShenandoahNMethodBarrier);
   SHENANDOAH_CHECK_FLAG_SET(ShenandoahStackWatermarkBarrier);
-}
-
-ShenandoahHeuristics* ShenandoahIUMode::initialize_heuristics() const {
-  if (ShenandoahGCHeuristics != NULL) {
-    if (strcmp(ShenandoahGCHeuristics, "aggressive") == 0) {
-      return new ShenandoahAggressiveHeuristics();
-    } else if (strcmp(ShenandoahGCHeuristics, "static") == 0) {
-      return new ShenandoahStaticHeuristics();
-    } else if (strcmp(ShenandoahGCHeuristics, "adaptive") == 0) {
-      return new ShenandoahAdaptiveHeuristics();
-    } else if (strcmp(ShenandoahGCHeuristics, "compact") == 0) {
-      return new ShenandoahCompactHeuristics();
-    } else {
-      vm_exit_during_initialization("Unknown -XX:ShenandoahGCHeuristics option");
-    }
-  }
-  ShouldNotReachHere();
-  return NULL;
 }

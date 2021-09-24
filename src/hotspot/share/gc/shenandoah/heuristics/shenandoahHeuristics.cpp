@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2018, 2021, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,15 @@
 
 #include "precompiled.hpp"
 #include "gc/shared/gcCause.hpp"
+#include "gc/shenandoah/shenandoahAllocRequest.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
+#include "gc/shenandoah/shenandoahGeneration.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/heuristics/shenandoahHeuristics.hpp"
+#include "gc/shenandoah/mode/shenandoahMode.hpp"
 #include "logging/log.hpp"
 #include "logging/logTag.hpp"
 #include "runtime/globals_extension.hpp"
@@ -42,7 +45,8 @@ int ShenandoahHeuristics::compare_by_garbage(RegionData a, RegionData b) {
   else return 0;
 }
 
-ShenandoahHeuristics::ShenandoahHeuristics() :
+ShenandoahHeuristics::ShenandoahHeuristics(ShenandoahGeneration* generation) :
+  _generation(generation),
   _region_data(NULL),
   _degenerated_cycles_in_a_row(0),
   _successful_cycles_in_a_row(0),
@@ -68,10 +72,13 @@ ShenandoahHeuristics::~ShenandoahHeuristics() {
   FREE_C_HEAP_ARRAY(RegionGarbage, _region_data);
 }
 
-void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collection_set) {
-  assert(collection_set->count() == 0, "Must be empty");
-
+// Returns true iff the chosen collection set includes old-gen regions
+bool ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collection_set, ShenandoahOldHeuristics* old_heuristics) {
+  bool result = false;
   ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+  assert(collection_set->count() == 0, "Must be empty");
+  assert(_generation->generation_mode() != OLD, "Old GC invokes ShenandoahOldHeuristics::choose_collection_set()");
 
   // Check all pinned regions have updated status before choosing the collection set.
   heap->assert_pinned_region_status();
@@ -92,10 +99,13 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
   size_t free = 0;
   size_t free_regions = 0;
 
-  ShenandoahMarkingContext* const ctx = heap->complete_marking_context();
+  ShenandoahMarkingContext* const ctx = _generation->complete_marking_context();
 
   for (size_t i = 0; i < num_regions; i++) {
     ShenandoahHeapRegion* region = heap->get_region(i);
+    if (!in_generation(region)) {
+      continue;
+    }
 
     size_t garbage = region->garbage();
     total_garbage += garbage;
@@ -110,12 +120,15 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
         immediate_garbage += garbage;
         region->make_trash_immediate();
       } else {
+        assert (_generation->generation_mode() != OLD, "OLD is handled elsewhere");
+
         // This is our candidate for later consideration.
         candidates[cand_idx]._region = region;
         candidates[cand_idx]._garbage = garbage;
         cand_idx++;
       }
     } else if (region->is_humongous_start()) {
+
       // Reclaim humongous regions here, and count them as the immediate garbage
 #ifdef ASSERT
       bool reg_live = region->has_live();
@@ -149,6 +162,16 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
   size_t immediate_percent = (total_garbage == 0) ? 0 : (immediate_garbage * 100 / total_garbage);
 
   if (immediate_percent <= ShenandoahImmediateThreshold) {
+
+    if (old_heuristics != NULL) {
+      if (old_heuristics->prime_collection_set(collection_set)) {
+        result = true;
+      }
+    }
+    // else, this is global collection and doesn't need to prime_collection_set
+
+    // Add young-gen regions into the collection set.  This is a virtual call, implemented differently by each
+    // of the heuristics subclasses.
     choose_collection_set_from_regiondata(collection_set, candidates, cand_idx, immediate_garbage + free);
   }
 
@@ -172,6 +195,7 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
                      byte_size_in_proper_unit(collection_set->garbage()),
                      proper_unit_for_byte_size(collection_set->garbage()),
                      cset_percent);
+  return result;
 }
 
 void ShenandoahHeuristics::record_cycle_start() {
@@ -193,8 +217,8 @@ bool ShenandoahHeuristics::should_start_gc() {
   if (ShenandoahGuaranteedGCInterval > 0) {
     double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
     if (last_time_ms > ShenandoahGuaranteedGCInterval) {
-      log_info(gc)("Trigger: Time since last GC (%.0f ms) is larger than guaranteed interval (" UINTX_FORMAT " ms)",
-                   last_time_ms, ShenandoahGuaranteedGCInterval);
+      log_info(gc)("Trigger (%s): Time since last GC (%.0f ms) is larger than guaranteed interval (" UINTX_FORMAT " ms)",
+                   _generation->name(), last_time_ms, ShenandoahGuaranteedGCInterval);
       return true;
     }
   }
@@ -208,7 +232,7 @@ bool ShenandoahHeuristics::should_degenerate_cycle() {
 
 void ShenandoahHeuristics::adjust_penalty(intx step) {
   assert(0 <= _gc_time_penalties && _gc_time_penalties <= 100,
-          "In range before adjustment: " INTX_FORMAT, _gc_time_penalties);
+         "In range before adjustment: " INTX_FORMAT, _gc_time_penalties);
 
   intx new_val = _gc_time_penalties + step;
   if (new_val < 0) {
@@ -220,7 +244,7 @@ void ShenandoahHeuristics::adjust_penalty(intx step) {
   _gc_time_penalties = new_val;
 
   assert(0 <= _gc_time_penalties && _gc_time_penalties <= 100,
-          "In range after adjustment: " INTX_FORMAT, _gc_time_penalties);
+         "In range after adjustment: " INTX_FORMAT, _gc_time_penalties);
 }
 
 void ShenandoahHeuristics::record_success_concurrent() {
@@ -288,3 +312,10 @@ void ShenandoahHeuristics::initialize() {
 double ShenandoahHeuristics::time_since_last_gc() const {
   return os::elapsedTime() - _cycle_start;
 }
+
+bool ShenandoahHeuristics::in_generation(ShenandoahHeapRegion* region) {
+  return ((_generation->generation_mode() == GLOBAL)
+          || (_generation->generation_mode() == YOUNG && region->affiliation() == YOUNG_GENERATION)
+          || (_generation->generation_mode() == OLD && region->affiliation() == OLD_GENERATION));
+}
+

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2013, 2020, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,14 @@
 #include "precompiled.hpp"
 #include "gc/shared/space.inline.hpp"
 #include "gc/shared/tlab_globals.hpp"
+#include "gc/shenandoah/shenandoahCardTable.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
+#include "gc/shenandoah/shenandoahGeneration.hpp"
+#include "gc/shenandoah/shenandoahYoungGeneration.hpp"
+#include "gc/shenandoah/shenandoahScanRemembered.inline.hpp"
 #include "jfr/jfrEvents.hpp"
 #include "memory/allocation.hpp"
 #include "memory/iterator.inline.hpp"
@@ -42,6 +46,7 @@
 #include "runtime/os.hpp"
 #include "runtime/safepoint.hpp"
 #include "utilities/powerOfTwo.hpp"
+
 
 size_t ShenandoahHeapRegion::RegionCount = 0;
 size_t ShenandoahHeapRegion::RegionSizeBytes = 0;
@@ -65,9 +70,13 @@ ShenandoahHeapRegion::ShenandoahHeapRegion(HeapWord* start, size_t index, bool c
   _top(start),
   _tlab_allocs(0),
   _gclab_allocs(0),
+  _plab_allocs(0),
+  _has_young_lab(false),
   _live_data(0),
   _critical_pins(0),
-  _update_watermark(start) {
+  _update_watermark(start),
+  _affiliation(FREE),
+  _age(0) {
 
   assert(Universe::on_page_boundary(_bottom) && Universe::on_page_boundary(_end),
          "invalid space boundaries");
@@ -84,13 +93,14 @@ void ShenandoahHeapRegion::report_illegal_transition(const char *method) {
   fatal("%s", ss.as_string());
 }
 
-void ShenandoahHeapRegion::make_regular_allocation() {
+void ShenandoahHeapRegion::make_regular_allocation(ShenandoahRegionAffiliation affiliation) {
   shenandoah_assert_heaplocked();
-
+  reset_age();
   switch (_state) {
     case _empty_uncommitted:
       do_commit();
     case _empty_committed:
+      set_affiliation(affiliation);
       set_state(_regular);
     case _regular:
     case _pinned:
@@ -104,7 +114,7 @@ void ShenandoahHeapRegion::make_regular_bypass() {
   shenandoah_assert_heaplocked();
   assert (ShenandoahHeap::heap()->is_full_gc_in_progress() || ShenandoahHeap::heap()->is_degenerated_gc_in_progress(),
           "only for full or degen GC");
-
+  reset_age();
   switch (_state) {
     case _empty_uncommitted:
       do_commit();
@@ -112,6 +122,12 @@ void ShenandoahHeapRegion::make_regular_bypass() {
     case _cset:
     case _humongous_start:
     case _humongous_cont:
+      // TODO: Changing this region to young during compaction may not be
+      // technically correct here because it completely disregards the ages
+      // and origins of the objects being moved. It is, however, certainly
+      // more correct than putting live objects into a region without a
+      // generational affiliation.
+      set_affiliation(YOUNG_GENERATION);
       set_state(_regular);
       return;
     case _pinned_cset:
@@ -127,6 +143,7 @@ void ShenandoahHeapRegion::make_regular_bypass() {
 
 void ShenandoahHeapRegion::make_humongous_start() {
   shenandoah_assert_heaplocked();
+  reset_age();
   switch (_state) {
     case _empty_uncommitted:
       do_commit();
@@ -138,10 +155,11 @@ void ShenandoahHeapRegion::make_humongous_start() {
   }
 }
 
-void ShenandoahHeapRegion::make_humongous_start_bypass() {
+void ShenandoahHeapRegion::make_humongous_start_bypass(ShenandoahRegionAffiliation affiliation) {
   shenandoah_assert_heaplocked();
   assert (ShenandoahHeap::heap()->is_full_gc_in_progress(), "only for full GC");
-
+  set_affiliation(affiliation);
+  reset_age();
   switch (_state) {
     case _empty_committed:
     case _regular:
@@ -156,6 +174,7 @@ void ShenandoahHeapRegion::make_humongous_start_bypass() {
 
 void ShenandoahHeapRegion::make_humongous_cont() {
   shenandoah_assert_heaplocked();
+  reset_age();
   switch (_state) {
     case _empty_uncommitted:
       do_commit();
@@ -167,10 +186,11 @@ void ShenandoahHeapRegion::make_humongous_cont() {
   }
 }
 
-void ShenandoahHeapRegion::make_humongous_cont_bypass() {
+void ShenandoahHeapRegion::make_humongous_cont_bypass(ShenandoahRegionAffiliation affiliation) {
   shenandoah_assert_heaplocked();
   assert (ShenandoahHeap::heap()->is_full_gc_in_progress(), "only for full GC");
-
+  set_affiliation(affiliation);
+  reset_age();
   switch (_state) {
     case _empty_committed:
     case _regular:
@@ -211,6 +231,7 @@ void ShenandoahHeapRegion::make_unpinned() {
 
   switch (_state) {
     case _pinned:
+      assert(affiliation() != FREE, "Pinned region should not be FREE");
       set_state(_regular);
       return;
     case _regular:
@@ -229,6 +250,7 @@ void ShenandoahHeapRegion::make_unpinned() {
 
 void ShenandoahHeapRegion::make_cset() {
   shenandoah_assert_heaplocked();
+  reset_age();
   switch (_state) {
     case _regular:
       set_state(_cset);
@@ -241,6 +263,7 @@ void ShenandoahHeapRegion::make_cset() {
 
 void ShenandoahHeapRegion::make_trash() {
   shenandoah_assert_heaplocked();
+  reset_age();
   switch (_state) {
     case _cset:
       // Reclaiming cset regions
@@ -261,11 +284,15 @@ void ShenandoahHeapRegion::make_trash_immediate() {
 
   // On this path, we know there are no marked objects in the region,
   // tell marking context about it to bypass bitmap resets.
-  ShenandoahHeap::heap()->complete_marking_context()->reset_top_bitmap(this);
+  assert(ShenandoahHeap::heap()->active_generation()->is_mark_complete(), "Marking should be complete here.");
+  // Leave top_bitmap alone.  If it is greater than bottom(), then we still need to clear between bottom() and top_bitmap()
+  // when this FREE region is repurposed for YOUNG or OLD.
+  // ShenandoahHeap::heap()->marking_context()->reset_top_bitmap(this);
 }
 
 void ShenandoahHeapRegion::make_empty() {
   shenandoah_assert_heaplocked();
+  reset_age();
   switch (_state) {
     case _trash:
       set_state(_empty_committed);
@@ -305,10 +332,11 @@ void ShenandoahHeapRegion::make_committed_bypass() {
 void ShenandoahHeapRegion::reset_alloc_metadata() {
   _tlab_allocs = 0;
   _gclab_allocs = 0;
+  _plab_allocs = 0;
 }
 
 size_t ShenandoahHeapRegion::get_shared_allocs() const {
-  return used() - (_tlab_allocs + _gclab_allocs) * HeapWordSize;
+  return used() - (_tlab_allocs + _gclab_allocs + _plab_allocs) * HeapWordSize;
 }
 
 size_t ShenandoahHeapRegion::get_tlab_allocs() const {
@@ -317,6 +345,10 @@ size_t ShenandoahHeapRegion::get_tlab_allocs() const {
 
 size_t ShenandoahHeapRegion::get_gclab_allocs() const {
   return _gclab_allocs * HeapWordSize;
+}
+
+size_t ShenandoahHeapRegion::get_plab_allocs() const {
+  return _plab_allocs * HeapWordSize;
 }
 
 void ShenandoahHeapRegion::set_live_data(size_t s) {
@@ -362,6 +394,19 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
     default:
       ShouldNotReachHere();
   }
+  switch (_affiliation) {
+    case ShenandoahRegionAffiliation::FREE:
+      st->print("|F");
+      break;
+    case ShenandoahRegionAffiliation::YOUNG_GENERATION:
+      st->print("|Y");
+      break;
+    case ShenandoahRegionAffiliation::OLD_GENERATION:
+      st->print("|O");
+      break;
+    default:
+      ShouldNotReachHere();
+  }
   st->print("|BTE " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12),
             p2i(bottom()), p2i(top()), p2i(end()));
   st->print("|TAMS " INTPTR_FORMAT_W(12),
@@ -371,30 +416,148 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
   st->print("|U " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(used()),                proper_unit_for_byte_size(used()));
   st->print("|T " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_tlab_allocs()),     proper_unit_for_byte_size(get_tlab_allocs()));
   st->print("|G " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_gclab_allocs()),    proper_unit_for_byte_size(get_gclab_allocs()));
+  if (ShenandoahHeap::heap()->mode()->is_generational()) {
+    st->print("|G " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_plab_allocs()),   proper_unit_for_byte_size(get_plab_allocs()));
+  }
   st->print("|S " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_shared_allocs()),   proper_unit_for_byte_size(get_shared_allocs()));
   st->print("|L " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_live_data_bytes()), proper_unit_for_byte_size(get_live_data_bytes()));
   st->print("|CP " SIZE_FORMAT_W(3), pin_count());
   st->cr();
 }
 
-void ShenandoahHeapRegion::oop_iterate(OopIterateClosure* blk) {
+// oop_iterate without closure
+void ShenandoahHeapRegion::oop_fill_and_coalesce() {
+  HeapWord* obj_addr = bottom();
+
+  assert(!is_humongous(), "No need to fill or coalesce humongous regions");
   if (!is_active()) return;
-  if (is_humongous()) {
-    oop_iterate_humongous(blk);
-  } else {
-    oop_iterate_objects(blk);
+
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ShenandoahMarkingContext* marking_context = heap->marking_context();
+  // All objects above TAMS are considered live even though their mark bits will not be set.  Note that young-
+  // gen evacuations that interrupt a long-running old-gen concurrent mark may promote objects into old-gen
+  // while the old-gen concurrent marking is ongoing.  These newly promoted objects will reside above TAMS
+  // and will be treated as live during the current old-gen marking pass, even though they will not be
+  // explicitly marked.
+  HeapWord* t = marking_context->top_at_mark_start(this);
+
+  // Expect marking to be completed before these threads invoke this service.
+  assert(heap->active_generation()->is_mark_complete(), "sanity");
+
+  while (obj_addr < t) {
+    oop obj = cast_to_oop(obj_addr);
+    if (marking_context->is_marked(obj)) {
+      assert(obj->klass() != NULL, "klass should not be NULL");
+      obj_addr += obj->size();
+    } else {
+      // Object is not marked.  Coalesce and fill dead object with dead neighbors.
+      HeapWord* next_marked_obj = marking_context->get_next_marked_addr(obj_addr, t);
+      assert(next_marked_obj <= t, "next marked object cannot exceed top");
+      size_t fill_size = next_marked_obj - obj_addr;
+      ShenandoahHeap::fill_with_object(obj_addr, fill_size);
+      heap->card_scan()->coalesce_objects(obj_addr, fill_size);
+      obj_addr = next_marked_obj;
+    }
   }
 }
 
-void ShenandoahHeapRegion::oop_iterate_objects(OopIterateClosure* blk) {
-  assert(! is_humongous(), "no humongous region here");
+void ShenandoahHeapRegion::global_oop_iterate_and_fill_dead(OopIterateClosure* blk) {
+  if (!is_active()) return;
+  if (is_humongous()) {
+    // No need to fill dead within humongous regions.  Either the entire region is dead, or the entire region is
+    // unchanged.  A humongous region holds no more than one humongous object.
+    oop_iterate_humongous(blk);
+  } else {
+    global_oop_iterate_objects_and_fill_dead(blk);
+  }
+}
+
+void ShenandoahHeapRegion::global_oop_iterate_objects_and_fill_dead(OopIterateClosure* blk) {
+  assert(!is_humongous(), "no humongous region here");
   HeapWord* obj_addr = bottom();
-  HeapWord* t = top();
-  // Could call objects iterate, but this is easier.
+
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ShenandoahMarkingContext* marking_context = heap->marking_context();
+  RememberedScanner* rem_set_scanner = heap->card_scan();
+  // Objects allocated above TAMS are not marked, but are considered live for purposes of current GC efforts.
+  HeapWord* t = marking_context->top_at_mark_start(this);
+
+  assert(heap->active_generation()->is_mark_complete(), "sanity");
+
+  while (obj_addr < t) {
+    oop obj = cast_to_oop(obj_addr);
+    if (marking_context->is_marked(obj)) {
+      assert(obj->klass() != NULL, "klass should not be NULL");
+      // when promoting an entire region, we have to register the marked objects as well
+      obj_addr += obj->oop_iterate_size(blk);
+    } else {
+      // Object is not marked.  Coalesce and fill dead object with dead neighbors.
+      HeapWord* next_marked_obj = marking_context->get_next_marked_addr(obj_addr, t);
+      assert(next_marked_obj <= t, "next marked object cannot exceed top");
+      size_t fill_size = next_marked_obj - obj_addr;
+      ShenandoahHeap::fill_with_object(obj_addr, fill_size);
+
+      // coalesce_objects() unregisters all but first object subsumed within coalesced range.
+      rem_set_scanner->coalesce_objects(obj_addr, fill_size);
+      obj_addr = next_marked_obj;
+    }
+  }
+
+  // Any object above TAMS and below top() is considered live.
+  t = top();
   while (obj_addr < t) {
     oop obj = cast_to_oop(obj_addr);
     obj_addr += obj->oop_iterate_size(blk);
   }
+}
+
+// This function does not set card dirty bits.  The decision of which cards to dirty is best
+// made in the caller's context.
+void ShenandoahHeapRegion::fill_dead_and_register_for_promotion() {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ShenandoahMarkingContext* marking_context = heap->marking_context();
+  HeapWord* obj_addr = bottom();
+  RememberedScanner* rem_set_scanner = heap->card_scan();
+  // Objects allocated above TAMS are not marked, but are considered live for purposes of current GC efforts.
+  HeapWord* t = marking_context->top_at_mark_start(this);
+
+  assert(!is_humongous(), "no humongous region here");
+  assert(heap->active_generation()->is_mark_complete(), "sanity");
+
+  // end() might be overkill as end of range, but top() may not align with card boundary.
+  rem_set_scanner->reset_object_range(bottom(), end());
+  while (obj_addr < t) {
+    oop obj = cast_to_oop(obj_addr);
+    if (marking_context->is_marked(obj)) {
+      assert(obj->klass() != NULL, "klass should not be NULL");
+      // when promoting an entire region, we have to register the marked objects as well
+      rem_set_scanner->register_object_wo_lock(obj_addr);
+      obj_addr += obj->size();
+    } else {
+      // Object is not marked.  Coalesce and fill dead object with dead neighbors.
+      HeapWord* next_marked_obj = marking_context->get_next_marked_addr(obj_addr, t);
+      assert(next_marked_obj <= t, "next marked object cannot exceed top");
+      size_t fill_size = next_marked_obj - obj_addr;
+      assert(fill_size >= (size_t) oopDesc::header_size(),
+             "fill size " SIZE_FORMAT " for obj @ " PTR_FORMAT ", next_marked: " PTR_FORMAT ", TAMS: " PTR_FORMAT " is too small",
+             fill_size, p2i(obj_addr), p2i(next_marked_obj), p2i(t));
+      ShenandoahHeap::fill_with_object(obj_addr, fill_size);
+      rem_set_scanner->register_object_wo_lock(obj_addr);
+      obj_addr = next_marked_obj;
+    }
+  }
+
+  // Any object above TAMS and below top() is considered live.
+  t = top();
+  while (obj_addr < t) {
+    oop obj = cast_to_oop(obj_addr);
+    assert(obj->klass() != NULL, "klass should not be NULL");
+    // when promoting an entire region, we have to register the marked objects as well
+    rem_set_scanner->register_object_wo_lock(obj_addr);
+    obj_addr += obj->size();
+  }
+
+  // Remembered set scanning stops at top() so no need to fill beyond it.
 }
 
 void ShenandoahHeapRegion::oop_iterate_humongous(OopIterateClosure* blk) {
@@ -422,15 +585,26 @@ ShenandoahHeapRegion* ShenandoahHeapRegion::humongous_start_region() const {
 }
 
 void ShenandoahHeapRegion::recycle() {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+  if (affiliation() == YOUNG_GENERATION) {
+    heap->young_generation()->decrease_used(used());
+  } else if (affiliation() == OLD_GENERATION) {
+    heap->old_generation()->decrease_used(used());
+  }
+
   set_top(bottom());
   clear_live_data();
 
   reset_alloc_metadata();
 
-  ShenandoahHeap::heap()->marking_context()->reset_top_at_mark_start(this);
+  heap->marking_context()->reset_top_at_mark_start(this);
   set_update_watermark(bottom());
 
   make_empty();
+  set_affiliation(FREE);
+
+  heap->clear_cards_for(this);
 
   if (ZapUnusedHeapArea) {
     SpaceMangler::mangle_region(MemRegion(bottom(), end()));
@@ -680,4 +854,156 @@ void ShenandoahHeapRegion::record_unpin() {
 
 size_t ShenandoahHeapRegion::pin_count() const {
   return Atomic::load(&_critical_pins);
+}
+
+void ShenandoahHeapRegion::set_affiliation(ShenandoahRegionAffiliation new_affiliation) {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+  {
+    ShenandoahMarkingContext* const ctx = heap->complete_marking_context();
+    log_debug(gc)("Setting affiliation of Region " SIZE_FORMAT " from %s to %s, top: " PTR_FORMAT ", TAMS: " PTR_FORMAT
+                  ", watermark: " PTR_FORMAT ", top_bitmap: " PTR_FORMAT "\n",
+                  index(), affiliation_name(_affiliation), affiliation_name(new_affiliation),
+                  p2i(top()), p2i(ctx->top_at_mark_start(this)), p2i(_update_watermark), p2i(ctx->top_bitmap(this)));
+  }
+
+#ifdef ASSERT
+  {
+    // During full gc, heap->complete_marking_context() is not valid, may equal nullptr.
+    ShenandoahMarkingContext* const ctx = heap->complete_marking_context();
+    size_t idx = this->index();
+    HeapWord* top_bitmap = ctx->top_bitmap(this);
+
+    assert(ctx->is_bitmap_clear_range(top_bitmap, _end),
+           "Region " SIZE_FORMAT ", bitmap should be clear between top_bitmap: " PTR_FORMAT " and end: " PTR_FORMAT, idx,
+           p2i(top_bitmap), p2i(_end));
+  }
+#endif
+
+  if (_affiliation == new_affiliation) {
+    return;
+  }
+
+  if (!heap->mode()->is_generational()) {
+    _affiliation = new_affiliation;
+    return;
+  }
+
+  log_trace(gc)("Changing affiliation of region %zu from %s to %s",
+    index(), affiliation_name(_affiliation), affiliation_name(new_affiliation));
+
+  if (_affiliation == ShenandoahRegionAffiliation::YOUNG_GENERATION) {
+    heap->young_generation()->decrement_affiliated_region_count();
+  } else if (_affiliation == ShenandoahRegionAffiliation::OLD_GENERATION) {
+    heap->old_generation()->decrement_affiliated_region_count();
+  }
+
+  switch (new_affiliation) {
+    case FREE:
+      assert(!has_live(), "Free region should not have live data");
+      break;
+    case YOUNG_GENERATION:
+      reset_age();
+      heap->young_generation()->increment_affiliated_region_count();
+      break;
+    case OLD_GENERATION:
+      heap->old_generation()->increment_affiliated_region_count();
+      break;
+    default:
+      ShouldNotReachHere();
+      return;
+  }
+  _affiliation = new_affiliation;
+}
+
+size_t ShenandoahHeapRegion::promote(bool promoting_all) {
+  // TODO: Not sure why region promotion must be performed at safepoint.  Reconsider this requirement.
+  assert(SafepointSynchronize::is_at_safepoint(), "must be at a safepoint");
+
+  // Note that region promotion occurs at a safepoint following all evacuation.  When a region is promoted, we leave
+  // its TAMS and update_watermark information as is.
+  //
+  // Note that update_watermark represents the state of this region as of the moment at which the most recent evacuation
+  // began.  The value of update_watermark is the same for old regions and young regions, as both participate equally in
+  // the processes of a mixed evacuation.
+  //
+  // The meaning of TAMS is different for young-gen and old-gen regions.  For a young-gen region, TAMS represents
+  // top() at start of most recent young-gen concurrent mark.  For an old-gen region, TAMS represents top() at start
+  // of most recent old-gen concurrent mark().  In the case that a young-gen heap region is promoted into old-gen,
+  // we can preserve its TAMS information with the following understandings:
+  //   1. The most recent young-GC concurrent mark phase began at the same time or after the most recent old-GC
+  //      concurrent mark phase.
+  //   2. After the region is promoted, it is still the case that any object within the region that is beneath TAMS
+  //      and is considered alive for the current old GC pass will be "marked" within the current marking context, and
+  //      any object within the region that is above TAMS will be considered alive for the current old GC pass.  Objects
+  //      that were dead at promotion time will all reside below TAMS and will be unmarked.
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ShenandoahMarkingContext* marking_context = heap->marking_context();
+  assert(heap->active_generation()->is_mark_complete(), "sanity");
+  assert(affiliation() == YOUNG_GENERATION, "Only young regions can be promoted");
+
+  ShenandoahGeneration* old_generation = heap->old_generation();
+  ShenandoahGeneration* young_generation = heap->young_generation();
+
+  if (is_humongous_start()) {
+    oop obj = cast_to_oop(bottom());
+    assert(marking_context->is_marked(obj), "promoted humongous object should be alive");
+
+    // Since the humongous region holds only one object, no lock is necessary for this register_object() invocation.
+    heap->card_scan()->register_object_wo_lock(bottom());
+    size_t index_limit = index() + ShenandoahHeapRegion::required_regions(obj->size() * HeapWordSize);
+
+    // For this region and each humongous continuation region spanned by this humongous object, change
+    // affiliation to OLD_GENERATION and adjust the generation-use tallies.  The remnant of memory
+    // in the last humongous region that is not spanned by obj is currently not used.
+    for (size_t i = index(); i < index_limit; i++) {
+      ShenandoahHeapRegion* r = heap->get_region(i);
+      log_debug(gc)("promoting region " SIZE_FORMAT ", from " SIZE_FORMAT " to " SIZE_FORMAT,
+        r->index(), (size_t) r->bottom(), (size_t) r->top());
+      if (r->top() < r->end()) {
+        ShenandoahHeap::fill_with_object(r->top(), (r->end() - r->top()) / HeapWordSize);
+        heap->card_scan()->register_object_wo_lock(r->top());
+        heap->card_scan()->mark_range_as_clean(top(), r->end() - r->top());
+      }
+      // We mark the entire humongous object's range as dirty after loop terminates, so no need to dirty the range here
+      r->set_affiliation(OLD_GENERATION);
+      log_debug(gc)("promoting humongous region " SIZE_FORMAT ", dirtying cards from " SIZE_FORMAT " to " SIZE_FORMAT,
+                    i, (size_t) r->bottom(), (size_t) r->top());
+      old_generation->increase_used(r->used());
+      young_generation->decrease_used(r->used());
+    }
+    if (promoting_all || obj->is_typeArray()) {
+      // Primitive arrays don't need to be scanned.  Likewise, if we are promoting_all, there's nothing
+      // left in young-gen, so there can exist no "interesting" pointers.  See above TODO question about requiring
+      // region promotion at safepoint.  If we're not at a safepoint, then we can't really "promote all" without
+      // directing new allocations to old-gen.  That's probably not what we want.  The whole "promote-all strategy"
+      // probably needs to be revisited at some future point.
+      heap->card_scan()->mark_range_as_clean(bottom(), obj->size());
+    } else {
+      heap->card_scan()->mark_range_as_dirty(bottom(), obj->size());
+    }
+    return index_limit - index();
+  } else {
+    log_debug(gc)("promoting region " SIZE_FORMAT ", dirtying cards from " SIZE_FORMAT " to " SIZE_FORMAT,
+      index(), (size_t) bottom(), (size_t) top());
+    assert(!is_humongous_continuation(), "should not promote humongous object continuation in isolation");
+
+    fill_dead_and_register_for_promotion();
+    // Rather than scanning entire contents of the promoted region right now to determine which
+    // cards to mark as dirty, we just mark them all as dirty (unless promoting_all).  Later, when we
+    // scan the remembered set, we will clear cards that are found to not contain live references to
+    // young memory.  Ultimately, this approach is more efficient as it only scans the "dirty" cards
+    // once and the clean cards once.  The alternative approach of scanning all cards now and then
+    // scanning dirty cards again at next concurrent mark pass scans the clean cards once and the dirty
+    // cards twice.
+    if (promoting_all) {
+      heap->card_scan()->mark_range_as_clean(bottom(), top() - bottom());
+    } else {
+      heap->card_scan()->mark_range_as_dirty(bottom(), top() - bottom());
+    }
+    set_affiliation(OLD_GENERATION);
+    old_generation->increase_used(used());
+    young_generation->decrease_used(used());
+    return 1;
+  }
 }

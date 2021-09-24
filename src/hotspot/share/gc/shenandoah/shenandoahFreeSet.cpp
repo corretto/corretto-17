@@ -24,10 +24,13 @@
 
 #include "precompiled.hpp"
 #include "gc/shared/tlab_globals.hpp"
+#include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
+#include "gc/shenandoah/shenandoahScanRemembered.inline.hpp"
+#include "gc/shenandoah/shenandoahYoungGeneration.hpp"
 #include "logging/logStream.hpp"
 #include "memory/resourceArea.hpp"
 #include "runtime/orderAccess.hpp"
@@ -61,6 +64,23 @@ bool ShenandoahFreeSet::is_collector_free(size_t idx) const {
   return _collector_free_bitmap.at(idx);
 }
 
+HeapWord* ShenandoahFreeSet::allocate_with_affiliation(ShenandoahRegionAffiliation affiliation, ShenandoahAllocRequest& req, bool& in_new_region) {
+  for (size_t c = _collector_rightmost + 1; c > _collector_leftmost; c--) {
+    // size_t is unsigned, need to dodge underflow when _leftmost = 0
+    size_t idx = c - 1;
+    if (is_collector_free(idx)) {
+      ShenandoahHeapRegion* r = _heap->get_region(idx);
+      if (r->affiliation() == affiliation) {
+        HeapWord* result = try_allocate_in(r, req, in_new_region);
+        if (result != NULL) {
+          return result;
+        }
+      }
+    }
+  }
+  return NULL;
+}
+
 HeapWord* ShenandoahFreeSet::allocate_single(ShenandoahAllocRequest& req, bool& in_new_region) {
   // Scan the bitmap looking for a first fit.
   //
@@ -92,18 +112,17 @@ HeapWord* ShenandoahFreeSet::allocate_single(ShenandoahAllocRequest& req, bool& 
       break;
     }
     case ShenandoahAllocRequest::_alloc_gclab:
+    case ShenandoahAllocRequest::_alloc_plab:
     case ShenandoahAllocRequest::_alloc_shared_gc: {
-      // size_t is unsigned, need to dodge underflow when _leftmost = 0
-
-      // Fast-path: try to allocate in the collector view first
-      for (size_t c = _collector_rightmost + 1; c > _collector_leftmost; c--) {
-        size_t idx = c - 1;
-        if (is_collector_free(idx)) {
-          HeapWord* result = try_allocate_in(_heap->get_region(idx), req, in_new_region);
-          if (result != NULL) {
-            return result;
-          }
-        }
+      // First try to fit into a region that is already in use in the same generation.
+      HeapWord* result = allocate_with_affiliation(req.affiliation(), req, in_new_region);
+      if (result != NULL) {
+        return result;
+      }
+      // Then try a free region that is dedicated to GC allocations.
+      result = allocate_with_affiliation(FREE, req, in_new_region);
+      if (result != NULL) {
+        return result;
       }
 
       // No dice. Can we borrow space from mutator view?
@@ -111,7 +130,7 @@ HeapWord* ShenandoahFreeSet::allocate_single(ShenandoahAllocRequest& req, bool& 
         return NULL;
       }
 
-      // Try to steal the empty region from the mutator view
+      // Try to steal an empty region from the mutator view.
       for (size_t c = _mutator_rightmost + 1; c > _mutator_leftmost; c--) {
         size_t idx = c - 1;
         if (is_mutator_free(idx)) {
@@ -129,13 +148,11 @@ HeapWord* ShenandoahFreeSet::allocate_single(ShenandoahAllocRequest& req, bool& 
       // No dice. Do not try to mix mutator and GC allocations, because
       // URWM moves due to GC allocations would expose unparsable mutator
       // allocations.
-
       break;
     }
     default:
       ShouldNotReachHere();
   }
-
   return NULL;
 }
 
@@ -149,6 +166,25 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, Shenandoah
 
   try_recycle_trashed(r);
 
+  if (r->affiliation() == ShenandoahRegionAffiliation::FREE) {
+    ShenandoahMarkingContext* const ctx = _heap->complete_marking_context();
+
+    r->set_affiliation(req.affiliation());
+    r->set_update_watermark(r->bottom());
+    ctx->capture_top_at_mark_start(r);
+
+    assert(ctx->top_at_mark_start(r) == r->bottom(), "Newly established allocation region starts with TAMS equal to bottom");
+    assert(ctx->is_bitmap_clear_range(ctx->top_bitmap(r), r->end()), "Bitmap above top_bitmap() must be clear");
+
+    // Leave top_bitmap alone.  The first time a heap region is put into service, top_bitmap should equal end.
+    // Thereafter, it should represent the upper bound on parts of the bitmap that need to be cleared.
+    log_debug(gc)("NOT clearing bitmap for region " SIZE_FORMAT ", top_bitmap: "
+                  PTR_FORMAT " at transition from FREE to %s",
+                  r->index(), p2i(ctx->top_bitmap(r)), affiliation_name(req.affiliation()));
+  } else if (r->affiliation() != req.affiliation()) {
+    return NULL;
+  }
+
   in_new_region = r->is_empty();
 
   HeapWord* result = NULL;
@@ -160,24 +196,36 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, Shenandoah
       size = free;
     }
     if (size >= req.min_size()) {
-      result = r->allocate(size, req.type());
+      result = r->allocate(size, req);
       assert (result != NULL, "Allocation must succeed: free " SIZE_FORMAT ", actual " SIZE_FORMAT, free, size);
     }
   } else {
-    result = r->allocate(size, req.type());
+    result = r->allocate(size, req);
   }
 
   if (result != NULL) {
-    // Allocation successful, bump stats:
-    if (req.is_mutator_alloc()) {
-      increase_used(size * HeapWordSize);
-    }
 
     // Record actual allocation size
     req.set_actual_size(size);
 
-    if (req.is_gc_alloc()) {
+    // Allocation successful, bump stats:
+    if (req.is_mutator_alloc()) {
+      increase_used(size * HeapWordSize);
+    } else if (req.is_gc_alloc()) {
+      // For GC allocations, we advance update_watermark because the objects relocated into this memory during
+      // evacuation are not updated during evacuation.  For both young and old regions r, it is essential that all
+      // PLABs be made parsable at the end of evacuation.  This is enabled by retiring all plabs at end of evacuation.
+      // TODO: Making a PLAB parsable involves placing a filler object in its remnant memory but does not require
+      // that the PLAB be disabled for all future purposes.  We may want to introduce a new service to make the
+      // PLABs parsable while still allowing the PLAB to serve future allocation requests that arise during the
+      // next evacuation pass.
       r->set_update_watermark(r->top());
+    }
+
+    if (r->affiliation() == ShenandoahRegionAffiliation::YOUNG_GENERATION) {
+      _heap->young_generation()->increase_used(size * HeapWordSize);
+    } else if (r->affiliation() == ShenandoahRegionAffiliation::OLD_GENERATION) {
+      _heap->old_generation()->increase_used(size * HeapWordSize);
     }
   }
 
@@ -194,6 +242,7 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, Shenandoah
       size_t waste = r->free();
       if (waste > 0) {
         increase_used(waste);
+        _heap->generation_for(req.affiliation())->increase_allocated(waste);
         _heap->notify_mutator_alloc_words(waste >> LogHeapWordSize, true);
       }
     }
@@ -282,6 +331,7 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(ShenandoahAllocRequest& req) {
   };
 
   size_t remainder = words_size & ShenandoahHeapRegion::region_size_words_mask();
+  ShenandoahMarkingContext* const ctx = _heap->complete_marking_context();
 
   // Initialize regions:
   for (size_t i = beg; i <= end; i++) {
@@ -305,7 +355,20 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(ShenandoahAllocRequest& req) {
       used_words = ShenandoahHeapRegion::region_size_words();
     }
 
-    r->set_top(r->bottom() + used_words);
+    r->set_affiliation(req.affiliation());
+    r->set_update_watermark(r->bottom());
+    r->set_top(r->bottom());    // Set top to bottom so we can capture TAMS
+    ctx->capture_top_at_mark_start(r);
+    r->set_top(r->bottom() + used_words); // Then change top to reflect allocation of humongous object.
+    assert(ctx->top_at_mark_start(r) == r->bottom(), "Newly established allocation region starts with TAMS equal to bottom");
+    assert(ctx->is_bitmap_clear_range(ctx->top_bitmap(r), r->end()), "Bitmap above top_bitmap() must be clear");
+
+    // Leave top_bitmap alone.  The first time a heap region is put into service, top_bitmap should equal end.
+    // Thereafter, it should represent the upper bound on parts of the bitmap that need to be cleared.
+    // ctx->clear_bitmap(r);
+    log_debug(gc)("NOT clearing bitmap for Humongous region [" PTR_FORMAT ", " PTR_FORMAT "], top_bitmap: "
+                  PTR_FORMAT " at transition from FREE to %s",
+                  p2i(r->bottom()), p2i(r->end()), p2i(ctx->top_bitmap(r)), affiliation_name(req.affiliation()));
 
     _mutator_free_bitmap.clear_bit(r->index());
   }
@@ -314,9 +377,17 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(ShenandoahAllocRequest& req) {
   // marked used in the free set.
   increase_used(ShenandoahHeapRegion::region_size_bytes() * num);
 
+  if (req.affiliation() == ShenandoahRegionAffiliation::YOUNG_GENERATION) {
+    _heap->young_generation()->increase_used(words_size * HeapWordSize);
+  } else if (req.affiliation() == ShenandoahRegionAffiliation::OLD_GENERATION) {
+    _heap->old_generation()->increase_used(words_size * HeapWordSize);
+  }
+
   if (remainder != 0) {
     // Record this remainder as allocation waste
-    _heap->notify_mutator_alloc_words(ShenandoahHeapRegion::region_size_words() - remainder, true);
+    size_t waste = ShenandoahHeapRegion::region_size_words() - remainder;
+    _heap->notify_mutator_alloc_words(waste, true);
+    _heap->generation_for(req.affiliation())->increase_allocated(waste * HeapWordSize);
   }
 
   // Allocated at left/rightmost? Move the bounds appropriately.
@@ -384,6 +455,10 @@ void ShenandoahFreeSet::flip_to_gc(ShenandoahHeapRegion* r) {
     adjust_bounds();
   }
   assert_bounds();
+
+  // We do not ensure that the region is no longer trash,
+  // relying on try_allocate_in(), which always comes next,
+  // to recycle trash before attempting to allocate anything in the region.
 }
 
 void ShenandoahFreeSet::clear() {
@@ -406,6 +481,7 @@ void ShenandoahFreeSet::rebuild() {
   shenandoah_assert_heaplocked();
   clear();
 
+  log_debug(gc)("Rebuilding FreeSet");
   for (size_t idx = 0; idx < _heap->num_regions(); idx++) {
     ShenandoahHeapRegion* region = _heap->get_region(idx);
     if (region->is_alloc_allowed() || region->is_trash()) {
@@ -419,6 +495,8 @@ void ShenandoahFreeSet::rebuild() {
 
       assert(!is_mutator_free(idx), "We are about to add it, it shouldn't be there already");
       _mutator_free_bitmap.set_bit(idx);
+
+      log_debug(gc)("  Setting Region " SIZE_FORMAT " _mutator_free_bitmap bit to true", idx);
     }
   }
 
@@ -436,6 +514,7 @@ void ShenandoahFreeSet::rebuild() {
       size_t ac = alloc_capacity(region);
       _capacity -= ac;
       reserved += ac;
+      log_debug(gc)("  Shifting region " SIZE_FORMAT " from mutator_free to collector_free", idx);
     }
   }
 
@@ -544,6 +623,7 @@ HeapWord* ShenandoahFreeSet::allocate(ShenandoahAllocRequest& req, bool& in_new_
       case ShenandoahAllocRequest::_alloc_shared_gc:
         in_new_region = true;
         return allocate_contiguous(req);
+      case ShenandoahAllocRequest::_alloc_plab:
       case ShenandoahAllocRequest::_alloc_gclab:
       case ShenandoahAllocRequest::_alloc_tlab:
         in_new_region = false;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2013, 2020, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -168,12 +168,12 @@ public:
   }
 
   // Allowed transitions from the outside code:
-  void make_regular_allocation();
+  void make_regular_allocation(ShenandoahRegionAffiliation affiliation);
   void make_regular_bypass();
   void make_humongous_start();
   void make_humongous_cont();
-  void make_humongous_start_bypass();
-  void make_humongous_cont_bypass();
+  void make_humongous_start_bypass(ShenandoahRegionAffiliation affiliation);
+  void make_humongous_cont_bypass(ShenandoahRegionAffiliation affiliation);
   void make_pinned();
   void make_unpinned();
   void make_cset();
@@ -198,6 +198,8 @@ public:
   bool is_committed()              const { return !is_empty_uncommitted(); }
   bool is_cset()                   const { return _state == _cset   || _state == _pinned_cset; }
   bool is_pinned()                 const { return _state == _pinned || _state == _pinned_cset || _state == _pinned_humongous_start; }
+  bool is_young()                  const { return _affiliation == YOUNG_GENERATION; }
+  bool is_old()                    const { return _affiliation == OLD_GENERATION; }
 
   // Macro-properties:
   bool is_alloc_allowed()          const { return is_empty() || is_regular() || _state == _pinned; }
@@ -209,6 +211,10 @@ public:
   void record_pin();
   void record_unpin();
   size_t pin_count() const;
+
+  void clear_young_lab_flags();
+  void set_young_lab_flag();
+  bool has_young_lab_flag();
 
 private:
   static size_t RegionCount;
@@ -240,11 +246,17 @@ private:
 
   size_t _tlab_allocs;
   size_t _gclab_allocs;
+  size_t _plab_allocs;
+
+  bool _has_young_lab;
 
   volatile size_t _live_data;
   volatile size_t _critical_pins;
 
   HeapWord* volatile _update_watermark;
+
+  ShenandoahRegionAffiliation _affiliation;
+  uint _age;
 
 public:
   ShenandoahHeapRegion(HeapWord* start, size_t index, bool committed);
@@ -335,7 +347,7 @@ public:
   }
 
   // Allocation (return NULL if full)
-  inline HeapWord* allocate(size_t word_size, ShenandoahAllocRequest::Type type);
+  inline HeapWord* allocate(size_t word_size, ShenandoahAllocRequest req);
 
   inline void clear_live_data();
   void set_live_data(size_t s);
@@ -356,7 +368,15 @@ public:
 
   void recycle();
 
-  void oop_iterate(OopIterateClosure* cl);
+  // Coalesce contiguous spans of garbage objects by filling header and reregistering start locations with remembered set.
+  // This is used by old-gen GC following concurrent marking to make old-gen HeapRegions parseable.
+  void oop_fill_and_coalesce();
+
+  // During global collections, this service iterates through an old-gen heap region that is not part of collection
+  // set to fill and register ranges of dead memory.  Note that live objects were previously registered.  Some dead objects
+  // that are subsumed into coalesced ranges of dead memory need to be "unregistered".
+  void global_oop_iterate_and_fill_dead(OopIterateClosure* cl);
+  void oop_iterate_humongous(OopIterateClosure* cl);
 
   HeapWord* block_start(const void* p) const;
   size_t block_size(const HeapWord* p) const;
@@ -383,17 +403,40 @@ public:
   size_t get_shared_allocs() const;
   size_t get_tlab_allocs() const;
   size_t get_gclab_allocs() const;
+  size_t get_plab_allocs() const;
 
   inline HeapWord* get_update_watermark() const;
   inline void set_update_watermark(HeapWord* w);
   inline void set_update_watermark_at_safepoint(HeapWord* w);
 
+  ShenandoahRegionAffiliation affiliation() const {
+    return _affiliation;
+  }
+
+  void set_affiliation(ShenandoahRegionAffiliation new_affiliation);
+
+  uint age()           { return _age; }
+  void increment_age() { if (_age < markWord::max_age) { _age++; } }
+  void reset_age()     { _age = 0; }
+
+  // Adjusts remembered set information by setting all cards to clean if promoting all, setting
+  // all cards to dirty otherwise.
+  //
+  // Returns the number of regions promoted, which is generally one, but may be greater than 1 if
+  // this is humongous region with multiple continuations.
+  size_t promote(bool promoting_all);
+
 private:
   void do_commit();
   void do_uncommit();
 
-  void oop_iterate_objects(OopIterateClosure* cl);
-  void oop_iterate_humongous(OopIterateClosure* cl);
+  // This is an old-region that was not part of the collection set during a GLOBAL collection.  We coalesce the dead
+  // objects, but do not need to register the live objects as they are already registered.
+  void global_oop_iterate_objects_and_fill_dead(OopIterateClosure* cl);
+
+  // Process the contents of a region when it is being promoted en masse by registering each marked object, coalescing
+  // contiguous ranges of unmarked objects into registered dead objects.  Do not touch card marks.
+  void fill_dead_and_register_for_promotion();
 
   inline void internal_increase_live_data(size_t s);
 

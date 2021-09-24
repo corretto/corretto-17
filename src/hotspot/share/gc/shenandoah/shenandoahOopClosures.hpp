@@ -42,15 +42,16 @@ class ShenandoahMarkRefsSuperClosure : public MetadataVisitingOopIterateClosure 
 private:
   StringDedup::Requests     _stringDedup_requests;
   ShenandoahObjToScanQueue* _queue;
+  ShenandoahObjToScanQueue* _old_queue;
   ShenandoahMarkingContext* const _mark_context;
   bool _weak;
 
 protected:
-  template <class T, StringDedupMode STRING_DEDUP>
+  template <class T, GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
   void work(T *p);
 
 public:
-  ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp);
+  ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp,  ShenandoahObjToScanQueue* old_queue = NULL);
 
   bool is_weak() const {
     return _weak;
@@ -65,41 +66,41 @@ class ShenandoahMarkUpdateRefsSuperClosure : public ShenandoahMarkRefsSuperClosu
 protected:
   ShenandoahHeap* const _heap;
 
-  template <class T, StringDedupMode STRING_DEDUP>
+  template <class T, GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
   inline void work(T* p);
 
 public:
-  ShenandoahMarkUpdateRefsSuperClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp) :
-    ShenandoahMarkRefsSuperClosure(q, rp),
+  ShenandoahMarkUpdateRefsSuperClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp, ShenandoahObjToScanQueue* old = NULL) :
+    ShenandoahMarkRefsSuperClosure(q, rp, old),
     _heap(ShenandoahHeap::heap()) {
     assert(_heap->is_stw_gc_in_progress(), "Can only be used for STW GC");
   };
 };
 
-template <StringDedupMode STRING_DEDUP>
+template <GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
 class ShenandoahMarkUpdateRefsClosure : public ShenandoahMarkUpdateRefsSuperClosure {
 private:
   template <class T>
-  inline void do_oop_work(T* p)     { work<T, STRING_DEDUP>(p); }
+  inline void do_oop_work(T* p)     { work<T, GENERATION, STRING_DEDUP>(p); }
 
 public:
-  ShenandoahMarkUpdateRefsClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp) :
-    ShenandoahMarkUpdateRefsSuperClosure(q, rp) {}
+  ShenandoahMarkUpdateRefsClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp, ShenandoahObjToScanQueue* old = NULL) :
+    ShenandoahMarkUpdateRefsSuperClosure(q, rp, old) {}
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
   virtual bool do_metadata()        { return false; }
 };
 
-template <StringDedupMode STRING_DEDUP>
+template <GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
 class ShenandoahMarkUpdateRefsMetadataClosure : public ShenandoahMarkUpdateRefsSuperClosure {
 private:
   template <class T>
-  inline void do_oop_work(T* p)     { work<T, STRING_DEDUP>(p); }
+  inline void do_oop_work(T* p)     { work<T, GENERATION, STRING_DEDUP>(p); }
 
 public:
-  ShenandoahMarkUpdateRefsMetadataClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp) :
-    ShenandoahMarkUpdateRefsSuperClosure(q, rp) {}
+  ShenandoahMarkUpdateRefsMetadataClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp, ShenandoahObjToScanQueue* old = NULL) :
+    ShenandoahMarkUpdateRefsSuperClosure(q, rp, old) {}
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -107,15 +108,15 @@ public:
 };
 
 
-template <StringDedupMode STRING_DEDUP>
+template <GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
 class ShenandoahMarkRefsClosure : public ShenandoahMarkRefsSuperClosure {
 private:
   template <class T>
-  inline void do_oop_work(T* p)     { work<T, STRING_DEDUP>(p); }
+  inline void do_oop_work(T* p)     { work<T, GENERATION, STRING_DEDUP>(p); }
 
 public:
-  ShenandoahMarkRefsClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp) :
-    ShenandoahMarkRefsSuperClosure(q, rp) {};
+  ShenandoahMarkRefsClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp, ShenandoahObjToScanQueue* old = NULL) :
+    ShenandoahMarkRefsSuperClosure(q, rp, old) {};
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -123,15 +124,15 @@ public:
 };
 
 
-template <StringDedupMode STRING_DEDUP>
+template <GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
 class ShenandoahMarkRefsMetadataClosure : public ShenandoahMarkRefsSuperClosure {
 private:
   template <class T>
-  inline void do_oop_work(T* p)     { work<T, STRING_DEDUP>(p); }
+  inline void do_oop_work(T* p)     { work<T, GENERATION, STRING_DEDUP>(p); }
 
 public:
-  ShenandoahMarkRefsMetadataClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp) :
-    ShenandoahMarkRefsSuperClosure(q, rp) {};
+  ShenandoahMarkRefsMetadataClosure(ShenandoahObjToScanQueue* q, ShenandoahReferenceProcessor* rp, ShenandoahObjToScanQueue* old = NULL) :
+    ShenandoahMarkRefsSuperClosure(q, rp, old) {};
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -170,6 +171,44 @@ public:
 
   virtual void do_oop(narrowOop* p) { work(p); }
   virtual void do_oop(oop* p)       { work(p); }
+};
+
+class ShenandoahVerifyRemSetClosure : public BasicOopIterateClosure {
+  protected:
+  bool _init_mark;
+  ShenandoahHeap* _heap;
+  RememberedScanner* _scanner;
+
+  public:
+// Argument distinguishes between initial mark or start of update refs verification.
+  ShenandoahVerifyRemSetClosure(bool init_mark) :
+      _init_mark(init_mark),
+      _heap(ShenandoahHeap::heap()),
+      _scanner(_heap->card_scan()) {  }
+  template<class T>
+  inline void work(T* p);
+
+  virtual void do_oop(narrowOop* p) { work(p); }
+  virtual void do_oop(oop* p) { work(p); }
+};
+
+class ShenandoahSetRememberedCardsToDirtyClosure : public BasicOopIterateClosure {
+
+protected:
+  ShenandoahHeap* _heap;
+  RememberedScanner* _scanner;
+
+public:
+
+  ShenandoahSetRememberedCardsToDirtyClosure() :
+      _heap(ShenandoahHeap::heap()),
+      _scanner(_heap->card_scan()) {  }
+
+  template<class T>
+  inline void work(T* p);
+
+  virtual void do_oop(narrowOop* p) { work(p); }
+  virtual void do_oop(oop* p) { work(p); }
 };
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAHOOPCLOSURES_HPP

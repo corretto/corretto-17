@@ -43,6 +43,7 @@ private:
 
   ShenandoahHeap* const _heap;
 
+  bool                  _has_old_regions;
   size_t                _garbage;
   size_t                _used;
   size_t                _region_count;
@@ -77,8 +78,10 @@ public:
 
   void print_on(outputStream* out) const;
 
-  size_t used()      const { return _used; }
-  size_t garbage()   const { return _garbage;   }
+  bool has_old_regions() const { return _has_old_regions; }
+  size_t used()          const { return _used; }
+
+  size_t garbage()       const { return _garbage; }
   void clear();
 
 private:

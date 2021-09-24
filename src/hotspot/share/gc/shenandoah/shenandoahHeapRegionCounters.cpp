@@ -23,6 +23,8 @@
  */
 
 #include "precompiled.hpp"
+
+#include "gc/shenandoah/shenandoahGeneration.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
@@ -81,11 +83,8 @@ void ShenandoahHeapRegionCounters::update() {
             Atomic::cmpxchg(&_last_sample_millis, last, current) == last) {
 
       ShenandoahHeap* heap = ShenandoahHeap::heap();
-      jlong status = 0;
-      if (heap->is_concurrent_mark_in_progress())      status |= 1 << 0;
-      if (heap->is_evacuation_in_progress())           status |= 1 << 1;
-      if (heap->is_update_refs_in_progress())          status |= 1 << 2;
-      _status->set_value(status);
+
+      _status->set_value(encode_heap_status(heap));
 
       _timestamp->set_value(os::elapsed_counter());
 
@@ -101,12 +100,72 @@ void ShenandoahHeapRegionCounters::update() {
           data |= ((100 * r->get_live_data_bytes() / rs) & PERCENT_MASK) << LIVE_SHIFT;
           data |= ((100 * r->get_tlab_allocs() / rs)     & PERCENT_MASK) << TLAB_SHIFT;
           data |= ((100 * r->get_gclab_allocs() / rs)    & PERCENT_MASK) << GCLAB_SHIFT;
+          data |= ((100 * r->get_plab_allocs() / rs)     & PERCENT_MASK) << PLAB_SHIFT;
           data |= ((100 * r->get_shared_allocs() / rs)   & PERCENT_MASK) << SHARED_SHIFT;
+
+          data |= (r->age() & AGE_MASK) << AGE_SHIFT;
+          data |= (r->affiliation() & AFFILIATION_MASK) << AFFILIATION_SHIFT;
           data |= (r->state_ordinal() & STATUS_MASK) << STATUS_SHIFT;
           _regions_data[i]->set_value(data);
         }
       }
-
     }
   }
+}
+
+static int encode_phase(ShenandoahHeap* heap) {
+  if (heap->is_evacuation_in_progress()) {
+    return 2;
+  }
+  if (heap->is_update_refs_in_progress()) {
+    return 3;
+  }
+  if (heap->is_concurrent_mark_in_progress()) {
+    return 1;
+  }
+  assert(heap->is_idle(), "What is it doing?");
+  return 0;
+}
+
+static int get_generation_shift(ShenandoahGeneration* generation) {
+  switch (generation->generation_mode()) {
+    case GLOBAL: return 0;
+    case OLD:    return 2;
+    case YOUNG:  return 4;
+    default:
+      ShouldNotReachHere();
+      return -1;
+  }
+}
+
+jlong ShenandoahHeapRegionCounters::encode_heap_status(ShenandoahHeap* heap) {
+
+  if (heap->is_idle()) {
+    return 0;
+  }
+
+  jlong status = 0;
+  if (!heap->mode()->is_generational()) {
+    status = encode_phase(heap);
+  } else {
+    int phase = encode_phase(heap);
+    ShenandoahGeneration* generation = heap->active_generation();
+    assert(generation != NULL, "Expected active generation in this mode.");
+    int shift = get_generation_shift(generation);
+    status |= ((phase & 0x3) << shift);
+    if (heap->is_concurrent_old_mark_in_progress()) {
+      status |= (1 << 2);
+    }
+    log_develop_trace(gc)("%s, phase=%u, old_mark=%s, status=" JLONG_FORMAT,
+      generation->name(), phase, BOOL_TO_STR(heap->is_concurrent_old_mark_in_progress()), status);
+  }
+
+  if (heap->is_degenerated_gc_in_progress()) {
+    status |= (1 << 6);
+  }
+  if (heap->is_full_gc_in_progress()) {
+    status |= (1 << 7);
+  }
+
+  return status;
 }

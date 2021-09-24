@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2018, 2020, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,14 +26,16 @@
 #define SHARE_GC_SHENANDOAH_SHENANDOAHALLOCREQUEST_HPP
 
 #include "memory/allocation.hpp"
+#include "gc/shenandoah/mode/shenandoahGenerationalMode.hpp"
 
 class ShenandoahAllocRequest : StackObj {
 public:
   enum Type {
     _alloc_shared,      // Allocate common, outside of TLAB
-    _alloc_shared_gc,   // Allocate common, outside of GCLAB
+    _alloc_shared_gc,   // Allocate common, outside of GCLAB/PLAB
     _alloc_tlab,        // Allocate TLAB
     _alloc_gclab,       // Allocate GCLAB
+    _alloc_plab,        // Allocate PLAB
     _ALLOC_LIMIT
   };
 
@@ -47,6 +49,8 @@ public:
         return "TLAB";
       case _alloc_gclab:
         return "GCLAB";
+      case _alloc_plab:
+        return "PLAB";
       default:
         ShouldNotReachHere();
         return "";
@@ -58,13 +62,14 @@ private:
   size_t _requested_size;
   size_t _actual_size;
   Type _alloc_type;
+  ShenandoahRegionAffiliation const _affiliation;
 #ifdef ASSERT
   bool _actual_size_set;
 #endif
 
-  ShenandoahAllocRequest(size_t _min_size, size_t _requested_size, Type _alloc_type) :
+  ShenandoahAllocRequest(size_t _min_size, size_t _requested_size, Type _alloc_type, ShenandoahRegionAffiliation affiliation) :
           _min_size(_min_size), _requested_size(_requested_size),
-          _actual_size(0), _alloc_type(_alloc_type)
+          _actual_size(0), _alloc_type(_alloc_type), _affiliation(affiliation)
 #ifdef ASSERT
           , _actual_size_set(false)
 #endif
@@ -72,19 +77,23 @@ private:
 
 public:
   static inline ShenandoahAllocRequest for_tlab(size_t min_size, size_t requested_size) {
-    return ShenandoahAllocRequest(min_size, requested_size, _alloc_tlab);
+    return ShenandoahAllocRequest(min_size, requested_size, _alloc_tlab, ShenandoahRegionAffiliation::YOUNG_GENERATION);
   }
 
   static inline ShenandoahAllocRequest for_gclab(size_t min_size, size_t requested_size) {
-    return ShenandoahAllocRequest(min_size, requested_size, _alloc_gclab);
+    return ShenandoahAllocRequest(min_size, requested_size, _alloc_gclab, ShenandoahRegionAffiliation::YOUNG_GENERATION);
   }
 
-  static inline ShenandoahAllocRequest for_shared_gc(size_t requested_size) {
-    return ShenandoahAllocRequest(0, requested_size, _alloc_shared_gc);
+  static inline ShenandoahAllocRequest for_plab(size_t min_size, size_t requested_size) {
+    return ShenandoahAllocRequest(min_size, requested_size, _alloc_plab, ShenandoahRegionAffiliation::OLD_GENERATION);
+  }
+
+  static inline ShenandoahAllocRequest for_shared_gc(size_t requested_size, ShenandoahRegionAffiliation affiliation) {
+    return ShenandoahAllocRequest(0, requested_size, _alloc_shared_gc, affiliation);
   }
 
   static inline ShenandoahAllocRequest for_shared(size_t requested_size) {
-    return ShenandoahAllocRequest(0, requested_size, _alloc_shared);
+    return ShenandoahAllocRequest(0, requested_size, _alloc_shared, ShenandoahRegionAffiliation::YOUNG_GENERATION);
   }
 
   inline size_t size() {
@@ -123,6 +132,7 @@ public:
       case _alloc_shared:
         return true;
       case _alloc_gclab:
+      case _alloc_plab:
       case _alloc_shared_gc:
         return false;
       default:
@@ -137,6 +147,7 @@ public:
       case _alloc_shared:
         return false;
       case _alloc_gclab:
+      case _alloc_plab:
       case _alloc_shared_gc:
         return true;
       default:
@@ -149,6 +160,7 @@ public:
     switch (_alloc_type) {
       case _alloc_tlab:
       case _alloc_gclab:
+      case _alloc_plab:
         return true;
       case _alloc_shared:
       case _alloc_shared_gc:
@@ -157,6 +169,18 @@ public:
         ShouldNotReachHere();
         return false;
     }
+  }
+
+  bool is_old() {
+    return _affiliation == OLD_GENERATION;
+  }
+
+  bool is_young() {
+    return _affiliation == YOUNG_GENERATION;
+  }
+
+  ShenandoahRegionAffiliation affiliation() const {
+    return _affiliation;
   }
 };
 

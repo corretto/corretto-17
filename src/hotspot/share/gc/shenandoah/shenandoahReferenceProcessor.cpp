@@ -25,6 +25,7 @@
 
 #include "precompiled.hpp"
 #include "classfile/javaClasses.hpp"
+#include "gc/shenandoah/mode/shenandoahGenerationalMode.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahReferenceProcessor.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
@@ -267,6 +268,7 @@ bool ShenandoahReferenceProcessor::should_discover(oop reference, ReferenceType 
   T* referent_addr = (T*) java_lang_ref_Reference::referent_addr_raw(reference);
   T heap_oop = RawAccess<>::oop_load(referent_addr);
   oop referent = CompressedOops::decode(heap_oop);
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   if (is_inactive<T>(reference, referent, type)) {
     log_trace(gc,ref)("Reference inactive: " PTR_FORMAT, p2i(reference));
@@ -280,6 +282,11 @@ bool ShenandoahReferenceProcessor::should_discover(oop reference, ReferenceType 
 
   if (is_softly_live(reference, type)) {
     log_trace(gc,ref)("Reference softly live: " PTR_FORMAT, p2i(reference));
+    return false;
+  }
+
+  if (!heap->is_in_active_generation(referent)) {
+    log_trace(gc,ref)("Referent outside of active generation: " PTR_FORMAT, p2i(referent));
     return false;
   }
 
@@ -371,7 +378,8 @@ bool ShenandoahReferenceProcessor::discover_reference(oop reference, ReferenceTy
     return false;
   }
 
-  log_trace(gc, ref)("Encountered Reference: " PTR_FORMAT " (%s)", p2i(reference), reference_type_name(type));
+  log_trace(gc, ref)("Encountered Reference: " PTR_FORMAT " (%s, %s)",
+          p2i(reference), reference_type_name(type), affiliation_name(reference));
   uint worker_id = ShenandoahThreadLocalData::worker_id(Thread::current());
   _ref_proc_thread_locals->inc_encountered(type);
 
@@ -386,15 +394,21 @@ template <typename T>
 oop ShenandoahReferenceProcessor::drop(oop reference, ReferenceType type) {
   log_trace(gc, ref)("Dropped Reference: " PTR_FORMAT " (%s)", p2i(reference), reference_type_name(type));
 
-#ifdef ASSERT
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
   oop referent = reference_referent<T>(reference);
-  assert(referent == NULL || ShenandoahHeap::heap()->marking_context()->is_marked(referent),
-         "only drop references with alive referents");
-#endif
+  assert(referent == NULL || heap->marking_context()->is_marked(referent), "only drop references with alive referents");
 
   // Unlink and return next in list
   oop next = reference_discovered<T>(reference);
   reference_set_discovered<T>(reference, NULL);
+  // When this reference was discovered, it would not have been marked. If it ends up surviving
+  // the cycle, we need to dirty the card if the reference is old and the referent is young.  Note
+  // that if the reference is not dropped, then its pointer to the referent will be nulled before
+  // evacuation begins so card does not need to be dirtied.
+  if (heap->mode()->is_generational() && heap->is_in_old(reference) && heap->is_in_young(referent)) {
+    // Note: would be sufficient to mark only the card that holds the start of this Reference object.
+    heap->card_scan()->mark_range_as_dirty(cast_from_oop<HeapWord*>(reference), reference->size());
+  }
   return next;
 }
 

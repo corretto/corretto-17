@@ -41,7 +41,10 @@
 #include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
 #include "gc/shenandoah/shenandoahControlThread.hpp"
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
+#include "gc/shenandoah/shenandoahScanRemembered.inline.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
+#include "gc/shenandoah/shenandoahScanRemembered.inline.hpp"
+#include "gc/shenandoah/mode/shenandoahMode.hpp"
 #include "oops/compressedOops.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
@@ -183,9 +186,17 @@ inline bool ShenandoahHeap::check_cancelled_gc_and_yield(bool sts_active) {
   }
 }
 
-inline void ShenandoahHeap::clear_cancelled_gc() {
+inline void ShenandoahHeap::clear_cancelled_gc(bool clear_oom_handler) {
   _cancelled_gc.set(CANCELLABLE);
-  _oom_evac_handler.clear();
+  if (_cancel_requested_time > 0) {
+    double cancel_time = os::elapsedTime() - _cancel_requested_time;
+    log_info(gc)("GC cancellation took %.3fs", cancel_time);
+    _cancel_requested_time = 0;
+  }
+
+  if (clear_oom_handler) {
+    _oom_evac_handler.clear();
+  }
 }
 
 inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size) {
@@ -202,8 +213,24 @@ inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size
   if (obj != NULL) {
     return obj;
   }
-  // Otherwise...
   return allocate_from_gclab_slow(thread, size);
+}
+
+inline HeapWord* ShenandoahHeap::allocate_from_plab(Thread* thread, size_t size) {
+  assert(UseTLAB, "TLABs should be enabled");
+
+  PLAB* plab = ShenandoahThreadLocalData::plab(thread);
+  if (plab == NULL) {
+    assert(!thread->is_Java_thread() && !thread->is_Worker_thread(),
+           "Performance: thread should have PLAB: %s", thread->name());
+    // No PLABs in this thread, fallback to shared allocation
+    return NULL;
+  }
+  HeapWord* obj = plab->allocate(size);
+  if (obj == NULL) {
+    obj = allocate_from_plab_slow(thread, size);
+  }
+  return obj;
 }
 
 inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
@@ -215,12 +242,36 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
 
   assert(ShenandoahThreadLocalData::is_evac_allowed(thread), "must be enclosed in oom-evac scope");
 
-  size_t size = p->size();
+  ShenandoahHeapRegion* r = heap_region_containing(p);
+  assert(!r->is_humongous(), "never evacuate humongous objects");
 
-  assert(!heap_region_containing(p)->is_humongous(), "never evacuate humongous objects");
+  ShenandoahRegionAffiliation target_gen = r->affiliation();
+  if (mode()->is_generational() && ShenandoahHeap::heap()->is_gc_generation_young() &&
+      target_gen == YOUNG_GENERATION && ShenandoahPromoteTenuredObjects) {
+    markWord mark = p->mark();
+    if (mark.is_marked()) {
+      // Already forwarded.
+      return ShenandoahBarrierSet::resolve_forwarded(p);
+    }
+    if (mark.has_displaced_mark_helper()) {
+      // We don't want to deal with MT here just to ensure we read the right mark word.
+      // Skip the potential promotion attempt for this one.
+    } else if (mark.age() >= InitialTenuringThreshold) {
+      oop result = try_evacuate_object(p, thread, r, OLD_GENERATION);
+      if (result != NULL) {
+        return result;
+      }
+    }
+  }
+  return try_evacuate_object(p, thread, r, target_gen);
+}
 
-  bool alloc_from_gclab = true;
+// try_evacuate_object registers the object and dirties the associated remembered set information when evacuating
+// to OLD_GENERATION.
+inline oop ShenandoahHeap::try_evacuate_object(oop p, Thread* thread, ShenandoahHeapRegion* from_region, ShenandoahRegionAffiliation target_gen) {
+  bool alloc_from_lab = true;
   HeapWord* copy = NULL;
+  size_t size = p->size();
 
 #ifdef ASSERT
   if (ShenandoahOOMDuringEvacALot &&
@@ -229,18 +280,38 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
   } else {
 #endif
     if (UseTLAB) {
-      copy = allocate_from_gclab(thread, size);
+      switch (target_gen) {
+        case YOUNG_GENERATION: {
+           copy = allocate_from_gclab(thread, size);
+           break;
+        }
+        case OLD_GENERATION: {
+           if (ShenandoahUsePLAB) {
+             copy = allocate_from_plab(thread, size);
+           }
+           break;
+        }
+        default: {
+          ShouldNotReachHere();
+          break;
+        }
+      }
     }
     if (copy == NULL) {
-      ShenandoahAllocRequest req = ShenandoahAllocRequest::for_shared_gc(size);
+      ShenandoahAllocRequest req = ShenandoahAllocRequest::for_shared_gc(size, target_gen);
       copy = allocate_memory(req);
-      alloc_from_gclab = false;
+      alloc_from_lab = false;
     }
 #ifdef ASSERT
   }
 #endif
 
   if (copy == NULL) {
+    if (target_gen == OLD_GENERATION && from_region->affiliation() == YOUNG_GENERATION) {
+      // TODO: Inform old generation heuristic of promotion failure
+      return NULL;
+    }
+
     control_thread()->handle_alloc_failure_evac(size);
 
     _oom_evac_handler.handle_out_of_memory_during_evacuation();
@@ -251,11 +322,20 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
   // Copy the object:
   Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(p), copy, size);
 
-  // Try to install the new forwarding pointer.
   oop copy_val = cast_to_oop(copy);
+
+  // Try to install the new forwarding pointer.
   oop result = ShenandoahForwarding::try_update_forwardee(p, copy_val);
   if (result == copy_val) {
     // Successfully evacuated. Our copy is now the public one!
+    if (target_gen == OLD_GENERATION) {
+      handle_old_evacuation(copy, size, from_region->is_young());
+    } else if (target_gen == YOUNG_GENERATION) {
+      ShenandoahHeap::increase_object_age(copy_val, from_region->age() + 1);
+    } else {
+      ShouldNotReachHere();
+    }
+
     shenandoah_assert_correct(NULL, copy_val);
     return copy_val;
   }  else {
@@ -264,21 +344,49 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
     // But if it happens to contain references to evacuated regions, those references would
     // not get updated for this stale copy during this cycle, and we will crash while scanning
     // it the next cycle.
-    //
-    // For GCLAB allocations, it is enough to rollback the allocation ptr. Either the next
-    // object will overwrite this stale copy, or the filler object on LAB retirement will
-    // do this. For non-GCLAB allocations, we have no way to retract the allocation, and
-    // have to explicitly overwrite the copy with the filler object. With that overwrite,
-    // we have to keep the fwdptr initialized and pointing to our (stale) copy.
-    if (alloc_from_gclab) {
-      ShenandoahThreadLocalData::gclab(thread)->undo_allocation(copy, size);
+    if (alloc_from_lab) {
+       // For LAB allocations, it is enough to rollback the allocation ptr. Either the next
+       // object will overwrite this stale copy, or the filler object on LAB retirement will
+       // do this.
+       switch (target_gen) {
+         case YOUNG_GENERATION: {
+             ShenandoahThreadLocalData::gclab(thread)->undo_allocation(copy, size);
+            break;
+         }
+         case OLD_GENERATION: {
+            ShenandoahThreadLocalData::plab(thread)->undo_allocation(copy, size);
+            break;
+         }
+         default: {
+           ShouldNotReachHere();
+           break;
+         }
+       }
     } else {
+      // For non-LAB allocations, we have no way to retract the allocation, and
+      // have to explicitly overwrite the copy with the filler object. With that overwrite,
+      // we have to keep the fwdptr initialized and pointing to our (stale) copy.
       fill_with_object(copy, size);
       shenandoah_assert_correct(NULL, copy_val);
+      // For non-LAB allocations, the object has already been registered
     }
     shenandoah_assert_correct(NULL, result);
     return result;
   }
+}
+
+void ShenandoahHeap::increase_object_age(oop obj, uint additional_age) {
+  markWord w = obj->has_displaced_mark() ? obj->displaced_mark() : obj->mark();
+  w = w.set_age(MIN2(markWord::max_age, w.age() + additional_age));
+  if (obj->has_displaced_mark()) {
+    obj->set_displaced_mark(w);
+  } else {
+    obj->set_mark(w);
+  }
+}
+
+inline bool ShenandoahHeap::is_old(oop obj) const {
+  return is_gc_generation_young() && is_in_old(obj);
 }
 
 inline bool ShenandoahHeap::requires_marking(const void* entry) const {
@@ -301,11 +409,19 @@ inline bool ShenandoahHeap::is_stable() const {
 }
 
 inline bool ShenandoahHeap::is_idle() const {
-  return _gc_state.is_unset(MARKING | EVACUATION | UPDATEREFS);
+  return _gc_state.is_unset(YOUNG_MARKING | OLD_MARKING | EVACUATION | UPDATEREFS);
 }
 
 inline bool ShenandoahHeap::is_concurrent_mark_in_progress() const {
-  return _gc_state.is_set(MARKING);
+  return _gc_state.is_set(YOUNG_MARKING | OLD_MARKING);
+}
+
+inline bool ShenandoahHeap::is_concurrent_young_mark_in_progress() const {
+  return _gc_state.is_set(YOUNG_MARKING);
+}
+
+inline bool ShenandoahHeap::is_concurrent_old_mark_in_progress() const {
+  return _gc_state.is_set(OLD_MARKING);
 }
 
 inline bool ShenandoahHeap::is_evacuation_in_progress() const {
@@ -353,8 +469,9 @@ template<class T>
 inline void ShenandoahHeap::marked_object_iterate(ShenandoahHeapRegion* region, T* cl, HeapWord* limit) {
   assert(! region->is_humongous_continuation(), "no humongous continuation regions here");
 
-  ShenandoahMarkingContext* const ctx = complete_marking_context();
-  assert(ctx->is_complete(), "sanity");
+  ShenandoahMarkingContext* const ctx = marking_context();
+  // HEY! All callers (at the time of this writing) have already asserted the mark context is complete.
+  // assert(ctx->is_complete(), "sanity");
 
   HeapWord* tams = ctx->top_at_mark_start(region);
 
@@ -485,14 +602,6 @@ inline ShenandoahHeapRegion* const ShenandoahHeap::get_region(size_t region_idx)
   }
 }
 
-inline void ShenandoahHeap::mark_complete_marking_context() {
-  _marking_context->mark_complete();
-}
-
-inline void ShenandoahHeap::mark_incomplete_marking_context() {
-  _marking_context->mark_incomplete();
-}
-
 inline ShenandoahMarkingContext* ShenandoahHeap::complete_marking_context() const {
   assert (_marking_context->is_complete()," sanity");
   return _marking_context;
@@ -500,6 +609,30 @@ inline ShenandoahMarkingContext* ShenandoahHeap::complete_marking_context() cons
 
 inline ShenandoahMarkingContext* ShenandoahHeap::marking_context() const {
   return _marking_context;
+}
+
+inline void ShenandoahHeap::clear_cards_for(ShenandoahHeapRegion* region) {
+  if (mode()->is_generational()) {
+    _card_scan->mark_range_as_empty(region->bottom(), pointer_delta(region->end(), region->bottom()));
+  }
+}
+
+inline void ShenandoahHeap::dirty_cards(HeapWord* start, HeapWord* end) {
+  assert(mode()->is_generational(), "Should only be used for generational mode");
+  size_t words = pointer_delta(end, start);
+  _card_scan->mark_range_as_dirty(start, words);
+}
+
+inline void ShenandoahHeap::clear_cards(HeapWord* start, HeapWord* end) {
+  assert(mode()->is_generational(), "Should only be used for generational mode");
+  size_t words = pointer_delta(end, start);
+  _card_scan->mark_range_as_clean(start, words);
+}
+
+inline void ShenandoahHeap::mark_card_as_dirty(void* location) {
+  if (mode()->is_generational()) {
+    _card_scan->mark_card_as_dirty((HeapWord*)location);
+  }
 }
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAHHEAP_INLINE_HPP

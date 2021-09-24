@@ -45,8 +45,19 @@ private:
   uint8_t                 _oom_scope_nesting_level;
   bool                    _oom_during_evac;
   SATBMarkQueue           _satb_mark_queue;
+
+  // Thread-local allocation buffer for object evacuations.
+  // In generational mode, it is exclusive to the young generation.
   PLAB* _gclab;
   size_t _gclab_size;
+
+  // Thread-local allocation buffer only used in generational mode.
+  // Used both by mutator threads and by GC worker threads
+  // for evacuations within the old generation and
+  // for promotions from the young generation into the old generation.
+  PLAB* _plab;
+  size_t _plab_size;
+
   uint  _worker_id;
   int  _disarmed_value;
   double _paced_time;
@@ -58,6 +69,8 @@ private:
     _satb_mark_queue(&ShenandoahBarrierSet::satb_mark_queue_set()),
     _gclab(NULL),
     _gclab_size(0),
+    _plab(NULL),
+    _plab_size(0),
     _worker_id(INVALID_WORKER_ID),
     _disarmed_value(0),
     _paced_time(0) {
@@ -70,6 +83,9 @@ private:
   ~ShenandoahThreadLocalData() {
     if (_gclab != NULL) {
       delete _gclab;
+    }
+    if (_plab != NULL) {
+      delete _plab;
     }
   }
 
@@ -118,6 +134,8 @@ public:
     assert(data(thread)->_gclab == NULL, "Only initialize once");
     data(thread)->_gclab = new PLAB(PLAB::min_size());
     data(thread)->_gclab_size = 0;
+    data(thread)->_plab = new PLAB(PLAB::min_size());
+    data(thread)->_plab_size = 0;
   }
 
   static PLAB* gclab(Thread* thread) {
@@ -130,6 +148,18 @@ public:
 
   static void set_gclab_size(Thread* thread, size_t v) {
     data(thread)->_gclab_size = v;
+  }
+
+  static PLAB* plab(Thread* thread) {
+    return data(thread)->_plab;
+  }
+
+  static size_t plab_size(Thread* thread) {
+    return data(thread)->_plab_size;
+  }
+
+  static void set_plab_size(Thread* thread, size_t v) {
+    data(thread)->_plab_size = v;
   }
 
   static void add_paced_time(Thread* thread, double v) {

@@ -30,6 +30,8 @@
 #include "gc/shenandoah/shenandoahGC.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 
+class ShenandoahGeneration;
+
 class VM_ShenandoahInitMark;
 class VM_ShenandoahFinalMarkStartEvac;
 class VM_ShenandoahInitUpdateRefs;
@@ -42,25 +44,34 @@ class ShenandoahConcurrentGC : public ShenandoahGC {
   friend class VM_ShenandoahFinalUpdateRefs;
   friend class VM_ShenandoahFinalRoots;
 
+protected:
+  ShenandoahConcurrentMark    _mark;
+
 private:
-  ShenandoahConcurrentMark  _mark;
-  ShenandoahDegenPoint      _degen_point;
+  ShenandoahDegenPoint        _degen_point;
+  bool                        _mixed_evac; // true iff most recent evacuation includes old-gen HeapRegions
+  const bool                  _do_old_gc_bootstrap;
+
+protected:
+  ShenandoahGeneration* const _generation;
 
 public:
-  ShenandoahConcurrentGC();
+  ShenandoahConcurrentGC(ShenandoahGeneration* generation, bool do_old_gc_bootstrap);
   bool collect(GCCause::Cause cause);
   ShenandoahDegenPoint degen_point() const;
 
-  // Cancel ongoing concurrent GC
-  static void cancel();
 private:
   // Entry points to STW GC operations, these cause a related safepoint, that then
   // call the entry method below
   void vmop_entry_init_mark();
+
+protected:
   void vmop_entry_final_mark();
+  void vmop_entry_final_roots();
+
+private:
   void vmop_entry_init_updaterefs();
   void vmop_entry_final_updaterefs();
-  void vmop_entry_final_roots();
 
   // Entry methods to normally STW GC operations. These set up logging, monitoring
   // and workers for net VM operation
@@ -74,6 +85,8 @@ private:
   // for concurrent operation.
   void entry_reset();
   void entry_mark_roots();
+
+protected:
   void entry_mark();
   void entry_thread_roots();
   void entry_weak_refs();
@@ -81,17 +94,20 @@ private:
   void entry_class_unloading();
   void entry_strong_roots();
   void entry_cleanup_early();
+  virtual void op_final_mark();
+
+private:
   void entry_evacuate();
   void entry_update_thread_roots();
   void entry_updaterefs();
   void entry_cleanup_complete();
+  void entry_global_coalesce_and_fill();
 
   // Actual work for the phases
   void op_reset();
   void op_init_mark();
   void op_mark_roots();
   void op_mark();
-  void op_final_mark();
   void op_thread_roots();
   void op_weak_refs();
   void op_weak_roots();
@@ -105,13 +121,15 @@ private:
   void op_final_updaterefs();
   void op_final_roots();
   void op_cleanup_complete();
+  void op_global_coalesce_and_fill();
 
   // Messages for GC trace events, they have to be immortal for
   // passing around the logging/tracing systems
-  const char* init_mark_event_message() const;
-  const char* final_mark_event_message() const;
-  const char* conc_mark_event_message() const;
+  void init_mark_event_message(char* buf, size_t len) const;
+  void final_mark_event_message(char* buf, size_t len) const;
+  void conc_mark_event_message(char* buf, size_t len) const;
 
+protected:
   // Check GC cancellation and abort concurrent GC
   bool check_cancellation_and_abort(ShenandoahDegenPoint point);
 };

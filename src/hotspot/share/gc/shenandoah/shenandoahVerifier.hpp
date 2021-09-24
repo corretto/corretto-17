@@ -58,6 +58,24 @@ private:
   MarkBitMap* _verification_bit_map;
 public:
   typedef enum {
+    // Disable remembered set verification.
+    _verify_remembered_disable,
+
+    // Assure old objects are registered and remembered set cards within the read-only remembered set are dirty
+    // for every interesting pointer within each OLD ShenandoahHeapRegion between bottom() and top().  This is
+    // appropriate at the init_mark safepoint since all TLABS are retired before we reach this code.
+    _verify_remembered_for_marking,
+
+    // Assure old objects are registered and remembered set cards within the read-write remembered set are dirty
+    // for every interesting pointer within each OLD ShenandoahHeapRegion between bottom() and top().
+    _verify_remembered_for_updating_references,
+
+    // Assure old objects are registered and remembered set cards within the read-write remembered set are dirty
+    // for every interesting pointer within each OLD ShenandoahHeapRegion between bottom() and top().
+    _verify_remembered_after_full_gc
+  } VerifyRememberedSet;
+
+  typedef enum {
     // Disable marked objects verification.
     _verify_marked_disable,
 
@@ -136,7 +154,10 @@ public:
     _verify_gcstate_forwarded,
 
     // Evacuation is in progress, some objects are forwarded
-    _verify_gcstate_evacuation
+    _verify_gcstate_evacuation,
+
+    // Evacuation is done, objects are forwarded, updating is in progress
+    _verify_gcstate_updating
   } VerifyGCState;
 
   struct VerifyOptions {
@@ -160,7 +181,8 @@ public:
   };
 
 private:
-  void verify_at_safepoint(const char *label,
+  void verify_at_safepoint(const char* label,
+                           VerifyRememberedSet remembered,
                            VerifyForwarded forwarded,
                            VerifyMarked marked,
                            VerifyCollectionSet cset,
@@ -181,6 +203,7 @@ public:
   void verify_after_updaterefs();
   void verify_before_fullgc();
   void verify_after_fullgc();
+  void verify_after_generational_fullgc();
   void verify_after_degenerated();
   void verify_generic(VerifyOption option);
 

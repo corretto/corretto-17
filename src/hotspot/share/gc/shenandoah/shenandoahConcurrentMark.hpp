@@ -27,23 +27,27 @@
 
 #include "gc/shenandoah/shenandoahMark.hpp"
 
+template <GenerationMode GENERATION>
 class ShenandoahConcurrentMarkingTask;
+template<GenerationMode GENERATION>
 class ShenandoahFinalMarkingTask;
+class ShenandoahGeneration;
 
 class ShenandoahConcurrentMark: public ShenandoahMark {
-  friend class ShenandoahConcurrentMarkingTask;
-  friend class ShenandoahFinalMarkingTask;
+  template <GenerationMode GENERATION> friend class ShenandoahConcurrentMarkingTask;
+  template <GenerationMode GENERATION> friend class ShenandoahFinalMarkingTask;
 
 public:
-  ShenandoahConcurrentMark();
+  ShenandoahConcurrentMark(ShenandoahGeneration* generation);
+
   // Concurrent mark roots
   void mark_concurrent_roots();
+
   // Concurrent mark
   void concurrent_mark();
+
   // Finish mark at a safepoint
   void finish_mark();
-
-  static void cancel();
 
 private:
   void finish_mark_work();

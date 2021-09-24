@@ -44,6 +44,7 @@ class outputStream;
   f(CNT_PREFIX ## CLDUnlink,                DESC_PREFIX "Unlink CLDs")                 \
   f(CNT_PREFIX ## WeakRefProc,              DESC_PREFIX "Weak References")             \
   f(CNT_PREFIX ## ParallelMark,             DESC_PREFIX "Parallel Mark")               \
+  f(CNT_PREFIX ## ScanClusters,             DESC_PREFIX "Scan Clusters")
   // end
 
 #define SHENANDOAH_PHASE_DO(f)                                                         \
@@ -54,6 +55,9 @@ class outputStream;
   f(init_manage_tlabs,                              "  Manage TLABs")                  \
   f(init_update_region_states,                      "  Update Region States")          \
                                                                                        \
+  f(init_scan_rset,                                 "Concurrent Scan Remembered Set")  \
+  SHENANDOAH_PAR_PHASE_DO(init_scan_rset_,          "  RS: ", f)                       \
+                                                                                       \
   f(conc_mark_roots,                                "Concurrent Mark Roots ")          \
   SHENANDOAH_PAR_PHASE_DO(conc_mark_roots,          "  CMR: ", f)                      \
   f(conc_mark,                                      "Concurrent Marking")              \
@@ -62,6 +66,8 @@ class outputStream;
   f(final_mark,                                     "Pause Final Mark (N)")            \
   f(finish_mark,                                    "  Finish Mark")                   \
   SHENANDOAH_PAR_PHASE_DO(finish_mark_,             "    FM: ", f)                     \
+  f(coalesce_and_fill,                              "Coalesce and Fill Old Dead")      \
+  SHENANDOAH_PAR_PHASE_DO(coalesce_and_fill_,       "    CFOD: ", f)                   \
   f(purge,                                          "  System Purge")                  \
   SHENANDOAH_PAR_PHASE_DO(purge_cu_par_,            "      CU: ", f)                   \
   f(purge_weak_par,                                 "    Weak Roots")                  \
@@ -112,6 +118,7 @@ class outputStream;
   f(final_update_refs_update_region_states,         "  Update Region States")          \
   f(final_update_refs_trash_cset,                   "  Trash Collection Set")          \
   f(final_update_refs_rebuild_freeset,              "  Rebuild Free Set")              \
+  f(final_update_refs_promote_tenured_regions,      "  Promote Tenured Regions")       \
                                                                                        \
   f(conc_cleanup_complete,                          "Concurrent Cleanup")              \
                                                                                        \
@@ -171,6 +178,7 @@ class outputStream;
   f(full_gc_copy_objects_humong,                    "    Humongous Objects")           \
   f(full_gc_copy_objects_reset_complete,            "    Reset Complete Bitmap")       \
   f(full_gc_copy_objects_rebuild,                   "    Rebuild Region Sets")         \
+  f(full_gc_reconstruct_remembered_set,             "    Reconstruct Remembered Set")  \
   f(full_gc_heapdump_post,                          "  Post Heap Dump")                \
                                                                                        \
   f(conc_uncommit,                                  "Concurrent Uncommit")             \
