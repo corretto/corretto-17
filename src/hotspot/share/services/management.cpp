@@ -1857,8 +1857,8 @@ JVM_ENTRY(void, jmm_GetLastGCStat(JNIEnv *env, jobject obj, jmmGCStat *gc_stat))
   }
 
   gc_stat->gc_index = stat.gc_index();
-  gc_stat->start_time = Management::ticks_to_ms(stat.start_time());
-  gc_stat->end_time = Management::ticks_to_ms(stat.end_time());
+  gc_stat->start_time = Management::ticks_to_ns(stat.start_time());
+  gc_stat->end_time = Management::ticks_to_ns(stat.end_time());
 
   // Current implementation does not have GC extension attributes
   gc_stat->num_gc_ext_attributes = 0;

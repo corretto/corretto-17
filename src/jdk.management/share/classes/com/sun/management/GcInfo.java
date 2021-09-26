@@ -124,7 +124,7 @@ public class GcInfo implements CompositeData, CompositeDataView {
      * @return the start time of this GC.
      */
     public long getStartTime() {
-        return startTime;
+        return startTime / 1000_000L;
     }
 
     /**
@@ -134,7 +134,7 @@ public class GcInfo implements CompositeData, CompositeDataView {
      * @return the end time of this GC.
      */
     public long getEndTime() {
-        return endTime;
+        return endTime / 1000_000L;
     }
 
     /**
@@ -143,7 +143,7 @@ public class GcInfo implements CompositeData, CompositeDataView {
      * @return the elapsed time of this GC in milliseconds.
      */
     public long getDuration() {
-        return endTime - startTime;
+        return (endTime - startTime) / 1000_000L;
     }
 
     /**
