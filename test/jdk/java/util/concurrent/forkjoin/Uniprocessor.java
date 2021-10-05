@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,28 +19,28 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
-#include "precompiled.hpp"
-#include "jfr/leakprofiler/chains/bitset.inline.hpp"
 
-BitSet::BitMapFragment::BitMapFragment(uintptr_t granule, BitMapFragment* next) :
-    _bits(_bitmap_granularity_size >> LogMinObjAlignmentInBytes, mtTracing, true /* clear */),
-    _next(next) {
-}
+/*
+ * @test
+ * @bug 8274349
+ * @run main/othervm -XX:ActiveProcessorCount=1 Uniprocessor
+ * @summary Check the default FJ pool has a reasonable default parallelism
+ *          level in a uniprocessor environment.
+ */
 
-BitSet::BitSet() :
-    _bitmap_fragments(32),
-    _fragment_list(NULL),
-    _last_fragment_bits(NULL),
-    _last_fragment_granule(UINTPTR_MAX) {
-}
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ForkJoinPool;
 
-BitSet::~BitSet() {
-  BitMapFragment* current = _fragment_list;
-  while (current != NULL) {
-    BitMapFragment* next = current->next();
-    delete current;
-    current = next;
-  }
+public class Uniprocessor {
+
+    static volatile boolean done = false;
+
+    public static void main(String[] args) throws InterruptedException {
+        // If the default parallelism were zero then this task would not
+        // complete and the test will timeout.
+        CountDownLatch ran = new CountDownLatch(1);
+        ForkJoinPool.commonPool().submit(() -> ran.countDown());
+        ran.await();
+    }
 }
