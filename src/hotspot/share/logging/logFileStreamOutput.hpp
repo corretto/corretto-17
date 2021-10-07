@@ -26,6 +26,7 @@
 
 #include "logging/logDecorators.hpp"
 #include "logging/logOutput.hpp"
+#include "runtime/os.hpp"
 #include "utilities/globalDefinitions.hpp"
 
 class LogDecorations;
@@ -92,5 +93,19 @@ class LogStderrOutput : public LogFileStreamOutput {
 
 extern LogStderrOutput &StderrLog;
 extern LogStdoutOutput &StdoutLog;
+
+class FileLocker : public StackObj {
+private:
+    FILE *_file;
+
+public:
+    FileLocker(FILE *file) : _file(file) {
+      os::flockfile(_file);
+    }
+
+    ~FileLocker() {
+      os::funlockfile(_file);
+    }
+};
 
 #endif // SHARE_LOGGING_LOGFILESTREAMOUTPUT_HPP
