@@ -1,0 +1,26 @@
+name: "Refresh jdk from Upstream"
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+    refresh-jdk:
+        runs-on: ubuntu-latest
+        name: "Update Corretto-tip"
+        if: github.repository_owner == 'corretto'
+        steps:
+            - name: "Checkout code"
+              uses: actions/checkout@v2
+              with:
+                fetch-depth: 0
+            - name: "Fetch Corretto-jdk"
+              uses: ./.github/actions/fetch-repo
+              with:
+                upstream: 'https://github.com/openjdk/jdk.git'
+                local-branch: 'upstream-jdk'
+            - name: "Merge Corretto-tip"
+              uses: ./.github/actions/merge-repo
+              with:
+                upstream: 'upstream-jdk'
+                merge-branch: 'develop'
