@@ -95,13 +95,23 @@ task prepareArtifacts {
         // Rename bundle
         exec {
             workingDir jdkResultingImage
-            commandLine 'mv', "jdk-${version.major}.${version.minor}.${version.security}.jdk", correttoMacDir
+            commandLine 'bash', '-c', "\"\"mv jdk-${version.major}*.jdk ${correttoMacDir}\"\""
         }
+
         // Replace Info.plist
+        def plistTokens = new Properties()
+        plistTokens["INFO"] = "Amazon Corretto ${project.version.full}-LTS".toString()
+        plistTokens["ID"] = "com.amazon.corretto.${project.version.major}".toString()
+        plistTokens["NAME"] = "Amazon Corretto ${project.version.major}".toString()
+        plistTokens["VERSION"] = "${project.version.major}.${project.version.minor}.${project.version.security}".toString()
+        plistTokens["BUILD_VERSION"] = "${project.version.full}".toString()
+        plistTokens["MACOSX_VERSION_MIN"] = "10.6.0"
+        plistTokens["VENDOR"] = "Amazon.com Inc."
+
         copy {
-            from('templates/Info.plist.template') {
-                rename { file -> file.replace('.template', '') }
-                filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: project.version)
+            from("${rootDir}/make/data/bundle/JDK-Info.plist") {
+                rename { file -> 'Info.plist' }
+                filter(org.apache.tools.ant.filters.ReplaceTokens, beginToken: "@@", endToken: "@@", tokens: plistTokens)
             }
             into "${jdkResultingImage}/${correttoMacDir}/Contents"
         }
@@ -121,6 +131,7 @@ task prepareArtifacts {
                 include "Contents/Home/release"
                 include "Contents/Info.plist"
                 include "Contents/MacOS/**"
+                exclude "Contents/Home/**/*.diz"
             }
             into "${buildDir}/${correttoMacDir}"
         }
@@ -131,7 +142,7 @@ task prepareArtifacts {
         // Gradle does not preserve symlink, fix it before packaging
         exec {
             workingDir "${buildDir}/${correttoMacDir}/Contents"
-            commandLine "ln", "-sf", "../Home/lib/jli/libjli.dylib", "MacOS/libjli.dylib"
+            commandLine "ln", "-sf", "../Home/lib/libjli.dylib", "MacOS/libjli.dylib"
         }
     }
 }
@@ -144,6 +155,19 @@ task packaging(type: Exec) {
     outputs.file tarDir
 }
 
+task packageDebugSymbols(type: Tar) {
+    dependsOn prepareArtifacts
+    description 'Package debug symbols'
+    archiveName "${project.correttoDebugSymbolsArchiveName}.tar.gz"
+    compression Compression.GZIP
+    from("${jdkResultingImage}/${correttoMacDir}") {
+        include "Contents/Homebin/bin/*.diz"
+        include "Contents/Homebin/lib/*.diz"
+    }
+    into "${buildDir}/${correttoMacDir}"
+    into project.correttoDebugSymbolsArchiveName
+}
+
 task packageTestResults(type: Tar) {
     dependsOn executeTestBuild
     description 'Package test results'
@@ -153,8 +177,11 @@ task packageTestResults(type: Tar) {
         include '**'
     }
     into project.correttoTestImageArchiveName
-
 }
+
+build.dependsOn packaging
+build.dependsOn packageDebugSymbols
+build.dependsOn packageTestResults
 
 artifacts {
     buildTar file: packaging.outputs.getFiles().getSingleFile(), builtBy: packaging

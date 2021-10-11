@@ -28,7 +28,6 @@ package jdk.javadoc.internal.doclets.toolkit;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.util.Objects;
 
 /**
  * A class to create content for javadoc output pages.
@@ -108,7 +107,8 @@ public abstract class Content {
     public abstract boolean isEmpty();
 
     /**
-     * Returns true if the content is valid.
+     * Returns true if the content is valid. This allows filtering during
+     * {@link #add(Content) addition}.
      *
      * @return true if the content is valid else return false
      */

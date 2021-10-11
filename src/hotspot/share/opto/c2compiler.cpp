@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "classfile/vmClasses.hpp"
 #include "runtime/handles.inline.hpp"
 #include "jfr/support/jfrIntrinsics.hpp"
 #include "opto/c2compiler.hpp"
@@ -30,6 +31,7 @@
 #include "opto/optoreg.hpp"
 #include "opto/output.hpp"
 #include "opto/runtime.hpp"
+#include "runtime/stubRoutines.hpp"
 #include "utilities/macros.hpp"
 
 
@@ -42,6 +44,9 @@ const char* C2Compiler::retry_no_subsuming_loads() {
 }
 const char* C2Compiler::retry_no_escape_analysis() {
   return "retry without escape analysis";
+}
+const char* C2Compiler::retry_no_locks_coarsening() {
+  return "retry without locks coarsening";
 }
 const char* C2Compiler::retry_class_loading_during_parsing() {
   return "retry class loading during parsing";
@@ -63,16 +68,6 @@ bool C2Compiler::init_c2_runtime() {
     }
   }
 
-  // Check that runtime and architecture description agree on callee-saved-floats
-  bool callee_saved_floats = false;
-  for( OptoReg::Name i=OptoReg::Name(0); i<OptoReg::Name(_last_Mach_Reg); i = OptoReg::add(i,1) ) {
-    // Is there a callee-saved float or double?
-    if( register_save_policy[i] == 'E' /* callee-saved */ &&
-       (register_save_type[i] == Op_RegF || register_save_type[i] == Op_RegD) ) {
-      callee_saved_floats = true;
-    }
-  }
-
   DEBUG_ONLY( Node::init_NodeProperty(); )
 
   Compile::pd_compiler2_init();
@@ -84,7 +79,7 @@ bool C2Compiler::init_c2_runtime() {
 }
 
 void C2Compiler::initialize() {
-  assert(!is_c1_or_interpreter_only(), "C2 compiler is launched, it's not c1/interpreter only mode");
+  assert(!CompilerConfig::is_c1_or_interpreter_only_no_jvmci(), "C2 compiler is launched, it's not c1/interpreter only mode");
   // The first compiler thread that gets here will initialize the
   // small amount of global state (and runtime stubs) that C2 needs.
 
@@ -103,13 +98,13 @@ void C2Compiler::compile_method(ciEnv* env, ciMethod* target, int entry_bci, boo
   assert(is_initialized(), "Compiler thread must be initialized");
 
   bool subsume_loads = SubsumeLoads;
-  bool do_escape_analysis = DoEscapeAnalysis && !env->should_retain_local_variables()
-                                             && !env->jvmti_can_get_owned_monitor_info();
+  bool do_escape_analysis = DoEscapeAnalysis;
   bool eliminate_boxing = EliminateAutoBox;
+  bool do_locks_coarsening = EliminateLocks;
 
   while (!env->failing()) {
     // Attempt to compile while subsuming loads into machine instructions.
-    Compile C(env, target, entry_bci, subsume_loads, do_escape_analysis, eliminate_boxing, install_code, directive);
+    Compile C(env, target, entry_bci, subsume_loads, do_escape_analysis, eliminate_boxing, do_locks_coarsening, install_code, directive);
 
     // Check result and retry if appropriate.
     if (C.failure_reason() != NULL) {
@@ -126,6 +121,12 @@ void C2Compiler::compile_method(ciEnv* env, ciMethod* target, int entry_bci, boo
       if (C.failure_reason_is(retry_no_escape_analysis())) {
         assert(do_escape_analysis, "must make progress");
         do_escape_analysis = false;
+        env->report_failure(C.failure_reason());
+        continue;  // retry
+      }
+      if (C.failure_reason_is(retry_no_locks_coarsening())) {
+        assert(do_locks_coarsening, "must make progress");
+        do_locks_coarsening = false;
         env->report_failure(C.failure_reason());
         continue;  // retry
       }
@@ -148,6 +149,10 @@ void C2Compiler::compile_method(ciEnv* env, ciMethod* target, int entry_bci, boo
       }
       if (do_escape_analysis) {
         do_escape_analysis = false;
+        continue;  // retry
+      }
+      if (do_locks_coarsening) {
+        do_locks_coarsening = false;
         continue;  // retry
       }
     }
@@ -188,11 +193,11 @@ bool C2Compiler::is_intrinsic_supported(const methodHandle& method, bool is_virt
   switch (id) {
   case vmIntrinsics::_compressStringC:
   case vmIntrinsics::_compressStringB:
-    if (!Matcher::has_match_rule(Op_StrCompressedCopy)) return false;
+    if (!Matcher::match_rule_supported(Op_StrCompressedCopy)) return false;
     break;
   case vmIntrinsics::_inflateStringC:
   case vmIntrinsics::_inflateStringB:
-    if (!Matcher::has_match_rule(Op_StrInflatedCopy)) return false;
+    if (!Matcher::match_rule_supported(Op_StrInflatedCopy)) return false;
     break;
   case vmIntrinsics::_compareToL:
   case vmIntrinsics::_compareToU:
@@ -419,7 +424,7 @@ bool C2Compiler::is_intrinsic_supported(const methodHandle& method, bool is_virt
     if (!Matcher::match_rule_supported(Op_MulHiL)) return false;
     break;
   case vmIntrinsics::_getCallerClass:
-    if (SystemDictionary::reflect_CallerSensitive_klass() == NULL) return false;
+    if (vmClasses::reflect_CallerSensitive_klass() == NULL) return false;
     break;
   case vmIntrinsics::_onSpinWait:
     if (!Matcher::match_rule_supported(Op_OnSpinWait)) return false;
@@ -468,6 +473,18 @@ bool C2Compiler::is_intrinsic_supported(const methodHandle& method, bool is_virt
   case vmIntrinsics::_floor:
     if (!Matcher::match_rule_supported(Op_RoundDoubleMode)) return false;
     break;
+  case vmIntrinsics::_dcopySign:
+    if (!Matcher::match_rule_supported(Op_CopySignD)) return false;
+    break;
+  case vmIntrinsics::_fcopySign:
+    if (!Matcher::match_rule_supported(Op_CopySignF)) return false;
+    break;
+  case vmIntrinsics::_dsignum:
+    if (!Matcher::match_rule_supported(Op_SignumD)) return false;
+    break;
+  case vmIntrinsics::_fsignum:
+    if (!Matcher::match_rule_supported(Op_SignumF)) return false;
+    break;
   case vmIntrinsics::_hashCode:
   case vmIntrinsics::_identityHashCode:
   case vmIntrinsics::_getClass:
@@ -494,6 +511,7 @@ bool C2Compiler::is_intrinsic_supported(const methodHandle& method, bool is_virt
   case vmIntrinsics::_indexOfIU:
   case vmIntrinsics::_indexOfIUL:
   case vmIntrinsics::_indexOfU_char:
+  case vmIntrinsics::_indexOfL_char:
   case vmIntrinsics::_toBytesStringU:
   case vmIntrinsics::_getCharsStringU:
   case vmIntrinsics::_getCharStringU:
@@ -612,6 +630,8 @@ bool C2Compiler::is_intrinsic_supported(const methodHandle& method, bool is_virt
   case vmIntrinsics::_doubleToLongBits:
   case vmIntrinsics::_longBitsToDouble:
   case vmIntrinsics::_Reference_get:
+  case vmIntrinsics::_Reference_refersTo0:
+  case vmIntrinsics::_PhantomReference_refersTo0:
   case vmIntrinsics::_Class_cast:
   case vmIntrinsics::_aescrypt_encryptBlock:
   case vmIntrinsics::_aescrypt_decryptBlock:
@@ -620,9 +640,11 @@ bool C2Compiler::is_intrinsic_supported(const methodHandle& method, bool is_virt
   case vmIntrinsics::_electronicCodeBook_encryptAESCrypt:
   case vmIntrinsics::_electronicCodeBook_decryptAESCrypt:
   case vmIntrinsics::_counterMode_AESCrypt:
+  case vmIntrinsics::_md5_implCompress:
   case vmIntrinsics::_sha_implCompress:
   case vmIntrinsics::_sha2_implCompress:
   case vmIntrinsics::_sha5_implCompress:
+  case vmIntrinsics::_sha3_implCompress:
   case vmIntrinsics::_digestBase_implCompressMB:
   case vmIntrinsics::_multiplyToLen:
   case vmIntrinsics::_squareToLen:
@@ -634,6 +656,7 @@ bool C2Compiler::is_intrinsic_supported(const methodHandle& method, bool is_virt
   case vmIntrinsics::_vectorizedMismatch:
   case vmIntrinsics::_ghash_processBlocks:
   case vmIntrinsics::_base64_encodeBlock:
+  case vmIntrinsics::_base64_decodeBlock:
   case vmIntrinsics::_updateCRC32:
   case vmIntrinsics::_updateBytesCRC32:
   case vmIntrinsics::_updateByteBufferCRC32:
@@ -644,7 +667,34 @@ bool C2Compiler::is_intrinsic_supported(const methodHandle& method, bool is_virt
   case vmIntrinsics::_profileBoolean:
   case vmIntrinsics::_isCompileConstant:
   case vmIntrinsics::_Preconditions_checkIndex:
+  case vmIntrinsics::_Preconditions_checkLongIndex:
+  case vmIntrinsics::_getObjectSize:
     break;
+
+  case vmIntrinsics::_VectorUnaryOp:
+  case vmIntrinsics::_VectorBinaryOp:
+  case vmIntrinsics::_VectorTernaryOp:
+  case vmIntrinsics::_VectorBroadcastCoerced:
+  case vmIntrinsics::_VectorShuffleIota:
+  case vmIntrinsics::_VectorShuffleToVector:
+  case vmIntrinsics::_VectorLoadOp:
+  case vmIntrinsics::_VectorStoreOp:
+  case vmIntrinsics::_VectorGatherOp:
+  case vmIntrinsics::_VectorScatterOp:
+  case vmIntrinsics::_VectorReductionCoerced:
+  case vmIntrinsics::_VectorTest:
+  case vmIntrinsics::_VectorBlend:
+  case vmIntrinsics::_VectorRearrange:
+  case vmIntrinsics::_VectorCompare:
+  case vmIntrinsics::_VectorBroadcastInt:
+  case vmIntrinsics::_VectorConvert:
+  case vmIntrinsics::_VectorInsert:
+  case vmIntrinsics::_VectorExtract:
+  case vmIntrinsics::_VectorMaskOp:
+    return EnableVectorSupport;
+  case vmIntrinsics::_blackhole:
+    break;
+
   default:
     return false;
   }

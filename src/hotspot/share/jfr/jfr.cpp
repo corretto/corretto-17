@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,14 @@
 #include "precompiled.hpp"
 #include "jfr/jfr.hpp"
 #include "jfr/leakprofiler/leakProfiler.hpp"
+#include "jfr/recorder/checkpoint/types/traceid/jfrTraceIdLoadBarrier.inline.hpp"
 #include "jfr/recorder/jfrRecorder.hpp"
 #include "jfr/recorder/checkpoint/jfrCheckpointManager.hpp"
 #include "jfr/recorder/repository/jfrEmergencyDump.hpp"
 #include "jfr/recorder/service/jfrOptionSet.hpp"
 #include "jfr/recorder/repository/jfrRepository.hpp"
 #include "jfr/support/jfrThreadLocal.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/java.hpp"
 #include "runtime/thread.hpp"
 
@@ -102,16 +104,23 @@ void Jfr::on_vm_error_report(outputStream* st) {
   }
 }
 
-void Jfr::weak_oops_do(BoolObjectClosure* is_alive, OopClosure* f) {
-  if (LeakProfiler::is_running()) {
-    LeakProfiler::weak_oops_do(is_alive, f);
-  }
-}
-
 bool Jfr::on_flight_recorder_option(const JavaVMOption** option, char* delimiter) {
   return JfrOptionSet::parse_flight_recorder_option(option, delimiter);
 }
 
 bool Jfr::on_start_flight_recording_option(const JavaVMOption** option, char* delimiter) {
   return JfrOptionSet::parse_start_flight_recording_option(option, delimiter);
+}
+
+JRT_LEAF(void, Jfr::get_class_id_intrinsic(const Klass* klass))
+  assert(klass != NULL, "sanity");
+  JfrTraceIdLoadBarrier::load_barrier(klass);
+JRT_END
+
+address Jfr::epoch_address() {
+  return JfrTraceIdEpoch::epoch_address();
+}
+
+address Jfr::signal_address() {
+  return JfrTraceIdEpoch::signal_address();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,8 +23,8 @@
  */
 
 #include "precompiled.hpp"
+#include "classfile/javaClasses.hpp"
 #include "classfile/symbolTable.hpp"
-#include "classfile/systemDictionary.hpp"
 #include "code/nmethod.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/oopMapCache.hpp"
@@ -34,7 +34,9 @@
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/instanceKlass.hpp"
+#include "oops/klass.inline.hpp"
 #include "oops/oop.inline.hpp"
+#include "oops/oopHandle.inline.hpp"
 #include "prims/jvmtiAgentThread.hpp"
 #include "prims/jvmtiEventController.inline.hpp"
 #include "prims/jvmtiImpl.hpp"
@@ -44,6 +46,7 @@
 #include "runtime/handles.inline.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/javaCalls.hpp"
+#include "runtime/jniHandles.hpp"
 #include "runtime/os.hpp"
 #include "runtime/serviceThread.hpp"
 #include "runtime/signature.hpp"
@@ -73,7 +76,6 @@ JvmtiAgentThread::start_function_wrapper(JavaThread *thread, TRAPS) {
     // It is expected that any Agent threads will be created as
     // Java Threads.  If this is the case, notification of the creation
     // of the thread is given in JavaThread::thread_main().
-    assert(thread->is_Java_thread(), "debugger thread should be a Java Thread");
     assert(thread == JavaThread::current(), "sanity check");
 
     JvmtiAgentThread *dthread = (JvmtiAgentThread *)thread;
@@ -200,19 +202,17 @@ JvmtiBreakpoint::JvmtiBreakpoint(Method* m_method, jlocation location)
   assert(_method != NULL, "No method for breakpoint.");
   assert(_bci >= 0, "Negative bci for breakpoint.");
   oop class_holder_oop  = _method->method_holder()->klass_holder();
-  _class_holder = OopHandle(Universe::vm_global(), class_holder_oop);
+  _class_holder = OopHandle(JvmtiExport::jvmti_oop_storage(), class_holder_oop);
 }
 
 JvmtiBreakpoint::~JvmtiBreakpoint() {
-  if (_class_holder.peek() != NULL) {
-    _class_holder.release(Universe::vm_global());
-  }
+  _class_holder.release(JvmtiExport::jvmti_oop_storage());
 }
 
 void JvmtiBreakpoint::copy(JvmtiBreakpoint& bp) {
   _method   = bp._method;
   _bci      = bp._bci;
-  _class_holder = OopHandle(Universe::vm_global(), bp._class_holder.resolve());
+  _class_holder = OopHandle(JvmtiExport::jvmti_oop_storage(), bp._class_holder.resolve());
 }
 
 bool JvmtiBreakpoint::equals(JvmtiBreakpoint& bp) {
@@ -241,8 +241,17 @@ void JvmtiBreakpoint::each_method_version_do(method_action meth_act) {
 
     for (int i = methods->length() - 1; i >= 0; i--) {
       Method* method = methods->at(i);
-      // Only set breakpoints in running EMCP methods.
-      if (method->is_running_emcp() &&
+      // Only set breakpoints in EMCP methods.
+      // EMCP methods are old but not obsolete. Equivalent
+      // Modulo Constant Pool means the method is equivalent except
+      // the constant pool and instructions that access the constant
+      // pool might be different.
+      // If a breakpoint is set in a redefined method, its EMCP methods
+      // must have a breakpoint also.
+      // None of the methods are deleted until none are running.
+      // This code could set a breakpoint in a method that
+      // is never reached, but this won't be noticeable to the programmer.
+      if (!method->is_obsolete() &&
           method->name() == m_name &&
           method->signature() == m_signature) {
         ResourceMark rm;
@@ -427,6 +436,7 @@ VM_GetOrSetLocal::VM_GetOrSetLocal(JavaThread* thread, jint depth, jint index, B
   , _type(type)
   , _jvf(NULL)
   , _set(false)
+  , _eb(false, NULL, NULL)
   , _result(JVMTI_ERROR_NONE)
 {
 }
@@ -441,6 +451,7 @@ VM_GetOrSetLocal::VM_GetOrSetLocal(JavaThread* thread, jint depth, jint index, B
   , _value(value)
   , _jvf(NULL)
   , _set(true)
+  , _eb(type == T_OBJECT, JavaThread::current(), thread)
   , _result(JVMTI_ERROR_NONE)
 {
 }
@@ -454,6 +465,7 @@ VM_GetOrSetLocal::VM_GetOrSetLocal(JavaThread* thread, JavaThread* calling_threa
   , _type(T_OBJECT)
   , _jvf(NULL)
   , _set(false)
+  , _eb(true, calling_thread, thread)
   , _result(JVMTI_ERROR_NONE)
 {
 }
@@ -579,16 +591,13 @@ bool VM_GetOrSetLocal::check_slot_type_lvt(javaVFrame* jvf) {
   jobject jobj = _value.l;
   if (_set && slot_type == T_OBJECT && jobj != NULL) { // NULL reference is allowed
     // Check that the jobject class matches the return type signature.
-    JavaThread* cur_thread = JavaThread::current();
-    HandleMark hm(cur_thread);
-
-    Handle obj(cur_thread, JNIHandles::resolve_external_guard(jobj));
+    oop obj = JNIHandles::resolve_external_guard(jobj);
     NULL_CHECK(obj, (_result = JVMTI_ERROR_INVALID_OBJECT, false));
     Klass* ob_k = obj->klass();
     NULL_CHECK(ob_k, (_result = JVMTI_ERROR_INVALID_OBJECT, false));
 
     const char* signature = (const char *) sign_sym->as_utf8();
-    if (!is_assignable(signature, ob_k, cur_thread)) {
+    if (!is_assignable(signature, ob_k, VMThread::vm_thread())) {
       _result = JVMTI_ERROR_TYPE_MISMATCH;
       return false;
     }
@@ -630,33 +639,42 @@ static bool can_be_deoptimized(vframe* vf) {
 }
 
 bool VM_GetOrSetLocal::doit_prologue() {
-  _jvf = get_java_vframe();
-  NULL_CHECK(_jvf, false);
+  if (!_eb.deoptimize_objects(_depth, _depth)) {
+    // The target frame is affected by a reallocation failure.
+    _result = JVMTI_ERROR_OUT_OF_MEMORY;
+    return false;
+  }
+
+  return true;
+}
+
+void VM_GetOrSetLocal::doit() {
+  _jvf = _jvf == NULL ? get_java_vframe() : _jvf;
+  if (_jvf == NULL) {
+    return;
+  };
 
   Method* method = _jvf->method();
   if (getting_receiver()) {
     if (method->is_static()) {
       _result = JVMTI_ERROR_INVALID_SLOT;
-      return false;
+      return;
     }
-    return true;
+  } else {
+    if (method->is_native()) {
+      _result = JVMTI_ERROR_OPAQUE_FRAME;
+      return;
+    }
+
+    if (!check_slot_type_no_lvt(_jvf)) {
+      return;
+    }
+    if (method->has_localvariable_table() &&
+        !check_slot_type_lvt(_jvf)) {
+      return;
+    }
   }
 
-  if (method->is_native()) {
-    _result = JVMTI_ERROR_OPAQUE_FRAME;
-    return false;
-  }
-
-  if (!check_slot_type_no_lvt(_jvf)) {
-    return false;
-  }
-  if (method->has_localvariable_table()) {
-    return check_slot_type_lvt(_jvf);
-  }
-  return true;
-}
-
-void VM_GetOrSetLocal::doit() {
   InterpreterOopMap oop_mask;
   _jvf->method()->mask_for(_jvf->bci(), &oop_mask);
   if (oop_mask.is_dead(_index)) {
@@ -695,7 +713,7 @@ void VM_GetOrSetLocal::doit() {
       return;
     }
     StackValueCollection *locals = _jvf->locals();
-    Thread* current_thread = Thread::current();
+    Thread* current_thread = VMThread::vm_thread();
     HandleMark hm(current_thread);
 
     switch (_type) {
@@ -754,46 +772,12 @@ VM_GetReceiver::VM_GetReceiver(
 //
 
 bool JvmtiSuspendControl::suspend(JavaThread *java_thread) {
-  // external suspend should have caught suspending a thread twice
-
-  // Immediate suspension required for JPDA back-end so JVMTI agent threads do
-  // not deadlock due to later suspension on transitions while holding
-  // raw monitors.  Passing true causes the immediate suspension.
-  // java_suspend() will catch threads in the process of exiting
-  // and will ignore them.
-  java_thread->java_suspend();
-
-  // It would be nice to have the following assertion in all the time,
-  // but it is possible for a racing resume request to have resumed
-  // this thread right after we suspended it. Temporarily enable this
-  // assertion if you are chasing a different kind of bug.
-  //
-  // assert(java_lang_Thread::thread(java_thread->threadObj()) == NULL ||
-  //   java_thread->is_being_ext_suspended(), "thread is not suspended");
-
-  if (java_lang_Thread::thread(java_thread->threadObj()) == NULL) {
-    // check again because we can get delayed in java_suspend():
-    // the thread is in process of exiting.
-    return false;
-  }
-
-  return true;
+  return java_thread->java_suspend();
 }
 
 bool JvmtiSuspendControl::resume(JavaThread *java_thread) {
-  // external suspend should have caught resuming a thread twice
-  assert(java_thread->is_being_ext_suspended(), "thread should be suspended");
-
-  // resume thread
-  {
-    // must always grab Threads_lock, see JVM_SuspendThread
-    MutexLocker ml(Threads_lock);
-    java_thread->java_resume();
-  }
-
-  return true;
+  return java_thread->java_resume();
 }
-
 
 void JvmtiSuspendControl::print() {
 #ifndef PRODUCT
@@ -806,7 +790,7 @@ void JvmtiSuspendControl::print() {
 #else
     const char *name   = "";
 #endif /*JVMTI_TRACE */
-    log_stream.print("%s(%c ", name, thread->is_being_ext_suspended() ? 'S' : '_');
+    log_stream.print("%s(%c ", name, thread->is_suspended() ? 'S' : '_');
     if (!thread->has_last_Java_frame()) {
       log_stream.print("no stack");
     }

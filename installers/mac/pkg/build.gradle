@@ -25,7 +25,7 @@ dependencies {
 
 // Copy task cannot be used here because Gradle does not preserve the symlink
 task retrieveArtifacts(type: Exec) {
-    // Set environment variable CORRETTO_ARTIFACTS_PATH to the path of "amazon-corretto-8.jdk" to be packaged
+    // Set environment variable CORRETTO_ARTIFACTS_PATH to the path of "amazon-corretto-<version>.jdk" to be packaged
     def artifactsPath = System.getenv("CORRETTO_ARTIFACTS_PATH")
     workingDir buildRoot
     if (artifactsPath == null) {
@@ -48,7 +48,7 @@ task inflatePkgTemplate {
         copy {
             from('templates/CorrettoPkg.pkgproj.template') {
                 rename { file -> file.replace('.template', '') }
-                filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: project.version)
+                filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: ["full": project.version["full"], "major": project.version["major"], "arch": correttoArch])
             }
             into buildRoot
         }
@@ -61,7 +61,6 @@ task inflatePkgTemplate {
             into "${buildRoot}/resources"
         }
     }
-    
 }
 
 task generateInstaller {
@@ -79,6 +78,8 @@ task generateInstaller {
         }
     }
 }
+
+build.dependsOn generateInstaller
 
 artifacts {
     archives file: generateInstaller.outputs.getFiles().getSingleFile(), builtBy: generateInstaller

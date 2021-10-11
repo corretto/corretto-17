@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,10 @@
 #include "precompiled.hpp"
 #include "c1/c1_MacroAssembler.hpp"
 #include "c1/c1_Runtime1.hpp"
-#include "classfile/systemDictionary.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 #include "gc/shared/collectedHeap.hpp"
+#include "gc/shared/tlab_globals.hpp"
 #include "interpreter/interpreter.hpp"
 #include "oops/arrayOop.hpp"
 #include "oops/markWord.hpp"
@@ -39,6 +39,7 @@
 #include "runtime/stubRoutines.hpp"
 
 int C1_MacroAssembler::lock_object(Register hdr, Register obj, Register disp_hdr, Register scratch, Label& slow_case) {
+  const Register rklass_decode_tmp = LP64_ONLY(rscratch1) NOT_LP64(noreg);
   const int aligned_mask = BytesPerWord -1;
   const int hdr_offset = oopDesc::mark_offset_in_bytes();
   assert(hdr == rax, "hdr must be rax, for the cmpxchg instruction");
@@ -51,12 +52,18 @@ int C1_MacroAssembler::lock_object(Register hdr, Register obj, Register disp_hdr
   // save object being locked into the BasicObjectLock
   movptr(Address(disp_hdr, BasicObjectLock::obj_offset_in_bytes()), obj);
 
+  null_check_offset = offset();
+
+  if (DiagnoseSyncOnValueBasedClasses != 0) {
+    load_klass(hdr, obj, rklass_decode_tmp);
+    movl(hdr, Address(hdr, Klass::access_flags_offset()));
+    testl(hdr, JVM_ACC_IS_VALUE_BASED_CLASS);
+    jcc(Assembler::notZero, slow_case);
+  }
+
   if (UseBiasedLocking) {
     assert(scratch != noreg, "should have scratch register at this point");
-    Register rklass_decode_tmp = LP64_ONLY(rscratch1) NOT_LP64(noreg);
-    null_check_offset = biased_locking_enter(disp_hdr, obj, hdr, scratch, rklass_decode_tmp, false, done, &slow_case);
-  } else {
-    null_check_offset = offset();
+    biased_locking_enter(disp_hdr, obj, hdr, scratch, rklass_decode_tmp, false, done, &slow_case);
   }
 
   // Load object header
@@ -328,12 +335,12 @@ void C1_MacroAssembler::build_frame(int frame_size_in_bytes, int bang_size_in_by
   if (PreserveFramePointer) {
     mov(rbp, rsp);
   }
-#if !defined(_LP64) && defined(TIERED)
-  if (UseSSE < 2 ) {
+#if !defined(_LP64) && defined(COMPILER2)
+  if (UseSSE < 2 && !CompilerConfig::is_c1_only_no_jvmci()) {
     // c2 leaves fpu stack dirty. Clean it on entry
     empty_FPU_stack();
   }
-#endif // !_LP64 && TIERED
+#endif // !_LP64 && COMPILER2
   decrement(rsp, frame_size_in_bytes); // does not emit code for frame_size == 0
 
   BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
@@ -348,7 +355,7 @@ void C1_MacroAssembler::remove_frame(int frame_size_in_bytes) {
 
 
 void C1_MacroAssembler::verified_entry() {
-  if (C1Breakpoint || VerifyFPU || !UseStackBanging) {
+  if (C1Breakpoint || VerifyFPU) {
     // Verified Entry first instruction should be 5 bytes long for correct
     // patching by patch_verified_entry().
     //

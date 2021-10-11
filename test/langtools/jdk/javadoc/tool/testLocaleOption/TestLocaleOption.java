@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -155,22 +155,22 @@ public class TestLocaleOption extends TestRunner {
 
     private void testHelloWorld(Path base, Locale defaultLocale, Locale localeOption) throws Exception {
         Path apiDir = base.resolve("api");
-        String stdOut = javadoc(defaultLocale,
+        String stdErr = javadoc(defaultLocale,
                                 localeOption,
                                 "-sourcepath", srcDir.toString(),
                                 "-d", apiDir.toString(),
                                 "p")
                 .writeAll()
-                .getOutput(Task.OutputKind.STDOUT);
+                .getOutput(Task.OutputKind.STDERR);
 
         // check console messages
         if (Objects.equals(defaultLocale, ALLCAPS)) {
-            checkContains(stdOut,
+            checkContains(stdErr,
                     """
                         LOADING SOURCE FILES FOR PACKAGE p...
                         CONSTRUCTING JAVADOC INFORMATION...""");
         } else {
-            checkContains(stdOut,
+            checkContains(stdErr,
                     """
                         Loading source files for package p...
                         Constructing Javadoc information...""");
@@ -183,20 +183,20 @@ public class TestLocaleOption extends TestRunner {
             checkContains(hw,
                     "<h2>METHOD SUMMARY</h2>",
                     """
-                        <th class="col-first" scope="col">MODIFIER AND TYPE</th>""",
+                        <div class="table-header col-first">MODIFIER AND TYPE</div>""",
                     """
-                        <th class="col-second" scope="col">METHOD</th>""",
+                        <div class="table-header col-second">METHOD</div>""",
                     """
-                        <th class="col-last" scope="col">DESCRIPTION</th>""");
+                        <div class="table-header col-last">DESCRIPTION</div>""");
         } else {
             checkContains(hw,
                     "<h2>Method Summary</h2>",
                     """
-                        <th class="col-first" scope="col">Modifier and Type</th>""",
+                        <div class="table-header col-first">Modifier and Type</div>""",
                     """
-                        <th class="col-second" scope="col">Method</th>""",
+                        <div class="table-header col-second">Method</div>""",
                     """
-                        <th class="col-last" scope="col">Description</th>""");
+                        <div class="table-header col-last">Description</div>""");
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2017, 2020, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
  */
 
 /*
- * @test TestVerifyJCStress
+ * @test id=passive
  * @summary Tests that we pass at least one jcstress-like test with all verification turned on
  * @requires vm.gc.Shenandoah
  * @modules java.base/jdk.internal.misc
@@ -41,7 +41,7 @@
  */
 
 /*
- * @test TestVerifyJCStress
+ * @test id=default
  * @summary Tests that we pass at least one jcstress-like test with all verification turned on
  * @requires vm.gc.Shenandoah
  * @modules java.base/jdk.internal.misc
@@ -59,7 +59,7 @@
  */
 
 /*
- * @test TestVerifyJCStress
+ * @test id=iu
  * @summary Tests that we pass at least one jcstress-like test with all verification turned on
  * @requires vm.gc.Shenandoah
  * @modules java.base/jdk.internal.misc
@@ -68,6 +68,11 @@
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu
  *      -XX:+ShenandoahVerify -XX:+IgnoreUnrecognizedVMOptions -XX:+ShenandoahVerifyOptoBarriers
+ *      TestVerifyJCStress
+ *
+ * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
+ *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu
+ *      -XX:+ShenandoahVerify -XX:+IgnoreUnrecognizedVMOptions -XX:TieredStopAtLevel=1
  *      TestVerifyJCStress
  */
 

@@ -167,7 +167,7 @@ oop Generation::promote(oop obj, size_t obj_size) {
   HeapWord* result = allocate(obj_size, false);
   if (result != NULL) {
     Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(obj), result, obj_size);
-    return oop(result);
+    return cast_to_oop(result);
   } else {
     GenCollectedHeap* gch = GenCollectedHeap::heap();
     return gch->handle_failed_promotion(this, obj, obj_size);
@@ -262,13 +262,6 @@ class GenerationOopIterateClosure : public SpaceClosure {
 void Generation::oop_iterate(OopIterateClosure* cl) {
   GenerationOopIterateClosure blk(cl);
   space_iterate(&blk);
-}
-
-void Generation::younger_refs_in_space_iterate(Space* sp,
-                                               OopsInGenClosure* cl,
-                                               uint n_threads) {
-  CardTableRS* rs = GenCollectedHeap::heap()->rem_set();
-  rs->younger_refs_in_space_iterate(sp, cl, n_threads);
 }
 
 class GenerationObjIterateClosure : public SpaceClosure {

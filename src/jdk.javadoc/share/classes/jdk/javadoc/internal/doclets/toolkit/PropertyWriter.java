@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@
 package jdk.javadoc.internal.doclets.toolkit;
 
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
 
 /**
  * The interface for writing property output.
@@ -70,6 +69,14 @@ public interface PropertyWriter extends MemberWriter {
      * @param propertyDocTree content tree to which the deprecated information will be added
      */
     void addDeprecated(ExecutableElement property, Content propertyDocTree);
+
+    /**
+     * Add the preview output for the given member.
+     *
+     * @param member the member being documented
+     * @param annotationDocTree content tree to which the preview information will be added
+     */
+    void addPreview(ExecutableElement member, Content contentTree);
 
     /**
      * Add the comments for the given property.

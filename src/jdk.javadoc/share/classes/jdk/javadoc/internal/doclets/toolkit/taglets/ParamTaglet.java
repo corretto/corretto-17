@@ -133,8 +133,7 @@ public class ParamTaglet extends BaseTaglet implements InheritableTaglet {
     }
 
     @Override
-    @SuppressWarnings("preview")
-    public Content getTagletOutput(Element holder, TagletWriter writer) {
+    public Content getAllBlockTagOutput(Element holder, TagletWriter writer) {
         Utils utils = writer.configuration().utils;
         if (utils.isExecutableElement(holder)) {
             ExecutableElement member = (ExecutableElement) holder;
@@ -165,7 +164,7 @@ public class ParamTaglet extends BaseTaglet implements InheritableTaglet {
      * @return the content representation of these {@code @param DocTree}s.
      */
     private Content getTagletOutput(ParamKind kind, Element holder,
-            TagletWriter writer, List<? extends Element> formalParameters, List<? extends DocTree> paramTags) {
+            TagletWriter writer, List<? extends Element> formalParameters, List<? extends ParamTree> paramTags) {
         Content result = writer.getOutputInstance();
         Set<String> alreadyDocumented = new HashSet<>();
         if (!paramTags.isEmpty()) {
@@ -207,10 +206,8 @@ public class ParamTaglet extends BaseTaglet implements InheritableTaglet {
                     String lname = kind != ParamKind.TYPE_PARAMETER
                             ? utils.getSimpleName(e)
                             : utils.getTypeName(e.asType(), false);
-                    CommentHelper ch = utils.getCommentHelper(holder);
-                    ch.setOverrideElement(inheritedDoc.holder);
-                    Content content = processParamTag(holder, kind, writer,
-                            inheritedDoc.holderTag,
+                    Content content = processParamTag(inheritedDoc.holder, kind, writer,
+                            (ParamTree) inheritedDoc.holderTag,
                             lname,
                             alreadyDocumented.isEmpty());
                     result.add(content);
@@ -240,13 +237,13 @@ public class ParamTaglet extends BaseTaglet implements InheritableTaglet {
      * @return the Content representation of this {@code @param DocTree}.
      */
     private Content processParamTags(Element e, ParamKind kind,
-            List<? extends DocTree> paramTags, Map<String, String> rankMap, TagletWriter writer,
+            List<? extends ParamTree> paramTags, Map<String, String> rankMap, TagletWriter writer,
             Set<String> alreadyDocumented) {
         Messages messages = writer.configuration().getMessages();
         Content result = writer.getOutputInstance();
         if (!paramTags.isEmpty()) {
             CommentHelper ch = writer.configuration().utils.getCommentHelper(e);
-            for (DocTree dt : paramTags) {
+            for (ParamTree dt : paramTags) {
                 String name = ch.getParameterName(dt);
                 String paramName = kind != ParamKind.TYPE_PARAMETER
                         ? name.toString()
@@ -294,7 +291,7 @@ public class ParamTaglet extends BaseTaglet implements InheritableTaglet {
      *
      */
     private Content processParamTag(Element e, ParamKind kind,
-            TagletWriter writer, DocTree paramTag, String name,
+            TagletWriter writer, ParamTree paramTag, String name,
             boolean isFirstParam) {
         Content result = writer.getOutputInstance();
         if (isFirstParam) {

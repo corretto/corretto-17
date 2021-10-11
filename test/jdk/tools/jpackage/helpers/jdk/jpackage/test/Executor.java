@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,7 @@ public final class Executor extends CommandArguments<Executor> {
 
     public Executor() {
         saveOutputType = new HashSet<>(Set.of(SaveOutputType.NONE));
+        removePath = false;
     }
 
     public Executor setExecutable(String v) {
@@ -81,6 +82,18 @@ public final class Executor extends CommandArguments<Executor> {
 
     public Executor setExecutable(JavaTool v) {
         return setExecutable(v.getPath());
+    }
+
+    public Executor setRemovePath(boolean value) {
+        removePath = value;
+        return this;
+    }
+
+    public Executor setWindowsTmpDir(String tmp) {
+        TKit.assertTrue(TKit.isWindows(),
+                "setWindowsTmpDir is only valid on Windows platform");
+        winTmpDir = tmp;
+        return this;
     }
 
     /**
@@ -236,7 +249,9 @@ public final class Executor extends CommandArguments<Executor> {
 
             try {
                 Thread.sleep(wait * 1000);
-            } catch (Exception ex) {} // Ignore
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+            }
 
             count++;
         } while (count < max);
@@ -273,6 +288,9 @@ public final class Executor extends CommandArguments<Executor> {
         command.add(executablePath().toString());
         command.addAll(args);
         ProcessBuilder builder = new ProcessBuilder(command);
+        if (winTmpDir != null) {
+            builder.environment().put("TMP", winTmpDir);
+        }
         StringBuilder sb = new StringBuilder(getPrintableCommandLine());
         if (withSavedOutput()) {
             builder.redirectErrorStream(true);
@@ -288,6 +306,11 @@ public final class Executor extends CommandArguments<Executor> {
         if (directory != null) {
             builder.directory(directory.toFile());
             sb.append(String.format("; in directory [%s]", directory));
+        }
+        if (removePath) {
+            // run this with cleared Path in Environment
+            TKit.trace("Clearing PATH in environment");
+            builder.environment().remove("PATH");
         }
 
         trace("Execute " + sb.toString() + "...");
@@ -414,6 +437,8 @@ public final class Executor extends CommandArguments<Executor> {
     private Path executable;
     private Set<SaveOutputType> saveOutputType;
     private Path directory;
+    private boolean removePath;
+    private String winTmpDir = null;
 
     private static enum SaveOutputType {
         NONE, FULL, FIRST_LINE, DUMP

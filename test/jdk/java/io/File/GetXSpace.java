@@ -23,11 +23,11 @@
 
 /**
  * @test
- * @bug 4057701 6286712 6364377
- * @run build GetXSpace
- * @run shell GetXSpace.sh
+ * @bug 4057701 6286712 6364377 8181919
+ * @requires (os.family == "linux" | os.family == "mac" |
+ *            os.family == "windows")
  * @summary Basic functionality of File.get-X-Space methods.
- * @key randomness
+ * @run main/othervm -Djava.security.manager=allow GetXSpace
  */
 
 import java.io.BufferedReader;
@@ -35,11 +35,15 @@ import java.io.File;
 import java.io.FilePermission;
 import java.io.InputStreamReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.FileStore;
+import java.nio.file.Path;
 import java.security.Permission;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static java.lang.System.err;
 import static java.lang.System.out;
 
 public class GetXSpace {
@@ -47,13 +51,22 @@ public class GetXSpace {
     private static SecurityManager [] sma = { null, new Allow(), new DenyFSA(),
                                               new DenyRead() };
 
-    private static final String osName = System.getProperty("os.name");
+    private static final String OS_NAME = System.getProperty("os.name");
+    private static final boolean IS_MAC = OS_NAME.startsWith("Mac");
+    private static final boolean IS_WIN = OS_NAME.startsWith("Windows");
+
     // FileSystem Total Used Available Use% MountedOn
-    private static final Pattern dfPattern = Pattern.compile("([^\\s]+)\\s+(\\d+)\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+([^\\s].*)\n");
+    private static final Pattern DF_PATTERN = Pattern.compile("([^\\s]+)\\s+(\\d+)\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+([^\\s].*)\n");
 
     private static int fail = 0;
     private static int pass = 0;
     private static Throwable first;
+
+    static void reset() {
+        fail = 0;
+        pass = 0;
+        first = null;
+    }
 
     static void pass() {
         pass++;
@@ -129,7 +142,7 @@ public class GetXSpace {
         }
         out.println(sb);
 
-        Matcher m = dfPattern.matcher(sb);
+        Matcher m = DF_PATTERN.matcher(sb);
         int j = 0;
         while (j < sb.length()) {
             if (m.find(j)) {
@@ -138,7 +151,7 @@ public class GetXSpace {
                     String name = f;
                     if (name == null) {
                         // cygwin's df lists windows path as FileSystem (1st group)
-                        name = osName.startsWith("Windows") ? m.group(1) : m.group(4);
+                        name = IS_WIN ? m.group(1) : m.group(4);
                     }
                     al.add(new Space(m.group(2), m.group(3), name));;
                 }
@@ -201,13 +214,31 @@ public class GetXSpace {
 
         // if the file system can dynamically change size, this check will fail
         if (ts != s.total()) {
-            fail(s.name(), s.total(), "!=", ts);
+            long blockSize = 1;
+            long numBlocks = 0;
+            try {
+                FileStore fileStore = Files.getFileStore(f.toPath());
+                blockSize = fileStore.getBlockSize();
+                numBlocks = fileStore.getTotalSpace()/blockSize;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+
+            // On macOS, the number of 1024 byte blocks might be incorrectly
+            // calculated by 'df' using integer division by 2 of the number of
+            // 512 byte blocks, resulting in a size smaller than the actual
+            // value when the number of blocks is odd.
+            if (!IS_MAC || blockSize != 512 || numBlocks % 2 == 0
+                || ts - s.total() != 512) {
+                fail(s.name(), s.total(), "!=", ts);
+            }
         } else {
             pass();
         }
 
         // unix df returns statvfs.f_bavail
-        long tsp = (!osName.startsWith("Windows") ? us : fs);
+        long tsp = (!IS_WIN ? us : fs);
         if (!s.woomFree(tsp)) {
             fail(s.name(), s.free(), "??", tsp);
         } else {
@@ -314,7 +345,8 @@ public class GetXSpace {
         }
     }
 
-    private static void testFile(String dirName) {
+    private static int testFile(Path dir) {
+        String dirName = dir.toString();
         out.format("--- Testing %s%n", dirName);
         ArrayList<Space> l;
         try {
@@ -323,9 +355,18 @@ public class GetXSpace {
             throw new RuntimeException(dirName + " can't get file system information", x);
         }
         compare(l.get(0));
+
+        if (fail != 0) {
+            err.format("%d tests: %d failure(s); first: %s%n",
+                fail + pass, fail, first);
+        } else {
+            out.format("all %d tests passed%n", fail + pass);
+        }
+
+        return fail != 0 ? 1 : 0;
     }
 
-    private static void testDF() {
+    private static int testDF() {
         out.println("--- Testing df");
         // Find all of the partitions on the machine and verify that the size
         // returned by "df" is equivalent to File.getXSpace() values.
@@ -357,20 +398,51 @@ public class GetXSpace {
                 }
             }
         }
-    }
 
-    public static void main(String [] args) {
-        if (args.length > 0) {
-            testFile(args[0]);
-        } else {
-            testDF();
-        }
+        System.setSecurityManager(null);
 
         if (fail != 0) {
-            throw new RuntimeException((fail + pass) + " tests: "
-                                       + fail + " failure(s), first", first);
+            err.format("%d tests: %d failure(s); first: %s%n",
+                fail + pass, fail, first);
         } else {
             out.format("all %d tests passed%n", fail + pass);
+        }
+
+        return fail != 0 ? 1 : 0;
+    }
+
+    private static void perms(File file, boolean allow) throws IOException {
+        file.setExecutable(allow, false);
+        file.setReadable(allow, false);
+        file.setWritable(allow, false);
+    }
+
+    private static void deny(Path path) throws IOException {
+        perms(path.toFile(), false);
+    }
+
+    private static void allow(Path path) throws IOException {
+        perms(path.toFile(), true);
+    }
+
+    public static void main(String[] args) throws Exception {
+        int failedTests = testDF();
+        reset();
+
+        Path tmpDir = Files.createTempDirectory(null);
+        Path tmpSubdir = Files.createTempDirectory(tmpDir, null);
+        Path tmpFile = Files.createTempFile(tmpSubdir, "foo", null);
+
+        deny(tmpSubdir);
+        failedTests += testFile(tmpFile);
+
+        allow(tmpSubdir);
+        Files.delete(tmpFile);
+        Files.delete(tmpSubdir);
+        Files.delete(tmpDir);
+
+        if (failedTests > 0) {
+            throw new RuntimeException(failedTests + " test(s) failed");
         }
     }
 }

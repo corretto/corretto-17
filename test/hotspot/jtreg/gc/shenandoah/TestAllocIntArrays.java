@@ -23,7 +23,7 @@
  */
 
 /*
- * @test TestAllocIntArrays
+ * @test id=passive
  * @summary Acceptance tests: collector can withstand allocation
  * @key randomness
  * @requires vm.gc.Shenandoah
@@ -51,7 +51,7 @@
  */
 
 /*
- * @test TestAllocIntArrays
+ * @test id=aggressive
  * @summary Acceptance tests: collector can withstand allocation
  * @key randomness
  * @requires vm.gc.Shenandoah
@@ -83,10 +83,10 @@
  */
 
 /*
- * @test TestAllocIntArrays
+ * @test id=adaptive
  * @summary Acceptance tests: collector can withstand allocation
  * @key randomness
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  *
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -Xms1g
@@ -100,10 +100,10 @@
  */
 
 /*
- * @test TestAllocIntArrays
+ * @test id=static
  * @summary Acceptance tests: collector can withstand allocation
  * @key randomness
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  *
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -Xms1g
@@ -112,10 +112,10 @@
  */
 
 /*
- * @test TestAllocIntArrays
+ * @test id=compact
  * @summary Acceptance tests: collector can withstand allocation
  * @key randomness
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  *
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -Xms1g
@@ -124,10 +124,10 @@
  */
 
 /*
- * @test TestAllocIntArrays
+ * @test id=no-tlab
  * @summary Acceptance tests: collector can withstand allocation
  * @key randomness
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  *
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -Xms1g
@@ -137,7 +137,7 @@
  */
 
 /*
- * @test TestAllocIntArrays
+ * @test id=iu-aggressive
  * @summary Acceptance tests: collector can withstand allocation
  * @key randomness
  * @requires vm.gc.Shenandoah
@@ -169,10 +169,10 @@
  */
 
 /*
- * @test TestAllocIntArrays
+ * @test id=iu
  * @summary Acceptance tests: collector can withstand allocation
  * @key randomness
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  *
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -Xms1g

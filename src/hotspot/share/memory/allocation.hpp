@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@
 
 class outputStream;
 class Thread;
+class JavaThread;
 
 class AllocFailStrategy {
 public:
@@ -142,6 +143,8 @@ class AllocatedObj {
   f(mtSafepoint,      "Safepoint")                                                   \
   f(mtSynchronizer,   "Synchronization")                                             \
   f(mtServiceability, "Serviceability")                                              \
+  f(mtMetaspace,      "Metaspace")                                                   \
+  f(mtStringDedup,    "String Deduplication")                                        \
   f(mtNone,           "Unknown")                                                     \
   //end
 
@@ -151,14 +154,20 @@ class AllocatedObj {
 /*
  * Memory types
  */
-enum MemoryType {
+enum class MEMFLAGS {
   MEMORY_TYPES_DO(MEMORY_TYPE_DECLARE_ENUM)
   mt_number_of_types   // number of memory types (mtDontTrack
                        // is not included as validate type)
 };
 
-typedef MemoryType MEMFLAGS;
+#define MEMORY_TYPE_SHORTNAME(type, human_readable) \
+  constexpr MEMFLAGS type = MEMFLAGS::type;
 
+// Generate short aliases for the enum values. E.g. mtGC instead of MEMFLAGS::mtGC.
+MEMORY_TYPES_DO(MEMORY_TYPE_SHORTNAME)
+
+// Make an int version of the sentinel end value.
+constexpr int mt_number_of_types = static_cast<int>(MEMFLAGS::mt_number_of_types);
 
 #if INCLUDE_NMT
 
@@ -254,6 +263,21 @@ class ClassLoaderData;
 class MetaspaceClosure;
 
 class MetaspaceObj {
+  // There are functions that all subtypes of MetaspaceObj are expected
+  // to implement, so that templates which are defined for this class hierarchy
+  // can work uniformly. Within the sub-hierarchy of Metadata, these are virtuals.
+  // Elsewhere in the hierarchy of MetaspaceObj, type(), size(), and/or on_stack()
+  // can be static if constant.
+  //
+  // The following functions are required by MetaspaceClosure:
+  //   void metaspace_pointers_do(MetaspaceClosure* it) { <walk my refs> }
+  //   int size() const { return align_up(sizeof(<This>), wordSize) / wordSize; }
+  //   MetaspaceObj::Type type() const { return <This>Type; }
+  //
+  // The following functions are required by MetadataFactory::free_metadata():
+  //   bool on_stack() { return false; }
+  //   void deallocate_contents(ClassLoaderData* loader_data);
+
   friend class VMStructs;
   // When CDS is enabled, all shared metaspace objects are mapped
   // into a single contiguous memory block, so we can use these
@@ -336,8 +360,11 @@ class MetaspaceObj {
 
   void* operator new(size_t size, ClassLoaderData* loader_data,
                      size_t word_size,
-                     Type type, Thread* thread) throw();
+                     Type type, JavaThread* thread) throw();
                      // can't use TRAPS from this header file.
+  void* operator new(size_t size, ClassLoaderData* loader_data,
+                     size_t word_size,
+                     Type type) throw();
   void operator delete(void* p) { ShouldNotCallThis(); }
 
   // Declare a *static* method with the same signature in any subclass of MetaspaceObj
@@ -479,7 +506,7 @@ protected:
   NEW_C_HEAP_ARRAY3(type, (size), memflags, pc, AllocFailStrategy::RETURN_NULL)
 
 #define NEW_C_HEAP_ARRAY_RETURN_NULL(type, size, memflags)\
-  NEW_C_HEAP_ARRAY3(type, (size), memflags, CURRENT_PC, AllocFailStrategy::RETURN_NULL)
+  NEW_C_HEAP_ARRAY2(type, (size), memflags, AllocFailStrategy::RETURN_NULL)
 
 #define REALLOC_C_HEAP_ARRAY(type, old, size, memflags)\
   (type*) (ReallocateHeap((char*)(old), (size) * sizeof(type), memflags))

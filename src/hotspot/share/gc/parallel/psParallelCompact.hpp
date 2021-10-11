@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,11 @@
 
 #include "gc/parallel/mutableSpace.hpp"
 #include "gc/parallel/objectStartArray.hpp"
-#include "gc/parallel/parMarkBitMap.hpp"
 #include "gc/parallel/parallelScavengeHeap.hpp"
+#include "gc/parallel/parMarkBitMap.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "gc/shared/collectorCounters.hpp"
+#include "gc/shared/taskTerminator.hpp"
 #include "oops/oop.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/orderAccess.hpp"
@@ -428,8 +429,8 @@ public:
   void add_obj(oop p, size_t len) { add_obj(cast_from_oop<HeapWord*>(p), len); }
 
   // Fill in the regions covering [beg, end) so that no data moves; i.e., the
-  // destination of region n is simply the start of region n.  The argument beg
-  // must be region-aligned; end need not be.
+  // destination of region n is simply the start of region n.  Both arguments
+  // beg and end must be region-aligned.
   void summarize_dense_prefix(HeapWord* beg, HeapWord* end);
 
   HeapWord* summarize_split_space(size_t src_region, SplitInfo& split_info,
@@ -480,9 +481,9 @@ public:
   HeapWord* partial_obj_end(size_t region_idx) const;
 
   // Return the location of the object after compaction.
-  HeapWord* calc_new_pointer(HeapWord* addr, ParCompactionManager* cm);
+  HeapWord* calc_new_pointer(HeapWord* addr, ParCompactionManager* cm) const;
 
-  HeapWord* calc_new_pointer(oop p, ParCompactionManager* cm) {
+  HeapWord* calc_new_pointer(oop p, ParCompactionManager* cm) const {
     return calc_new_pointer(cast_from_oop<HeapWord*>(p), cm);
   }
 
@@ -675,7 +676,8 @@ inline size_t
 ParallelCompactData::region_offset(const HeapWord* addr) const
 {
   assert(addr >= _region_start, "bad addr");
-  assert(addr <= _region_end, "bad addr");
+  // would mistakenly return 0 for _region_end
+  assert(addr < _region_end, "bad addr");
   return (size_t(addr) & RegionAddrOffsetMask) >> LogHeapWordSize;
 }
 
@@ -734,7 +736,7 @@ ParallelCompactData::region_align_up(HeapWord* addr) const
 inline bool
 ParallelCompactData::is_region_aligned(HeapWord* addr) const
 {
-  return region_offset(addr) == 0;
+  return (size_t(addr) & RegionAddrOffsetMask) == 0;
 }
 
 inline size_t
@@ -1009,7 +1011,6 @@ class PSParallelCompact : AllStatic {
   static elapsedTimer         _accumulated_time;
   static unsigned int         _total_invocations;
   static unsigned int         _maximum_compaction_gc_num;
-  static jlong                _time_of_last_gc;   // ms
   static CollectorCounters*   _counters;
   static ParMarkBitMap        _mark_bitmap;
   static ParallelCompactData  _summary_data;
@@ -1108,7 +1109,7 @@ class PSParallelCompact : AllStatic {
   static void summary_phase(ParCompactionManager* cm, bool maximum_compaction);
 
   // Adjust addresses in roots.  Does not adjust addresses in heap.
-  static void adjust_roots(ParCompactionManager* cm);
+  static void adjust_roots();
 
   DEBUG_ONLY(static void write_block_fill_histogram();)
 
@@ -1122,9 +1123,6 @@ class PSParallelCompact : AllStatic {
   // Add dense prefix update tasks to the task queue.
   static void enqueue_dense_prefix_tasks(TaskQueue& task_queue,
                                          uint parallel_gc_threads);
-
-  // Reset time since last full gc
-  static void reset_millis_since_last_gc();
 
 #ifndef PRODUCT
   // Print generic summary data
@@ -1148,7 +1146,7 @@ class PSParallelCompact : AllStatic {
   static bool initialize();
 
   // Closure accessors
-  static BoolObjectClosure* is_alive_closure()     { return (BoolObjectClosure*)&_is_alive_closure; }
+  static BoolObjectClosure* is_alive_closure()     { return &_is_alive_closure; }
 
   // Public accessors
   static elapsedTimer* accumulated_time() { return &_accumulated_time; }
@@ -1248,9 +1246,6 @@ class PSParallelCompact : AllStatic {
 
   // Return the SpaceId for the given address.
   static SpaceId space_id(HeapWord* addr);
-
-  // Time since last full gc (in milliseconds).
-  static jlong millis_since_last_gc();
 
   static void print_on_error(outputStream* st);
 
@@ -1395,5 +1390,7 @@ class FillClosure: public ParMarkBitMapClosure {
  private:
   ObjectStartArray* const _start_array;
 };
+
+void steal_marking_work(TaskTerminator& terminator, uint worker_id);
 
 #endif // SHARE_GC_PARALLEL_PSPARALLELCOMPACT_HPP

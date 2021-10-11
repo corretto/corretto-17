@@ -25,7 +25,7 @@ package jdk.jpackage.test;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import jdk.incubator.jpackage.internal.IOUtils;
+import jdk.jpackage.internal.IOUtils;
 
 
 final public class FileAssociations {
@@ -38,9 +38,11 @@ final public class FileAssociations {
     private void createFile() {
         Map<String, String> entries = new HashMap<>(Map.of(
             "extension", suffixName,
-            "mime-type", getMime(),
-            "description", description
+            "mime-type", getMime()
         ));
+        if (description != null) {
+            entries.put("description", description);
+        }
         if (icon != null) {
             if (TKit.isWindows()) {
                 entries.put("icon", icon.toString().replace("\\", "/"));

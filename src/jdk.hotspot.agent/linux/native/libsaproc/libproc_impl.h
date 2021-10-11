@@ -46,6 +46,7 @@ typedef struct eh_frame_info {
 typedef struct lib_info {
   char             name[BUF_SIZE];
   uintptr_t        base;
+  uintptr_t        end;
   uintptr_t        exec_start;
   uintptr_t        exec_end;
   eh_frame_info    eh_frame;
@@ -67,6 +68,7 @@ typedef struct map_info {
    off_t            offset;   // file offset of this mapping
    uintptr_t        vaddr;    // starting virtual address
    size_t           memsz;    // size of the mapping
+   uint32_t         flags;    // acces flags
    struct map_info* next;
 } map_info;
 

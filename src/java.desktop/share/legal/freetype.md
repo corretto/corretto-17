@@ -1,4 +1,4 @@
-## The FreeType Project: Freetype v2.10.1
+## The FreeType Project: Freetype v2.10.4
 
 
 ### FreeType Notice

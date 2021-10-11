@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,16 +31,13 @@
  * @compile ../../../../../../jdk/java/util/stream/CustomFJPoolTest.java
  *          test-classes/TestStreamApp.java
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run testng/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. CDSStreamTestDriver
  */
 
 import org.testng.annotations.Test;
-
 import java.io.File;
-
 import jtreg.SkippedException;
-
 import sun.hotspot.gc.GC;
 
 @Test
@@ -58,8 +55,7 @@ public class CDSStreamTestDriver extends DynamicArchiveTestBase {
 
     static void doTest() throws Exception {
         String topArchiveName = getNewArchiveName();
-        JarBuilder.build("streamapp", new File(classDir), null);
-        String appJar = classDir + File.separator + "streamapp.jar";
+        String appJar = JarBuilder.build("streamapp", new File(classDir), null);
 
         String[] classPaths = javaClassPath.split(File.pathSeparator);
         String testngJar = null;

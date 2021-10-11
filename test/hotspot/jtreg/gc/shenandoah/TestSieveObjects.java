@@ -23,7 +23,7 @@
  */
 
 /*
- * @test TestSieveObjects
+ * @test id=passive
  * @summary Acceptance tests: collector can deal with retained objects
  * @key randomness
  * @requires vm.gc.Shenandoah
@@ -51,7 +51,7 @@
  */
 
 /*
- * @test TestSieveObjects
+ * @test id=aggressive
  * @summary Acceptance tests: collector can deal with retained objects
  * @key randomness
  * @requires vm.gc.Shenandoah
@@ -73,10 +73,10 @@
  */
 
 /*
- * @test TestSieveObjects
+ * @test id=adaptive
  * @summary Acceptance tests: collector can deal with retained objects
  * @key randomness
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
@@ -91,10 +91,10 @@
  */
 
 /*
- * @test TestSieveObjects
+ * @test id=static
  * @summary Acceptance tests: collector can deal with retained objects
  * @key randomness
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
@@ -103,10 +103,10 @@
  */
 
 /*
- * @test TestSieveObjects
+ * @test id=compact
  * @summary Acceptance tests: collector can deal with retained objects
  * @key randomness
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
@@ -115,10 +115,10 @@
  */
 
 /*
- * @test TestSieveObjects
+ * @test id=no-tlab
  * @summary Acceptance tests: collector can deal with retained objects
  * @key randomness
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  *
  * @run main/othervm/timeout=240 -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
@@ -128,7 +128,7 @@
  */
 
 /*
- * @test TestSieveObjects
+ * @test id=iu-aggressive
  * @summary Acceptance tests: collector can deal with retained objects
  * @key randomness
  * @requires vm.gc.Shenandoah
@@ -150,10 +150,10 @@
  */
 
 /*
- * @test TestSieveObjects
+ * @test id=iu
  * @summary Acceptance tests: collector can deal with retained objects
  * @key randomness
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions

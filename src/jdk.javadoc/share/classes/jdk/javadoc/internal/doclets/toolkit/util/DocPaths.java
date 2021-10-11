@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,7 @@ public class DocPaths {
     /** The name of the file for constant values. */
     public static final DocPath CONSTANT_VALUES = DocPath.create("constant-values.html");
 
-    /** The name of the fie for deprecated elements. */
+    /** The name of the file for deprecated elements. */
     public static final DocPath DEPRECATED_LIST = DocPath.create("deprecated-list.html");
 
     /** The name of the subdirectory for user-provided additional documentation files. */
@@ -100,7 +100,7 @@ public class DocPaths {
     /** The name of the stylesheet file overriding jQuery UI stylesheet. */
     public static final DocPath JQUERY_OVERRIDES_CSS = DocPath.create("jquery-ui.overrides.css");
 
-    /** The name of the directory for the jQuery. */
+    /** The name of the directory for the jQuery files. */
     public static final DocPath JQUERY_FILES = DocPath.create("script-dir");
 
     /** The name of the default jQuery javascript file. */
@@ -111,6 +111,9 @@ public class DocPaths {
 
     /** The name of the default jQuery UI javascript file. */
     public static final DocPath JQUERY_UI_JS = DocPath.create("jquery-ui.min.js");
+
+    /** The name of the directory for legal files. */
+    public static final DocPath LEGAL = DocPath.create("legal");
 
     /** The name of the member search index js file. */
     public static final DocPath MEMBER_SEARCH_INDEX_JS = DocPath.create("member-search-index.js");
@@ -138,6 +141,12 @@ public class DocPaths {
 
     /** The name of the file for the package usage info. */
     public static final DocPath PACKAGE_USE = DocPath.create("package-use.html");
+
+    /** The name of the file for preview elements. */
+    public static final DocPath PREVIEW_LIST = DocPath.create("preview-list.html");
+
+    /** The name of the file for new elements. */
+    public static final DocPath NEW_LIST = DocPath.create("new-list.html");
 
     /** The name of the file for all system properties. */
     public static final DocPath SYSTEM_PROPERTIES = DocPath.create("system-properties.html");
@@ -274,6 +283,9 @@ public class DocPaths {
 
     /** The name of the search javascript file. */
     public static final DocPath SEARCH_JS = DocPath.create("search.js");
+
+    /** The name of the template for the search javascript file. */
+    public static final DocPath SEARCH_JS_TEMPLATE = DocPath.create("search.js.template");
 
     /** The name of the file for the serialized form info. */
     public static final DocPath SERIALIZED_FORM = DocPath.create("serialized-form.html");
