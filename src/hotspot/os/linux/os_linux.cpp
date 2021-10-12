@@ -171,8 +171,6 @@ os::Linux::mallinfo_func_t os::Linux::_mallinfo = NULL;
 os::Linux::mallinfo2_func_t os::Linux::_mallinfo2 = NULL;
 #endif // __GLIBC__
 
-static jlong initial_time_count=0;
-
 static int clock_tics_per_sec = 100;
 
 // If the VM might have been created on the primordial thread, we need to resolve the
@@ -307,19 +305,6 @@ bool os::Linux::get_tick_information(CPUPerfTicks* pticks, int which_logical_cpu
 
   return true;
 }
-
-// Return true if user is running as root.
-
-bool os::have_special_privileges() {
-  static bool init = false;
-  static bool privileges = false;
-  if (!init) {
-    privileges = (getuid() != geteuid()) || (getgid() != getegid());
-    init = true;
-  }
-  return privileges;
-}
-
 
 #ifndef SYS_gettid
 // i386: 224, ia64: 1105, amd64: 186, sparc: 143
@@ -863,16 +848,21 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
   ThreadState state;
 
   {
+    ResourceMark rm;
     pthread_t tid;
-    int ret = pthread_create(&tid, &attr, (void* (*)(void*)) thread_native_entry, thread);
+    int ret = 0;
+    int limit = 3;
+    do {
+      ret = pthread_create(&tid, &attr, (void* (*)(void*)) thread_native_entry, thread);
+    } while (ret == EAGAIN && limit-- > 0);
 
     char buf[64];
     if (ret == 0) {
-      log_info(os, thread)("Thread started (pthread id: " UINTX_FORMAT ", attributes: %s). ",
-        (uintx) tid, os::Posix::describe_pthread_attr(buf, sizeof(buf), &attr));
+      log_info(os, thread)("Thread \"%s\" started (pthread id: " UINTX_FORMAT ", attributes: %s). ",
+                           thread->name(), (uintx) tid, os::Posix::describe_pthread_attr(buf, sizeof(buf), &attr));
     } else {
-      log_warning(os, thread)("Failed to start thread - pthread_create failed (%s) for attributes: %s.",
-        os::errno_name(ret), os::Posix::describe_pthread_attr(buf, sizeof(buf), &attr));
+      log_warning(os, thread)("Failed to start thread \"%s\" - pthread_create failed (%s) for attributes: %s.",
+                              thread->name(), os::errno_name(ret), os::Posix::describe_pthread_attr(buf, sizeof(buf), &attr));
       // Log some OS information which might explain why creating the thread failed.
       log_info(os, thread)("Number of threads approx. running in the VM: %d", Threads::number_of_threads());
       LogStream st(Log(os, thread)::info());
@@ -1274,22 +1264,6 @@ void os::Linux::capture_initial_stack(size_t max_size) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // time support
-
-// Time since start-up in seconds to a fine granularity.
-double os::elapsedTime() {
-  return ((double)os::elapsed_counter()) / os::elapsed_frequency(); // nanosecond resolution
-}
-
-jlong os::elapsed_counter() {
-  return javaTimeNanos() - initial_time_count;
-}
-
-jlong os::elapsed_frequency() {
-  return NANOSECS_PER_SEC; // nanosecond resolution
-}
-
-bool os::supports_vtime() { return true; }
-
 double os::elapsedVTime() {
   struct rusage usage;
   int retval = getrusage(RUSAGE_THREAD, &usage);
@@ -1327,42 +1301,6 @@ void os::Linux::fast_thread_clock_init() {
   }
 }
 
-// Return the real, user, and system times in seconds from an
-// arbitrary fixed point in the past.
-bool os::getTimesSecs(double* process_real_time,
-                      double* process_user_time,
-                      double* process_system_time) {
-  struct tms ticks;
-  clock_t real_ticks = times(&ticks);
-
-  if (real_ticks == (clock_t) (-1)) {
-    return false;
-  } else {
-    double ticks_per_second = (double) clock_tics_per_sec;
-    *process_user_time = ((double) ticks.tms_utime) / ticks_per_second;
-    *process_system_time = ((double) ticks.tms_stime) / ticks_per_second;
-    *process_real_time = ((double) real_ticks) / ticks_per_second;
-
-    return true;
-  }
-}
-
-
-char * os::local_time_string(char *buf, size_t buflen) {
-  struct tm t;
-  time_t long_time;
-  time(&long_time);
-  localtime_r(&long_time, &t);
-  jio_snprintf(buf, buflen, "%d-%02d-%02d %02d:%02d:%02d",
-               t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
-               t.tm_hour, t.tm_min, t.tm_sec);
-  return buf;
-}
-
-struct tm* os::localtime_pd(const time_t* clock, struct tm*  res) {
-  return localtime_r(clock, res);
-}
-
 // thread_id is kernel thread id (similar to Solaris LWP id)
 intx os::current_thread_id() { return os::Linux::gettid(); }
 int os::current_process_id() {
@@ -1376,14 +1314,6 @@ const char* os::dll_file_extension() { return ".so"; }
 // This must be hard coded because it's the system's temporary
 // directory not the java application's temp directory, ala java.io.tmpdir.
 const char* os::get_temp_directory() { return "/tmp"; }
-
-static bool file_exists(const char* filename) {
-  struct stat statbuf;
-  if (filename == NULL || strlen(filename) == 0) {
-    return false;
-  }
-  return os::stat(filename, &statbuf) == 0;
-}
 
 // check if addr is inside libjvm.so
 bool os::address_is_in_vm(address addr) {
@@ -1668,6 +1598,9 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
 #ifndef EM_RISCV
   #define EM_RISCV      243               /* RISC-V */
 #endif
+#ifndef EM_LOONGARCH
+  #define EM_LOONGARCH  258               /* LoongArch */
+#endif
 
   static const arch_t arch_array[]={
     {EM_386,         EM_386,     ELFCLASS32, ELFDATA2LSB, (char*)"IA 32"},
@@ -1695,6 +1628,7 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
     {EM_68K,         EM_68K,     ELFCLASS32, ELFDATA2MSB, (char*)"M68k"},
     {EM_AARCH64,     EM_AARCH64, ELFCLASS64, ELFDATA2LSB, (char*)"AARCH64"},
     {EM_RISCV,       EM_RISCV,   ELFCLASS64, ELFDATA2LSB, (char*)"RISC-V"},
+    {EM_LOONGARCH,   EM_LOONGARCH, ELFCLASS64, ELFDATA2LSB, (char*)"LoongArch"},
   };
 
 #if  (defined IA32)
@@ -1731,9 +1665,11 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
   static  Elf32_Half running_arch_code=EM_SH;
 #elif  (defined RISCV)
   static  Elf32_Half running_arch_code=EM_RISCV;
+#elif  (defined LOONGARCH)
+  static  Elf32_Half running_arch_code=EM_LOONGARCH;
 #else
     #error Method os::dll_load requires that one of following is defined:\
-        AARCH64, ALPHA, ARM, AMD64, IA32, IA64, M68K, MIPS, MIPSEL, PARISC, __powerpc__, __powerpc64__, RISCV, S390, SH, __sparc
+        AARCH64, ALPHA, ARM, AMD64, IA32, IA64, LOONGARCH, M68K, MIPS, MIPSEL, PARISC, __powerpc__, __powerpc64__, RISCV, S390, SH, __sparc
 #endif
 
   // Identify compatibility class for VM's architecture and library's architecture
@@ -1843,15 +1779,6 @@ void * os::Linux::dll_load_in_vmthread(const char *filename, char *ebuf,
   }
 
   return result;
-}
-
-void* os::dll_lookup(void* handle, const char* name) {
-  void* res = dlsym(handle, name);
-  return res;
-}
-
-void* os::get_default_process_handle() {
-  return (void*)::dlopen(NULL, RTLD_LAZY);
 }
 
 static bool _print_ascii_file(const char* filename, outputStream* st, const char* hdr = NULL) {
@@ -2227,6 +2154,7 @@ void os::Linux::print_uptime_info(outputStream* st) {
 
 bool os::Linux::print_container_info(outputStream* st) {
   if (!OSContainer::is_containerized()) {
+    st->print_cr("container information not found.");
     return false;
   }
 
@@ -2313,6 +2241,24 @@ bool os::Linux::print_container_info(outputStream* st) {
     st->print_cr(JLONG_FORMAT, j);
   } else {
     st->print_cr("%s", j == OSCONTAINER_ERROR ? "not supported" : "unlimited");
+  }
+
+  j = OSContainer::OSContainer::pids_max();
+  st->print("maximum number of tasks: ");
+  if (j > 0) {
+    st->print_cr(JLONG_FORMAT, j);
+  } else {
+    st->print_cr("%s", j == OSCONTAINER_ERROR ? "not supported" : "unlimited");
+  }
+
+  j = OSContainer::OSContainer::pids_current();
+  st->print("current number of tasks: ");
+  if (j > 0) {
+    st->print_cr(JLONG_FORMAT, j);
+  } else {
+    if (j == OSCONTAINER_ERROR) {
+      st->print_cr("not supported");
+    }
   }
 
   return true;
@@ -2413,7 +2359,7 @@ static void print_sys_devices_cpu_info(outputStream* st, char* buf, size_t bufle
       snprintf(hbuf_type, 60, "/sys/devices/system/cpu/cpu0/cache/index%u/type", i);
       snprintf(hbuf_size, 60, "/sys/devices/system/cpu/cpu0/cache/index%u/size", i);
       snprintf(hbuf_coherency_line_size, 80, "/sys/devices/system/cpu/cpu0/cache/index%u/coherency_line_size", i);
-      if (file_exists(hbuf_level)) {
+      if (os::file_exists(hbuf_level)) {
         _print_ascii_file_h("cache level", hbuf_level, st);
         _print_ascii_file_h("cache type", hbuf_type, st);
         _print_ascii_file_h("cache size", hbuf_size, st);
@@ -4422,8 +4368,6 @@ void os::init(void) {
   check_pax();
 
   os::Posix::init();
-
-  initial_time_count = javaTimeNanos();
 }
 
 // To install functions for atexit system call
@@ -4793,11 +4737,6 @@ void os::set_native_thread_name(const char *name) {
     // ERANGE should not happen; all other errors should just be ignored.
     assert(rc != ERANGE, "pthread_setname_np failed");
   }
-}
-
-bool os::bind_to_processor(uint processor_id) {
-  // Not yet implemented.
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

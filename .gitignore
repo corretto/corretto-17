@@ -17,3 +17,6 @@ NashornProfile.txt
 /.gradle/
 .gradletasknamecache
 /pre-build/
+/src/utils/LogCompilation/target/
+/.project/
+/.settings/

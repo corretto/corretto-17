@@ -111,7 +111,7 @@ void frame::patch_pc(Thread* thread, address pc) {
     // We borrow this call to set the thread pointer in the interpreter
     // state; the hook to set up deoptimized frames isn't supplied it.
     assert(pc == NULL, "should be");
-    get_interpreterState()->set_thread(thread->as_Java_thread());
+    get_interpreterState()->set_thread(JavaThread::cast(thread));
   }
 }
 
@@ -396,5 +396,4 @@ frame::frame(void* sp, void* fp, void* pc) {
   Unimplemented();
 }
 
-void frame::pd_ps() {}
 #endif

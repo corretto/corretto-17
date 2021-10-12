@@ -29,7 +29,7 @@
 #include "logging/logMessageBuffer.hpp"
 #include "memory/resourceArea.hpp"
 #include "runtime/nonJavaThread.hpp"
-#include "utilities/hashtable.hpp"
+#include "utilities/resourceHash.hpp"
 #include "utilities/linkedlist.hpp"
 
 template <typename E, MEMFLAGS F>
@@ -108,7 +108,11 @@ public:
 };
 
 typedef LinkedListDeque<AsyncLogMessage, mtLogging> AsyncLogBuffer;
-typedef KVHashtable<LogFileOutput*, uint32_t, mtLogging> AsyncLogMap;
+typedef ResourceHashtable<LogFileOutput*,
+                          uint32_t,
+                          17, /*table_size*/
+                          ResourceObj::C_HEAP,
+                          mtLogging> AsyncLogMap;
 
 //
 // ASYNC LOGGING SUPPORT
@@ -155,8 +159,8 @@ class AsyncLogWriter : public NonJavaThread {
     NonJavaThread::pre_run();
     log_debug(logging, thread)("starting AsyncLog Thread tid = " INTX_FORMAT, os::current_thread_id());
   }
-  char* name() const override { return (char*)"AsyncLog Thread"; }
-  bool is_Named_thread() const override { return true; }
+  const char* name() const override { return "AsyncLog Thread"; }
+  const char* type_name() const override { return "AsyncLogWriter"; }
   void print_on(outputStream* st) const override {
     st->print("\"%s\" ", name());
     Thread::print_on(st);

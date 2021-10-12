@@ -557,7 +557,6 @@ public interface ObjectInputFilter {
      * fully qualified class name of the deserialization filter factory.
      * @since 9
      */
-    @SuppressWarnings("removal")
     final class Config {
         /**
          * Lock object for filter and filter factory.
@@ -616,19 +615,17 @@ public interface ObjectInputFilter {
             configLog = System.getLogger("java.io.serialization");
 
             // Get the values of the system properties, if they are defined
-            String factoryClassName = StaticProperty.jdkSerialFilterFactory();
-            if (factoryClassName == null) {
-                // Fallback to security property
-                factoryClassName = AccessController.doPrivileged((PrivilegedAction<String>) () ->
+            @SuppressWarnings("removal")
+            String factoryClassName = StaticProperty.jdkSerialFilterFactory() != null
+                    ? StaticProperty.jdkSerialFilterFactory()
+                    : AccessController.doPrivileged((PrivilegedAction<String>) () ->
                         Security.getProperty(SERIAL_FILTER_FACTORY_PROPNAME));
-            }
 
-            String filterString = StaticProperty.jdkSerialFilter();
-            if (filterString == null) {
-                // Fallback to security property
-                filterString = AccessController.doPrivileged((PrivilegedAction<String>) () ->
+            @SuppressWarnings("removal")
+            String filterString = StaticProperty.jdkSerialFilter() != null
+                    ? StaticProperty.jdkSerialFilter()
+                    : AccessController.doPrivileged((PrivilegedAction<String>) () ->
                         Security.getProperty(SERIAL_FILTER_PROPNAME));
-            }
 
             // Initialize the static filter if the jdk.serialFilter is present
             ObjectInputFilter filter = null;
@@ -710,6 +707,7 @@ public interface ObjectInputFilter {
          */
         public static void setSerialFilter(ObjectInputFilter filter) {
             Objects.requireNonNull(filter, "filter");
+            @SuppressWarnings("removal")
             SecurityManager sm = System.getSecurityManager();
             if (sm != null) {
                 sm.checkPermission(ObjectStreamConstants.SERIAL_FILTER_PERMISSION);
@@ -803,6 +801,7 @@ public interface ObjectInputFilter {
          */
         public static void setSerialFilterFactory(BinaryOperator<ObjectInputFilter> filterFactory) {
             Objects.requireNonNull(filterFactory, "filterFactory");
+            @SuppressWarnings("removal")
             SecurityManager sm = System.getSecurityManager();
             if (sm != null) {
                 sm.checkPermission(ObjectStreamConstants.SERIAL_FILTER_PERMISSION);

@@ -475,6 +475,9 @@ CompileWrapper::CompileWrapper(Compile* compile) : _compile(compile) {
   _compile->clone_map().set_debug(_compile->has_method() && _compile->directive()->CloneMapDebugOption);
 }
 CompileWrapper::~CompileWrapper() {
+  // simulate crash during compilation
+  assert(CICrashAt < 0 || _compile->compile_id() != CICrashAt, "just as planned");
+
   _compile->end_method();
   _compile->env()->set_compiler_data(NULL);
 }
@@ -546,6 +549,7 @@ Compile::Compile( ciEnv* ci_env, ciMethod* target, int osr_bci,
                   _do_locks_coarsening(do_locks_coarsening),
                   _method(target),
                   _entry_bci(osr_bci),
+                  _ilt(NULL),
                   _stub_function(NULL),
                   _stub_name(NULL),
                   _stub_entry_point(NULL),
@@ -1411,7 +1415,7 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
     if ( offset == Type::OffsetBot || (offset >= 0 && (size_t)offset < sizeof(Klass)) ) {
 
       tj = tk = TypeKlassPtr::make(TypePtr::NotNull,
-                                   TypeKlassPtr::OBJECT->klass(),
+                                   TypeInstKlassPtr::OBJECT->klass(),
                                    offset);
     }
 
@@ -1458,7 +1462,9 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
     case Type::RawPtr:   tj = TypeRawPtr::BOTTOM;   break;
     case Type::AryPtr:   // do not distinguish arrays at all
     case Type::InstPtr:  tj = TypeInstPtr::BOTTOM;  break;
-    case Type::KlassPtr: tj = TypeKlassPtr::OBJECT; break;
+    case Type::KlassPtr:
+    case Type::AryKlassPtr:
+    case Type::InstKlassPtr: tj = TypeInstKlassPtr::OBJECT; break;
     case Type::AnyPtr:   tj = TypePtr::BOTTOM;      break;  // caller checks it
     default: ShouldNotReachHere();
     }
@@ -2226,7 +2232,7 @@ void Compile::Optimize() {
     TracePhase tp("ccp", &timers[_t_ccp]);
     ccp.do_transform();
   }
-  print_method(PHASE_CPP1, 2);
+  print_method(PHASE_CCP1, 2);
 
   assert( true, "Break here to ccp.dump_old2new_map()");
 

@@ -2489,7 +2489,7 @@ void SuperWord::output() {
         Node* in1 = low_adr->in(1);
         Node* in2 = p->at(0)->in(2);
         // If rotation count is non-constant or greater than 8bit value create a vector.
-        if (!in2->is_Con() || -0x80 > in2->get_int() || in2->get_int() >= 0x80) {
+        if (!in2->is_Con() || !Matcher::supports_vector_constant_rotates(in2->get_int())) {
           in2 =  vector_opd(p, 2);
         }
         vn = VectorNode::make(opc, in1, in2, vlen, velt_basic_type(n));
@@ -2693,7 +2693,7 @@ void SuperWord::output() {
           // if vector resources are limited, do not allow additional unrolling, also
           // do not unroll more on pure vector loops which were not reduced so that we can
           // program the post loop to single iteration execution.
-          if (FLOATPRESSURE > 8) {
+          if (Matcher::float_pressure_limit() > 8) {
             C->set_major_progress();
             cl->mark_do_unroll_only();
           }

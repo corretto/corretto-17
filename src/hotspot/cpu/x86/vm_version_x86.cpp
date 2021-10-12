@@ -30,6 +30,7 @@
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
 #include "runtime/globals_extension.hpp"
 #include "runtime/java.hpp"
 #include "runtime/os.hpp"
@@ -65,6 +66,22 @@ extern "C" {
 static get_cpu_info_stub_t get_cpu_info_stub = NULL;
 static detect_virt_stub_t detect_virt_stub = NULL;
 
+#ifdef _LP64
+
+bool VM_Version::supports_clflush() {
+  // clflush should always be available on x86_64
+  // if not we are in real trouble because we rely on it
+  // to flush the code cache.
+  // Unfortunately, Assembler::clflush is currently called as part
+  // of generation of the code cache flush routine. This happens
+  // under Universe::init before the processor features are set
+  // up. Assembler::flush calls this routine to check that clflush
+  // is allowed. So, we give the caller a free pass if Universe init
+  // is still in progress.
+  assert ((!Universe::is_fully_initialized() || (_features & CPU_FLUSH) != 0), "clflush should be available");
+  return true;
+}
+#endif
 
 class VM_Version_StubGenerator: public StubCodeGenerator {
  public:
@@ -1021,10 +1038,6 @@ void VM_Version::get_processor_features() {
   }
 
   if (!supports_rtm() && UseRTMLocking) {
-    // Can't continue because UseRTMLocking affects UseBiasedLocking flag
-    // setting during arguments processing. See use_biased_locking().
-    // VM_Version_init() is executed after UseBiasedLocking is used
-    // in Thread::allocate().
     vm_exit_during_initialization("RTM instructions are not available on this CPU");
   }
 
@@ -1032,8 +1045,6 @@ void VM_Version::get_processor_features() {
   if (UseRTMLocking) {
     if (!CompilerConfig::is_c2_enabled()) {
       // Only C2 does RTM locking optimization.
-      // Can't continue because UseRTMLocking affects UseBiasedLocking flag
-      // setting during arguments processing. See use_biased_locking().
       vm_exit_during_initialization("RTM locking optimization is not supported in this VM");
     }
     if (is_intel_family_core()) {
@@ -1071,8 +1082,6 @@ void VM_Version::get_processor_features() {
 #else
   if (UseRTMLocking) {
     // Only C2 does RTM locking optimization.
-    // Can't continue because UseRTMLocking affects UseBiasedLocking flag
-    // setting during arguments processing. See use_biased_locking().
     vm_exit_during_initialization("RTM locking optimization is not supported in this VM");
   }
 #endif
@@ -1727,6 +1736,9 @@ void VM_Version::get_processor_features() {
   if (FLAG_IS_DEFAULT(UseSignumIntrinsic)) {
       FLAG_SET_DEFAULT(UseSignumIntrinsic, true);
   }
+  if (FLAG_IS_DEFAULT(UseCopySignIntrinsic)) {
+      FLAG_SET_DEFAULT(UseCopySignIntrinsic, true);
+  }
 }
 
 void VM_Version::print_platform_virtualization_info(outputStream* st) {
@@ -1743,27 +1755,6 @@ void VM_Version::print_platform_virtualization_info(outputStream* st) {
   } else if (vrt == HyperVRole) {
     st->print_cr("Hyper-V role detected");
   }
-}
-
-bool VM_Version::use_biased_locking() {
-#if INCLUDE_RTM_OPT
-  // RTM locking is most useful when there is high lock contention and
-  // low data contention.  With high lock contention the lock is usually
-  // inflated and biased locking is not suitable for that case.
-  // RTM locking code requires that biased locking is off.
-  // Note: we can't switch off UseBiasedLocking in get_processor_features()
-  // because it is used by Thread::allocate() which is called before
-  // VM_Version::initialize().
-  if (UseRTMLocking && UseBiasedLocking) {
-    if (FLAG_IS_DEFAULT(UseBiasedLocking)) {
-      FLAG_SET_DEFAULT(UseBiasedLocking, false);
-    } else {
-      warning("Biased locking is not supported with RTM locking; ignoring UseBiasedLocking flag." );
-      UseBiasedLocking = false;
-    }
-  }
-#endif
-  return UseBiasedLocking;
 }
 
 bool VM_Version::compute_has_intel_jcc_erratum() {

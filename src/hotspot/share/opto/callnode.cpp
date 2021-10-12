@@ -378,6 +378,8 @@ static void format_helper( PhaseRegAlloc *regalloc, outputStream* st, Node *n, c
       st->print(" %s%d]=#Ptr" INTPTR_FORMAT,msg,i,p2i(t->isa_oopptr()->const_oop()));
       break;
     case Type::KlassPtr:
+    case Type::AryKlassPtr:
+    case Type::InstKlassPtr:
       st->print(" %s%d]=#Ptr" INTPTR_FORMAT,msg,i,p2i(t->make_ptr()->isa_klassptr()->klass()));
       break;
     case Type::MetadataPtr:
@@ -1676,13 +1678,7 @@ void AllocateNode::compute_MemBar_redundancy(ciMethod* initializer)
 Node *AllocateNode::make_ideal_mark(PhaseGVN *phase, Node* obj, Node* control, Node* mem) {
   Node* mark_node = NULL;
   // For now only enable fast locking for non-array types
-  if (UseBiasedLocking && Opcode() == Op_Allocate) {
-    Node* klass_node = in(AllocateNode::KlassNode);
-    Node* proto_adr = phase->transform(new AddPNode(klass_node, klass_node, phase->MakeConX(in_bytes(Klass::prototype_header_offset()))));
-    mark_node = LoadNode::make(*phase, control, mem, proto_adr, TypeRawPtr::BOTTOM, TypeX_X, TypeX_X->basic_type(), MemNode::unordered);
-  } else {
-    mark_node = phase->MakeConX(markWord::prototype().value());
-  }
+  mark_node = phase->MakeConX(markWord::prototype().value());
   return mark_node;
 }
 

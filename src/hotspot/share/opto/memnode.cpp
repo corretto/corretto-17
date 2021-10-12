@@ -1842,13 +1842,6 @@ Node *LoadNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     }
   }
 
-  AllocateNode* alloc = is_new_object_mark_load(phase);
-  if (alloc != NULL && alloc->Opcode() == Op_Allocate && UseBiasedLocking) {
-    InitializeNode* init = alloc->initialization();
-    Node* control = init->proj_out(0);
-    return alloc->make_ideal_mark(phase, address, control, mem);
-  }
-
   return progress ? this : NULL;
 }
 
@@ -1986,7 +1979,7 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
         return con_type;
       }
     }
-  } else if (tp->base() == Type::KlassPtr) {
+  } else if (tp->base() == Type::KlassPtr || tp->base() == Type::InstKlassPtr || tp->base() == Type::AryKlassPtr) {
     assert( off != Type::OffsetBot ||
             // arrays can be cast to Objects
             tp->is_klassptr()->klass()->is_java_lang_Object() ||
@@ -2111,7 +2104,7 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
   }
 
   Node* alloc = is_new_object_mark_load(phase);
-  if (alloc != NULL && !(alloc->Opcode() == Op_Allocate && UseBiasedLocking)) {
+  if (alloc != NULL) {
     return TypeX::make(markWord::prototype().value());
   }
 

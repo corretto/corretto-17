@@ -258,11 +258,6 @@ static BOOL unmapViewOfFile(LPCVOID lpBaseAddress) {
   return result;
 }
 
-bool os::unsetenv(const char* name) {
-  assert(name != NULL, "Null pointer");
-  return (SetEnvironmentVariable(name, NULL) == TRUE);
-}
-
 char** os::get_environ() { return _environ; }
 
 // No setuid programs under Windows.
@@ -712,8 +707,7 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
       } // else fall through:
         // use VMThreadStackSize if CompilerThreadStackSize is not defined
     case os::vm_thread:
-    case os::pgc_thread:
-    case os::cgc_thread:
+    case os::gc_thread:
     case os::asynclog_thread:
     case os::watcher_thread:
       if (VMThreadStackSize > 0) stack_size = (size_t)(VMThreadStackSize * K);
@@ -743,21 +737,27 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
   // flag appears to work with _beginthredex() as well.
 
   const unsigned initflag = CREATE_SUSPENDED | STACK_SIZE_PARAM_IS_A_RESERVATION;
-  HANDLE thread_handle =
-    (HANDLE)_beginthreadex(NULL,
-                           (unsigned)stack_size,
-                           (unsigned (__stdcall *)(void*)) thread_native_entry,
-                           thread,
-                           initflag,
-                           &thread_id);
+  HANDLE thread_handle;
+  int limit = 3;
+  do {
+    thread_handle =
+      (HANDLE)_beginthreadex(NULL,
+                             (unsigned)stack_size,
+                             (unsigned (__stdcall *)(void*)) thread_native_entry,
+                             thread,
+                             initflag,
+                             &thread_id);
+  } while (thread_handle == NULL && errno == EAGAIN && limit-- > 0);
 
+  ResourceMark rm;
   char buf[64];
   if (thread_handle != NULL) {
-    log_info(os, thread)("Thread started (tid: %u, attributes: %s)",
-      thread_id, describe_beginthreadex_attributes(buf, sizeof(buf), stack_size, initflag));
+    log_info(os, thread)("Thread \"%s\" started (tid: %u, attributes: %s)",
+                         thread->name(), thread_id,
+                         describe_beginthreadex_attributes(buf, sizeof(buf), stack_size, initflag));
   } else {
-    log_warning(os, thread)("Failed to start thread - _beginthreadex failed (%s) for attributes: %s.",
-      os::errno_name(errno), describe_beginthreadex_attributes(buf, sizeof(buf), stack_size, initflag));
+    log_warning(os, thread)("Failed to start thread \"%s\" - _beginthreadex failed (%s) for attributes: %s.",
+                            thread->name(), os::errno_name(errno), describe_beginthreadex_attributes(buf, sizeof(buf), stack_size, initflag));
     // Log some OS information which might explain why creating the thread failed.
     log_info(os, thread)("Number of threads approx. running in the VM: %d", Threads::number_of_threads());
     LogStream st(Log(os, thread)::info());
@@ -885,7 +885,61 @@ uint os::processor_id() {
   return (uint)GetCurrentProcessorNumber();
 }
 
+// For dynamic lookup of SetThreadDescription API
+typedef HRESULT (WINAPI *SetThreadDescriptionFnPtr)(HANDLE, PCWSTR);
+typedef HRESULT (WINAPI *GetThreadDescriptionFnPtr)(HANDLE, PWSTR*);
+static SetThreadDescriptionFnPtr _SetThreadDescription = NULL;
+DEBUG_ONLY(static GetThreadDescriptionFnPtr _GetThreadDescription = NULL;)
+
+// forward decl.
+static errno_t convert_to_unicode(char const* char_path, LPWSTR* unicode_path);
+
 void os::set_native_thread_name(const char *name) {
+
+  // From Windows 10 and Windows 2016 server, we have a direct API
+  // for setting the thread name/description:
+  // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
+
+  if (_SetThreadDescription != NULL) {
+    // SetThreadDescription takes a PCWSTR but we have conversion routines that produce
+    // LPWSTR. The only difference is that PCWSTR is a pointer to const WCHAR.
+    LPWSTR unicode_name;
+    errno_t err = convert_to_unicode(name, &unicode_name);
+    if (err == ERROR_SUCCESS) {
+      HANDLE current = GetCurrentThread();
+      HRESULT hr = _SetThreadDescription(current, unicode_name);
+      if (FAILED(hr)) {
+        log_debug(os, thread)("set_native_thread_name: SetThreadDescription failed - falling back to debugger method");
+        FREE_C_HEAP_ARRAY(WCHAR, unicode_name);
+      } else {
+        log_trace(os, thread)("set_native_thread_name: SetThreadDescription succeeded - new name: %s", name);
+
+#ifdef ASSERT
+        // For verification purposes in a debug build we read the thread name back and check it.
+        PWSTR thread_name;
+        HRESULT hr2 = _GetThreadDescription(current, &thread_name);
+        if (FAILED(hr2)) {
+          log_debug(os, thread)("set_native_thread_name: GetThreadDescription failed!");
+        } else {
+          int res = CompareStringW(LOCALE_USER_DEFAULT,
+                                   0, // no special comparison rules
+                                   unicode_name,
+                                   -1, // null-terminated
+                                   thread_name,
+                                   -1  // null-terminated
+                                   );
+          assert(res == CSTR_EQUAL,
+                 "Name strings were not the same - set: %ls, but read: %ls", unicode_name, thread_name);
+          LocalFree(thread_name);
+        }
+#endif
+        FREE_C_HEAP_ARRAY(WCHAR, unicode_name);
+        return;
+      }
+    } else {
+      log_debug(os, thread)("set_native_thread_name: convert_to_unicode failed - falling back to debugger method");
+    }
+  }
 
   // See: http://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
   //
@@ -895,6 +949,7 @@ void os::set_native_thread_name(const char *name) {
 
   // If there is no debugger attached skip raising the exception
   if (!IsDebuggerPresent()) {
+    log_debug(os, thread)("set_native_thread_name: no debugger present so unable to set thread name");
     return;
   }
 
@@ -914,11 +969,6 @@ void os::set_native_thread_name(const char *name) {
   __try {
     RaiseException (MS_VC_EXCEPTION, 0, sizeof(info)/sizeof(DWORD), (const ULONG_PTR*)&info );
   } __except(EXCEPTION_EXECUTE_HANDLER) {}
-}
-
-bool os::bind_to_processor(uint processor_id) {
-  // Not yet implemented.
-  return false;
 }
 
 void os::win32::initialize_performance_counter() {
@@ -1808,7 +1858,11 @@ void os::win32::print_windows_version(outputStream* st) {
 
   case 10000:
     if (is_workstation) {
-      st->print("10");
+      if (build_number >= 22000) {
+        st->print("11");
+      } else {
+        st->print("10");
+      }
     } else {
       // distinguish Windows Server by build number
       // - 2016 GA 10/2016 build: 14393
@@ -2237,7 +2291,7 @@ LONG Handle_Exception(struct _EXCEPTION_POINTERS* exceptionInfo,
 
   // Save pc in thread
   if (thread != nullptr && thread->is_Java_thread()) {
-    thread->as_Java_thread()->set_saved_exception_pc((address)(DWORD_PTR)exceptionInfo->ContextRecord->PC_NAME);
+    JavaThread::cast(thread)->set_saved_exception_pc((address)(DWORD_PTR)exceptionInfo->ContextRecord->PC_NAME);
   }
 
   // Set pc to handler
@@ -2531,7 +2585,7 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
 #endif
 
   if (t != NULL && t->is_Java_thread()) {
-    JavaThread* thread = t->as_Java_thread();
+    JavaThread* thread = JavaThread::cast(t);
     bool in_java = thread->thread_state() == _thread_in_Java;
     bool in_native = thread->thread_state() == _thread_in_native;
     bool in_vm = thread->thread_state() == _thread_in_vm;
@@ -4109,8 +4163,8 @@ int os::win32::exit_process_or_thread(Ept what, int exit_code) {
     _endthreadex((unsigned)exit_code);
   } else if (what == EPT_PROCESS) {
     ::exit(exit_code);
-  } else {
-    _exit(exit_code);
+  } else { // EPT_PROCESS_DIE
+    ::_exit(exit_code);
   }
 
   // Should not reach here
@@ -4196,6 +4250,7 @@ extern "C" {
 }
 
 static jint initSock();
+
 
 // this is called _after_ the global arguments have been parsed
 jint os::init_2(void) {
@@ -4314,6 +4369,24 @@ jint os::init_2(void) {
   if (!ReduceSignalUsage) {
     jdk_misc_signal_init();
   }
+
+  // Lookup SetThreadDescription - the docs state we must use runtime-linking of
+  // kernelbase.dll, so that is what we do.
+  HINSTANCE _kernelbase = LoadLibrary(TEXT("kernelbase.dll"));
+  if (_kernelbase != NULL) {
+    _SetThreadDescription =
+      reinterpret_cast<SetThreadDescriptionFnPtr>(
+                                                  GetProcAddress(_kernelbase,
+                                                                 "SetThreadDescription"));
+#ifdef ASSERT
+    _GetThreadDescription =
+      reinterpret_cast<GetThreadDescriptionFnPtr>(
+                                                  GetProcAddress(_kernelbase,
+                                                                 "GetThreadDescription"));
+#endif
+  }
+  log_info(os, thread)("The SetThreadDescription API is%s available.", _SetThreadDescription == NULL ? " not" : "");
+
 
   return JNI_OK;
 }
@@ -4692,6 +4765,10 @@ int os::close(int fd) {
 
 void os::exit(int num) {
   win32::exit_process_or_thread(win32::EPT_PROCESS, num);
+}
+
+void os::_exit(int num) {
+  win32::exit_process_or_thread(win32::EPT_PROCESS_DIE, num);
 }
 
 // Is a (classpath) directory empty?

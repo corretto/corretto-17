@@ -42,7 +42,7 @@ import java.util.regex.Pattern;
  * @requires vm.debug == true & vm.compMode != "Xint" & vm.compiler2.enabled & vm.flagless
  * @summary Test IR matcher with different default IR node regexes. Use -DPrintIREncoding.
  *          Normally, the framework should be called with driver.
- * @library /test/lib /
+ * @library /test/lib /testlibrary_tests /
  * @build sun.hotspot.WhiteBox
  * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm/timeout=240 -Xbootclasspath/a:. -DSkipWhiteBoxInstall=true -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockDiagnosticVMOptions
@@ -98,6 +98,12 @@ public class TestIRMatching {
                  BadCountsConstraint.create(BadCount.class, "bad2()", 2,  1, "Store"),
                  BadCountsConstraint.create(BadCount.class, "bad3()", 1,  1, "Load"),
                  BadCountsConstraint.create(BadCount.class, "bad3()", 2,  1, "Store")
+        );
+
+        runCheck(GoodRuleConstraint.create(Calls.class, "calls()", 1),
+                 BadFailOnConstraint.create(Calls.class, "calls()", 2, 1, "CallStaticJava", "dontInline"),
+                 BadFailOnConstraint.create(Calls.class, "calls()", 2, 2, "CallStaticJava", "dontInline"),
+                 GoodRuleConstraint.create(Calls.class, "calls()", 3)
         );
 
         String[] allocArrayMatches = { "MyClass", "wrapper for: _new_array_Java"};
@@ -185,8 +191,9 @@ public class TestIRMatching {
                  WhiteBox.getWhiteBox().isJVMCISupportedByGC() ?
                     BadFailOnConstraint.create(Traps.class, "instrinsicOrTypeCheckedInlining()", 2, "CallStaticJava", "uncommon_trap", "intrinsic_or_type_checked_inlining")
                     : GoodRuleConstraint.create(Traps.class, "instrinsicOrTypeCheckedInlining()", 2),
-                 BadFailOnConstraint.create(Traps.class, "instrinsicOrTypeCheckedInlining()", 3, "CallStaticJava", "uncommon_trap", "null_check"),
-                 GoodRuleConstraint.create(Traps.class, "instrinsicOrTypeCheckedInlining()", 4)
+                 BadFailOnConstraint.create(Traps.class, "instrinsicOrTypeCheckedInlining()", 3, "CallStaticJava", "uncommon_trap", "intrinsic"),
+                 BadFailOnConstraint.create(Traps.class, "instrinsicOrTypeCheckedInlining()", 4, "CallStaticJava", "uncommon_trap", "null_check"),
+                 GoodRuleConstraint.create(Traps.class, "instrinsicOrTypeCheckedInlining()", 5)
         );
 
 
@@ -207,9 +214,9 @@ public class TestIRMatching {
         } else {
             cmp = "cmp";
         }
-        runCheck(BadFailOnConstraint.create(CheckCastArray.class, "array()", 1, cmp, "precise klass"),
-                 BadFailOnConstraint.create(CheckCastArray.class, "array()", 2, 1,cmp, "precise klass", "MyClass"),
-                 BadFailOnConstraint.create(CheckCastArray.class, "array()", 2, 2,cmp, "precise klass", "ir_framework/tests/MyClass"),
+        runCheck(BadFailOnConstraint.create(CheckCastArray.class, "array()", 1, cmp, "precise"),
+                 BadFailOnConstraint.create(CheckCastArray.class, "array()", 2, 1,cmp, "precise", "MyClass"),
+                 BadFailOnConstraint.create(CheckCastArray.class, "array()", 2, 2,cmp, "precise", "ir_framework/tests/MyClass"),
                  GoodFailOnConstraint.create(CheckCastArray.class, "array()", 3),
                  Platform.isS390x() ? // There is no checkcast_arraycopy stub for C2 on s390
                      GoodFailOnConstraint.create(CheckCastArray.class, "arrayCopy(java.lang.Object[],java.lang.Class)", 1)
@@ -224,7 +231,7 @@ public class TestIRMatching {
 
         try {
             runWithArgumentsFail(CompilationOutputOfFails.class);
-            shouldNotReach();
+            Utils.shouldHaveThrownException();
         } catch (IRViolationException e) {
             try {
                 boolean failed = false;
@@ -321,7 +328,7 @@ public class TestIRMatching {
     private static void runCheck(String[] args , Constraint... constraints) {
         try {
             new TestFramework(constraints[0].getKlass()).addFlags(args).start(); // All constraints have the same class.
-            shouldNotReach();
+            Utils.shouldHaveThrownException();
         } catch (IRViolationException e) {
             checkConstraints(e, constraints);
         } catch (Exception e) {
@@ -332,7 +339,7 @@ public class TestIRMatching {
     private static void runCheck(Constraint... constraints) {
         try {
             TestFramework.run(constraints[0].getKlass()); // All constraints have the same class.
-            shouldNotReach();
+            Utils.shouldHaveThrownException();
         } catch (IRViolationException e) {
             checkConstraints(e, constraints);
         } catch (Exception e) {
@@ -357,7 +364,7 @@ public class TestIRMatching {
     private static void runFailOnTestsArgs(Constraint constraint, String... args) {
         try {
             new TestFramework(constraint.getKlass()).addFlags(args).start(); // All constraints have the same class.
-            shouldNotReach();
+            Utils.shouldHaveThrownException();
         } catch (IRViolationException e) {
             try {
                 constraint.checkConstraint(e);
@@ -367,10 +374,6 @@ public class TestIRMatching {
         } catch (Exception e) {
             addException(e);
         }
-    }
-
-    public static void shouldNotReach() {
-        throw new ShouldNotReachException("Framework did not fail but it should have!");
     }
 
     public static void findIrIds(String output, String method, int... numbers) {
@@ -871,6 +874,29 @@ class RunTests {
     }
 }
 
+class Calls {
+
+    @Test
+    @IR(counts = {IRNode.CALL, "1"})
+    @IR(failOn = {IRNode.CALL_OF_METHOD, "dontInline",  // Fails
+                  IRNode.STATIC_CALL_OF_METHOD, "dontInline"}) // Fails
+    @IR(failOn = {IRNode.CALL_OF_METHOD, "forceInline",
+                  IRNode.STATIC_CALL_OF_METHOD, "forceInline",
+                  IRNode.CALL_OF_METHOD, "dontInlines",
+                  IRNode.STATIC_CALL_OF_METHOD, "dontInlines",
+                  IRNode.CALL_OF_METHOD, "dont",
+                  IRNode.STATIC_CALL_OF_METHOD, "dont"})
+    public void calls() {
+        dontInline();
+        forceInline();
+    }
+
+    @DontInline
+    public void dontInline() {}
+
+    @ForceInline
+    public void forceInline() {}
+}
 
 class AllocArray {
     MyClass[] myClassArray;
@@ -998,6 +1024,7 @@ class Traps {
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_TRAP,
                   IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void noTraps() {
@@ -1018,6 +1045,7 @@ class Traps {
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_TRAP,
                   IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void predicateTrap() {
@@ -1037,6 +1065,7 @@ class Traps {
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_TRAP,
                   IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void nullCheck() {
@@ -1053,6 +1082,7 @@ class Traps {
                   IRNode.UNSTABLE_IF_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_TRAP,
                   IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public Object nullAssert() {
@@ -1068,6 +1098,7 @@ class Traps {
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_TRAP,
                   IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void unstableIf(boolean flag) {
@@ -1086,6 +1117,7 @@ class Traps {
                   IRNode.UNSTABLE_IF_TRAP,
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
+                  IRNode.INTRINSIC_TRAP,
                   IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void classCheck() {
@@ -1104,6 +1136,7 @@ class Traps {
                   IRNode.UNSTABLE_IF_TRAP,
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_TRAP,
                   IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void rangeCheck() {
@@ -1114,6 +1147,7 @@ class Traps {
     @Test
     @IR(failOn = IRNode.TRAP) // fails
     @IR(failOn = IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP) // fails
+    @IR(failOn = IRNode.INTRINSIC_TRAP) // fails
     @IR(failOn = IRNode.NULL_CHECK_TRAP) // fails
     @IR(failOn = {IRNode.PREDICATE_TRAP,
                   IRNode.UNSTABLE_IF_TRAP,
@@ -1410,12 +1444,6 @@ class MyClassEmptySub extends MyClassEmpty {}
 class MyClassSub extends MyClass {
     int iFld;
     static int iFldStatic;
-}
-
-class ShouldNotReachException extends RuntimeException {
-    ShouldNotReachException(String s) {
-        super(s);
-    }
 }
 
 

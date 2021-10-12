@@ -121,7 +121,7 @@ bool MethodMatcher::canonicalize(char * line, const char *& error_msg) {
         }
 
         if (*lp == '/') {
-          error_msg = "Method pattern uses '/' together with '::'";
+          error_msg = "Method pattern uses '/' together with '::' (tips: replace '/' with '+' for hidden classes)";
           return false;
         }
       }
