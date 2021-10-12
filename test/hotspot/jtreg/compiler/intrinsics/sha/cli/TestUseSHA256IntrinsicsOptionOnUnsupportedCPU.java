@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,11 @@
  * @test
  * @bug 8035968
  * @summary Verify UseSHA256Intrinsics option processing on unsupported CPU.
- * @library /test/lib testcases /
- * @modules java.base/jdk.internal.misc
- *          java.management
+ * @library /test/lib /
+ * @requires vm.flagless
  *
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions
  *                   -XX:+WhiteBoxAPI
  *                   compiler.intrinsics.sha.cli.TestUseSHA256IntrinsicsOptionOnUnsupportedCPU
@@ -45,14 +44,14 @@ import compiler.intrinsics.sha.cli.testcases.UseSHAIntrinsicsSpecificTestCaseFor
 
 public class TestUseSHA256IntrinsicsOptionOnUnsupportedCPU {
     public static void main(String args[]) throws Throwable {
-        new SHAOptionsBase(
+        new DigestOptionsBase(
                 new GenericTestCaseForUnsupportedX86CPU(
-                        SHAOptionsBase.USE_SHA256_INTRINSICS_OPTION),
+                        DigestOptionsBase.USE_SHA256_INTRINSICS_OPTION),
                 new GenericTestCaseForUnsupportedAArch64CPU(
-                        SHAOptionsBase.USE_SHA256_INTRINSICS_OPTION),
+                        DigestOptionsBase.USE_SHA256_INTRINSICS_OPTION),
                 new UseSHAIntrinsicsSpecificTestCaseForUnsupportedCPU(
-                        SHAOptionsBase.USE_SHA256_INTRINSICS_OPTION),
+                        DigestOptionsBase.USE_SHA256_INTRINSICS_OPTION),
                 new GenericTestCaseForOtherCPU(
-                        SHAOptionsBase.USE_SHA256_INTRINSICS_OPTION)).test();
+                        DigestOptionsBase.USE_SHA256_INTRINSICS_OPTION)).test();
     }
 }

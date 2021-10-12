@@ -40,9 +40,12 @@
 #include "runtime/mutex.hpp"
 #include "runtime/safepoint.hpp"
 #include "runtime/safepointVerifiers.hpp"
+#include "runtime/vmOperations.hpp"
+#include "runtime/vmThread.hpp"
 #include "utilities/growableArray.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/ostream.hpp"
+#include "utilities/vmError.hpp"
 
 volatile size_t ClassLoaderDataGraph::_num_array_classes = 0;
 volatile size_t ClassLoaderDataGraph::_num_instance_classes = 0;
@@ -163,6 +166,13 @@ void ClassLoaderDataGraph::clean_deallocate_lists(bool walk_previous_versions) {
   }
   log_debug(class, loader, data)("clean_deallocate_lists: loaders processed %u %s",
                                  loaders_processed, walk_previous_versions ? "walk_previous_versions" : "");
+}
+
+void ClassLoaderDataGraph::safepoint_and_clean_metaspaces() {
+  // Safepoint and mark all metadata with MetadataOnStackMark and then deallocate unused bits of metaspace.
+  // This needs to be exclusive to Redefinition, so needs to be a safepoint.
+  VM_CleanClassLoaderDataMetaspaces op;
+  VMThread::execute(&op);
 }
 
 void ClassLoaderDataGraph::walk_metadata_and_clean_metaspaces() {
@@ -404,14 +414,6 @@ void ClassLoaderDataGraph::loaded_classes_do(KlassClosure* klass_closure) {
   }
 }
 
-// This case can block but cannot do unloading (called from CDS)
-void ClassLoaderDataGraph::unlocked_loaded_classes_do(KlassClosure* klass_closure) {
-  for (ClassLoaderData* cld = _head; cld != NULL; cld = cld->next()) {
-    cld->loaded_classes_do(klass_closure);
-  }
-}
-
-
 void ClassLoaderDataGraph::classes_unloading_do(void f(Klass* const)) {
   assert_locked_or_safepoint(ClassLoaderDataGraph_lock);
   for (ClassLoaderData* cld = _unloading; cld != NULL; cld = cld->next()) {
@@ -497,9 +499,6 @@ bool ClassLoaderDataGraph::is_valid(ClassLoaderData* loader_data) {
 bool ClassLoaderDataGraph::do_unloading() {
   assert_locked_or_safepoint(ClassLoaderDataGraph_lock);
 
-  // Indicate whether safepoint cleanup is needed.
-  _safepoint_cleanup_needed = true;
-
   ClassLoaderData* data = _head;
   ClassLoaderData* prev = NULL;
   bool seen_dead_loader = false;
@@ -560,7 +559,7 @@ void ClassLoaderDataGraph::clean_module_and_package_info() {
   }
 }
 
-void ClassLoaderDataGraph::purge() {
+void ClassLoaderDataGraph::purge(bool at_safepoint) {
   ClassLoaderData* list = _unloading;
   _unloading = NULL;
   ClassLoaderData* next = list;
@@ -576,6 +575,21 @@ void ClassLoaderDataGraph::purge() {
     set_metaspace_oom(false);
   }
   DependencyContext::purge_dependency_contexts();
+
+  // If we're purging metadata at a safepoint, clean remaining
+  // metaspaces if we need to.
+  if (at_safepoint) {
+    _safepoint_cleanup_needed = true; // tested and reset next.
+    if (should_clean_metaspaces_and_reset()) {
+      walk_metadata_and_clean_metaspaces();
+    }
+  } else {
+    // Tell service thread this is a good time to check to see if we should
+    // clean loaded CLDGs. This causes another safepoint.
+    MutexLocker ml(Service_lock, Mutex::_no_safepoint_check_flag);
+    _safepoint_cleanup_needed = true;
+    Service_lock->notify_all();
+  }
 }
 
 int ClassLoaderDataGraph::resize_dictionaries() {
@@ -648,24 +662,6 @@ Klass* ClassLoaderDataGraphKlassIteratorAtomic::next_klass() {
   return NULL;
 }
 
-ClassLoaderDataGraphMetaspaceIterator::ClassLoaderDataGraphMetaspaceIterator() {
-  assert(SafepointSynchronize::is_at_safepoint(), "must be at safepoint!");
-  _data = ClassLoaderDataGraph::_head;
-}
-
-ClassLoaderDataGraphMetaspaceIterator::~ClassLoaderDataGraphMetaspaceIterator() {}
-
-ClassLoaderMetaspace* ClassLoaderDataGraphMetaspaceIterator::get_next() {
-  assert(_data != NULL, "Should not be NULL in call to the iterator");
-  ClassLoaderMetaspace* result = _data->metaspace_or_null();
-  _data = _data->next();
-  // This result might be NULL for class loaders without metaspace
-  // yet.  It would be nice to return only non-null results but
-  // there is no guarantee that there will be a non-null result
-  // down the list so the caller is going to have to check.
-  return result;
-}
-
 void ClassLoaderDataGraph::verify() {
   ClassLoaderDataGraphIterator iter;
   while (ClassLoaderData* cld = iter.get_next()) {
@@ -677,6 +673,7 @@ void ClassLoaderDataGraph::verify() {
 // callable from debugger
 extern "C" int print_loader_data_graph() {
   ResourceMark rm;
+  MutexLocker ml(ClassLoaderDataGraph_lock);
   ClassLoaderDataGraph::print_on(tty);
   return 0;
 }

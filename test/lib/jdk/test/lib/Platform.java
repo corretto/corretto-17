@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ public class Platform {
     private static final String compiler    = privilegedGetProperty("sun.management.compiler");
     private static final String testJdk     = privilegedGetProperty("test.jdk");
 
+    @SuppressWarnings("removal")
     private static String privilegedGetProperty(String key) {
         return AccessController.doPrivileged((
                 PrivilegedAction<String>) () -> System.getProperty(key));
@@ -107,6 +108,18 @@ public class Platform {
 
     public static boolean isLinux() {
         return isOs("linux");
+    }
+
+    public static boolean isBusybox(String tool) {
+        try {
+            Path toolpath = Paths.get(tool);
+            return !isWindows()
+                    && Files.isSymbolicLink(toolpath)
+                    && Paths.get("/bin/busybox")
+                        .equals(Files.readSymbolicLink(toolpath));
+        } catch (IOException ignore) {
+            return false;
+        }
     }
 
     public static boolean isOSX() {
@@ -214,6 +227,9 @@ public class Platform {
      * on this platform.
      */
     public static boolean hasSA() {
+        if (isZero()) {
+            return false; // SA is not enabled.
+        }
         if (isAix()) {
             return false; // SA not implemented.
         } else if (isLinux()) {
@@ -317,11 +333,20 @@ public class Platform {
      * Returns absolute path to directory containing shared libraries in the tested JDK.
      */
     public static Path libDir() {
-        Path dir = Paths.get(testJdk);
+        return libDir(Paths.get(testJdk)).toAbsolutePath();
+    }
+
+    /**
+     * Resolves a given path, to a JDK image, to the directory containing shared libraries.
+     *
+     * @param image the path to a JDK image
+     * @return the resolved path to the directory containing shared libraries
+     */
+    public static Path libDir(Path image) {
         if (Platform.isWindows()) {
-            return dir.resolve("bin").toAbsolutePath();
+            return image.resolve("bin");
         } else {
-            return dir.resolve("lib").toAbsolutePath();
+            return image.resolve("lib");
         }
     }
 
@@ -339,6 +364,11 @@ public class Platform {
             return "client";
         } else if (Platform.isMinimal()) {
             return "minimal";
+        } else if (Platform.isZero()) {
+            // This name is used to search for libjvm.so. Weirdly, current
+            // build system puts libjvm.so into default location, which is
+            // "server". See JDK-8273494.
+            return "server";
         } else {
             throw new Error("TESTBUG: unsupported vm variant");
         }
@@ -353,7 +383,6 @@ public class Platform {
                  isWindows()) &&
                 !isZero()    &&
                 !isMinimal() &&
-                !isAArch64() &&
                 !isARM());
     }
 

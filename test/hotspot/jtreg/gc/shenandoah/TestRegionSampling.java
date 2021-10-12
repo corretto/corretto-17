@@ -23,7 +23,7 @@
  */
 
 /*
- * @test TestRegionSampling
+ * @test id=passive
  * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahRegionSampling
@@ -38,7 +38,7 @@
  */
 
 /*
- * @test TestRegionSampling
+ * @test id=adaptive
  * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahRegionSampling
@@ -47,8 +47,8 @@
  */
 
 /*
- * @test TestRegionSampling
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test id=static
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahRegionSampling
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=static
@@ -56,8 +56,8 @@
  */
 
 /*
- * @test TestRegionSampling
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test id=compact
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahRegionSampling
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=compact
@@ -65,8 +65,8 @@
  */
 
 /*
- * @test TestRegionSampling
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test id=aggressive
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahRegionSampling
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
@@ -74,7 +74,7 @@
  */
 
 /*
- * @test TestRegionSampling
+ * @test id=iu-aggressive
  * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahRegionSampling
@@ -83,8 +83,8 @@
  */
 
 /*
- * @test TestRegionSampling
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test id=iu
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahRegionSampling
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu

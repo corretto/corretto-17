@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,11 +37,12 @@ public interface JavaUtilZipFileAccess {
     public boolean startsWithLocHeader(ZipFile zip);
     public List<String> getManifestAndSignatureRelatedFiles(JarFile zip);
     public String getManifestName(JarFile zip, boolean onlyIfSignatureRelatedFiles);
+    public int getManifestNum(JarFile zip);
     public int[] getMetaInfVersions(JarFile zip);
     public Enumeration<JarEntry> entries(ZipFile zip);
     public Stream<JarEntry> stream(ZipFile zip);
     public Stream<String> entryNameStream(ZipFile zip);
-    public void setPosixPerms(ZipEntry ze, int posixPerms);
-    public int getPosixPerms(ZipEntry ze);
+    public void setExtraAttributes(ZipEntry ze, int extraAttrs);
+    public int getExtraAttributes(ZipEntry ze);
 }
 

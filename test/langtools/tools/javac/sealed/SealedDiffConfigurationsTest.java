@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  */
 
 /*
- * @test
+ * @test 8247352
  * @summary test different configurations of sealed classes, same compilation unit, diff pkg or mdl, etc
  * @library /tools/lib
  * @modules jdk.compiler/com.sun.tools.javac.api
@@ -92,7 +92,6 @@ public class SealedDiffConfigurationsTest extends TestRunner {
 
         new JavacTask(tb)
                 .outdir(out)
-                .options("--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
                 .files(findJavaFiles(test))
                 .run()
                 .writeAll();
@@ -121,7 +120,6 @@ public class SealedDiffConfigurationsTest extends TestRunner {
         new JavacTask(tb)
                 .outdir(out)
                 .files(findJavaFiles(test))
-                .options("--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
                 .run()
                 .writeAll();
 
@@ -188,7 +186,6 @@ public class SealedDiffConfigurationsTest extends TestRunner {
         new JavacTask(tb)
                 .outdir(out)
                 .files(findJavaFiles(pkg))
-                .options("--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
                 .run()
                 .writeAll();
 
@@ -210,7 +207,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
                            "}");
 
         List<String> error = new JavacTask(tb)
-                .options("-XDrawDiagnostics", "--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
+                .options("-XDrawDiagnostics")
                 .files(findJavaFiles(test))
                 .run(Task.Expect.FAIL)
                 .writeAll()
@@ -236,7 +233,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
                         "}");
 
         List<String> error = new JavacTask(tb)
-                .options("-XDrawDiagnostics", "--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
+                .options("-XDrawDiagnostics")
                 .files(findJavaFiles(test))
                 .run(Task.Expect.FAIL)
                 .writeAll()
@@ -275,7 +272,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
                           "}");
 
         List<String> error = new JavacTask(tb)
-                .options("-XDrawDiagnostics", "--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
+                .options("-XDrawDiagnostics")
                 .files(findJavaFiles(pkg))
                 .run(Task.Expect.FAIL)
                 .writeAll()
@@ -309,7 +306,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
                         "}");
 
         List<String> error = new JavacTask(tb)
-                .options("-XDrawDiagnostics", "--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
+                .options("-XDrawDiagnostics")
                 .files(findJavaFiles(pkg))
                 .run(Task.Expect.FAIL)
                 .writeAll()
@@ -342,7 +339,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
                         "}");
 
         List<String> error = new JavacTask(tb)
-                .options("-XDrawDiagnostics", "--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
+                .options("-XDrawDiagnostics")
                 .files(findJavaFiles(pkg))
                 .run(Task.Expect.FAIL)
                 .writeAll()
@@ -373,20 +370,19 @@ public class SealedDiffConfigurationsTest extends TestRunner {
         tb.writeJavaFiles(sub1,
                 "package pkg2;\n" +
                         "import pkg1.*;\n" +
-                        "public class Sub1 extends pkg1.Sealed {\n" +
+                        "public final class Sub1 extends pkg1.Sealed {\n" +
                         "}");
 
         List<String> error = new JavacTask(tb)
-                .options("-XDrawDiagnostics", "--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
+                .options("-XDrawDiagnostics")
                 .files(findJavaFiles(pkg1, pkg2))
                 .run(Task.Expect.FAIL)
                 .writeAll()
                 .getOutputLines(OutputKind.DIRECT);
 
         List<String> expected = List.of(
-                "Sub1.java:3:8: compiler.err.non.sealed.sealed.or.final.expected",
-                "Sealed.java:3:40: compiler.err.cant.inherit.from.sealed: pkg1.Sealed",
-                "2 errors");
+                "Sealed.java:3:40: compiler.err.class.in.unnamed.module.cant.extend.sealed.in.diff.package: pkg1.Sealed",
+                "1 error");
         if (!error.containsAll(expected)) {
             throw new AssertionError("Expected output not found. Expected: " + expected);
         }
@@ -414,7 +410,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
                         "}");
 
         List<String> error = new JavacTask(tb)
-                .options("-XDrawDiagnostics", "--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
+                .options("-XDrawDiagnostics")
                 .files(findJavaFiles(pkg1, pkg2))
                 .run(Task.Expect.FAIL)
                 .writeAll()
@@ -454,14 +450,14 @@ public class SealedDiffConfigurationsTest extends TestRunner {
         Files.createDirectories(out);
 
         List<String> error = new JavacTask(tb)
-                .options("-XDrawDiagnostics", "--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
+                .options("-XDrawDiagnostics")
                 .files(findJavaFiles(pkg1, pkg2))
                 .run(Task.Expect.FAIL)
                 .writeAll()
                 .getOutputLines(OutputKind.DIRECT);
 
         List<String> expected = List.of(
-                "Sealed.java:3:40: compiler.err.cant.inherit.from.sealed: pkg1.Sealed",
+                "Sealed.java:3:40: compiler.err.class.in.unnamed.module.cant.extend.sealed.in.diff.package: pkg1.Sealed",
                 "1 error");
         if (!error.containsAll(expected)) {
             throw new AssertionError("Expected output not found. Found: " + error);
@@ -480,7 +476,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
         tb.createDirectories(classes);
 
         new JavacTask(tb)
-                .options("--module-source-path", src.toString(), "--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
+                .options("--module-source-path", src.toString())
                 .outdir(classes)
                 .files(findJavaFiles(src))
                 .run()
@@ -499,7 +495,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
         tb.createDirectories(classes);
 
         new JavacTask(tb)
-                .options("--module-source-path", src.toString(), "--enable-preview", "-source", Integer.toString(Runtime.version().feature()))
+                .options("--module-source-path", src.toString())
                 .outdir(classes)
                 .files(findJavaFiles(src))
                 .run()
@@ -520,8 +516,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
 
         List<String> error = new JavacTask(tb)
                 .options("-XDrawDiagnostics", "--module-source-path",
-                        src.toString(), "--enable-preview",
-                        "-source", Integer.toString(Runtime.version().feature()))
+                        src.toString())
                 .outdir(classes)
                 .files(findJavaFiles(src))
                 .run(Task.Expect.FAIL)
@@ -551,8 +546,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
 
         List<String> error = new JavacTask(tb)
                 .options("-XDrawDiagnostics", "--module-source-path",
-                        src.toString(), "--enable-preview",
-                        "-source", Integer.toString(Runtime.version().feature()))
+                        src.toString())
                 .outdir(classes)
                 .files(findJavaFiles(src))
                 .run(Task.Expect.FAIL)
@@ -591,9 +585,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
             new JavacTask(tb)
                 .options("-XDrawDiagnostics",
                         "--module-source-path", src.toString(),
-                        "--add-reads", "mSealed=mSub",
-                        "--enable-preview",
-                        "-source", Integer.toString(Runtime.version().feature()))
+                        "--add-reads", "mSealed=mSub")
                 .outdir(classes)
                 .files(findJavaFiles(src))
                 .run(Task.Expect.FAIL)
@@ -601,9 +593,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
                 .getOutputLines(OutputKind.DIRECT);
 
         List<String> expected = List.of(
-            "Base.java:1:46: compiler.err.cant.inherit.from.sealed: a.Base",
-            "- compiler.note.preview.filename: Base.java",
-            "- compiler.note.preview.recompile",
+            "Base.java:1:46: compiler.err.class.in.module.cant.extend.sealed.in.diff.module: a.Base, mSealed",
             "1 error"
         );
         if (!error.containsAll(expected)) {
@@ -624,8 +614,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
 
         new JavacTask(tb)
                 .options("-XDrawDiagnostics", "--module-source-path",
-                        src.toString(), "--enable-preview",
-                        "-source", Integer.toString(Runtime.version().feature()))
+                        src.toString())
                 .outdir(classes)
                 .files(findJavaFiles(src_m))
                 .run()
@@ -634,8 +623,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
 
         new JavacTask(tb)
                 .options("-XDrawDiagnostics", "--module-source-path",
-                        src.toString(), "--enable-preview", "-doe",
-                        "-source", Integer.toString(Runtime.version().feature()))
+                        src.toString(), "-doe")
                 .outdir(classes)
                 .files(findJavaFiles(src_m.resolve("pkg").resolve("a")))
                 .run()
@@ -644,8 +632,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
 
         new JavacTask(tb)
                 .options("-XDrawDiagnostics", "--module-source-path",
-                        src.toString(), "--enable-preview", "-doe",
-                        "-source", Integer.toString(Runtime.version().feature()))
+                        src.toString(), "-doe")
                 .outdir(classes)
                 .files(findJavaFiles(src_m.resolve("pkg").resolve("b")))
                 .run()
@@ -657,8 +644,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
         //implicit compilations:
         new JavacTask(tb)
                 .options("-XDrawDiagnostics", "--module-source-path",
-                        src.toString(), "--enable-preview", "-doe",
-                        "-source", Integer.toString(Runtime.version().feature()))
+                        src.toString(), "-doe")
                 .outdir(classes)
                 .files(findJavaFiles(src_m.resolve("pkg").resolve("a")))
                 .run()
@@ -669,8 +655,7 @@ public class SealedDiffConfigurationsTest extends TestRunner {
 
         new JavacTask(tb)
                 .options("-XDrawDiagnostics", "--module-source-path",
-                        src.toString(), "--enable-preview", "-doe",
-                        "-source", Integer.toString(Runtime.version().feature()))
+                        src.toString(), "-doe")
                 .outdir(classes)
                 .files(findJavaFiles(src_m.resolve("pkg").resolve("b")))
                 .run()

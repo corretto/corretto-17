@@ -110,14 +110,22 @@ task generateJdkRpm(type: Rpm) {
     preUninstall file("$buildRoot/scripts/preun_javac.sh")
 
     provides(jdkPackageName, "${epoch}:${version}-${release}", EQUAL)
-    provides('java-11-devel', "${epoch}:${version}", EQUAL)
-    provides('java-11-openjdk-devel', "${epoch}:${version}", EQUAL)
-    provides('java-11-openjdk-devel', "${epoch}:${version}-${release}", EQUAL)
-    provides('java-sdk-11', "${epoch}:${version}", EQUAL)
-    provides('java-sdk-11-openjdk ', "${epoch}:${version}-${release}", EQUAL)
+    provides('java-17-devel', "${epoch}:${version}", EQUAL)
+    provides('java-17-openjdk-devel', "${epoch}:${version}", EQUAL)
+    provides('java-17-openjdk-devel', "${epoch}:${version}-${release}", EQUAL)
+    provides('java-sdk-17', "${epoch}:${version}", EQUAL)
+    provides('java-sdk-17-openjdk ', "${epoch}:${version}-${release}", EQUAL)
 
     from(jdkBinaryDir) {
         into jdkHome
+        exclude 'legal'
+    }
+
+    // Copy legal directory specifically to set permission correctly.
+    // See https://github.com/corretto/corretto-11/issues/129
+    from("${jdkBinaryDir}/legal") {
+        into "${jdkHome}/legal"
+        fileMode 0444
     }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@
 #include "gc/serial/serialHeap.hpp"
 #include "gc/serial/tenuredGeneration.inline.hpp"
 #include "gc/shared/genMemoryPools.hpp"
+#include "gc/shared/strongRootsScope.hpp"
 #include "memory/universe.hpp"
 #include "services/memoryManager.hpp"
 
@@ -86,4 +87,15 @@ GrowableArray<MemoryPool*> SerialHeap::memory_pools() {
   memory_pools.append(_survivor_pool);
   memory_pools.append(_old_pool);
   return memory_pools;
+}
+
+void SerialHeap::young_process_roots(OopIterateClosure* root_closure,
+                                     OopIterateClosure* old_gen_closure,
+                                     CLDClosure* cld_closure) {
+  MarkingCodeBlobClosure mark_code_closure(root_closure, CodeBlobToOopClosure::FixRelocations);
+
+  process_roots(SO_ScavengeCodeCache, root_closure,
+                cld_closure, cld_closure, &mark_code_closure);
+
+  old_gen()->younger_refs_iterate(old_gen_closure);
 }

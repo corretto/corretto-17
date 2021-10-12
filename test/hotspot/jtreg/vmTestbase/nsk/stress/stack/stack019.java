@@ -26,8 +26,7 @@
  * @key stress
  *
  * @summary converted from VM testbase nsk/stress/stack/stack019.
- * VM testbase keywords: [stress, diehard, stack, nonconcurrent, exclude]
- * VM testbase comments: 8139875
+ * VM testbase keywords: [stress, diehard, stack, nonconcurrent]
  * VM testbase readme:
  * DESCRIPTION
  *     The test invokes infinitely recursive method from within stack
@@ -39,10 +38,14 @@
  *     Solaris and Win32 platforms.
  *     See the bug:
  *     4366625 (P4/S4) multiple stack overflow causes HS crash
+ *     The stack size is too small to run on systems with > 4K page size.
+ *     Making it bigger could cause timeouts on other platform.
  *
- * @ignore 8139875
- * @requires vm.opt.DeoptimizeALot != true
- * @run main/othervm/timeout=900 nsk.stress.stack.stack019 -eager
+ * @requires (vm.opt.DeoptimizeALot != true & vm.compMode != "Xcomp" & vm.pageSize == 4096)
+ * @requires os.family != "windows"
+ * @library /vmTestbase
+ * @build nsk.share.Terminator
+ * @run main/othervm/timeout=900 -Xss200K nsk.stress.stack.stack019 -eager
  */
 
 package nsk.stress.stack;
@@ -53,8 +56,8 @@ import nsk.share.Terminator;
 import java.io.PrintStream;
 
 public class stack019 {
-    private final static int CYCLES = 100;
-    private final static int PROBES = 100;
+    private final static int CYCLES = 50;
+    private final static int PROBES = 50;
 
     public static void main(String[] args) {
         int exitCode = run(args, System.out);
@@ -123,7 +126,7 @@ public class stack019 {
                 throw error;
 
             //
-            // Stack problem caugth: provoke it again,
+            // Stack problem caught: provoke it again,
             // if current stack is enough deep:
             //
             if (depth < depthToTry - PROBES)

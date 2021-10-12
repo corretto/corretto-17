@@ -37,7 +37,7 @@ task copySource(type: Copy) {
 
 task configureBuild(type: Exec) {
     dependsOn copySource
-    workingDir "$buildRoot/src"
+    workingDir buildRoot
 
     // Platform specific flags
     def command = ['bash', 'configure',
@@ -55,9 +55,9 @@ task configureBuild(type: Exec) {
 
 task executeBuild(type: Exec) {
     dependsOn configureBuild
-    workingDir "$buildRoot/src"
+    workingDir buildRoot
 
-    commandLine 'make', 'clean', 'images'
+    commandLine 'make', 'clean', 'images', 'test-image-hotspot-jtreg-native', 'test-image-jdk-jtreg-native'
 }
 
 task copyImage(type: Copy) {
@@ -67,23 +67,45 @@ task copyImage(type: Copy) {
     into "$buildRoot/build"
 }
 
-task packageJdk(type: Zip) {
+task packageTestImage(type: Zip) {
     dependsOn copyImage
+    archiveName "${project.correttoTestImageArchiveName}.zip"
+    from("${copyImage.destinationDir}/test") {
+        include '**'
+    }
+    into project.correttoTestImageArchiveName
+}
+
+task packageDebugSymbols(type: Zip) {
+    dependsOn packageTestImage
+    archiveName "${project.correttoDebugSymbolsArchiveName}.zip"
+
+    from("${copyImage.destinationDir}/jdk") {
+        include 'bin/*.diz'
+        include 'lib/*.diz'
+        into project.correttoDebugSymbolsArchiveName
+    }
+}
+
+task packageBuildResults(type: Zip) {
+    dependsOn packageDebugSymbols
     archiveName  = "unsigned-jdk-image.zip"
 
     from("${copyImage.destinationDir}/jdk") {
         exclude 'demo'
+        exclude '**/*.diz'
     }
     from(buildRoot) {
         include 'ASSEMBLY_EXCEPTION'
         include 'LICENSE'
-        include 'THIRD_PARTY_README'
         include 'version.txt'
         include 'ADDITIONAL_LICENSE_INFO'
-        include 'README.md'
+        include 'README'
     }
 }
 
+build.dependsOn packageBuildResults
+
 artifacts {
-    archives packageJdk
+    archives packageBuildResults
 }

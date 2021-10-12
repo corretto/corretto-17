@@ -23,7 +23,7 @@
  */
 
 /*
- * @test TestLotsOfCycles
+ * @test id=passive
  * @requires vm.gc.Shenandoah
  *
  * @run main/othervm/timeout=480 -Xmx16m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
@@ -40,7 +40,7 @@
  */
 
 /*
- * @test TestLotsOfCycles
+ * @test id=aggressive
  * @requires vm.gc.Shenandoah
  *
  * @run main/othervm/timeout=480 -Xmx16m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
@@ -62,8 +62,8 @@
  */
 
 /*
- * @test TestLotsOfCycles
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test id=adaptive
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm/timeout=480 -Xmx16m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=adaptive
@@ -72,8 +72,8 @@
  */
 
 /*
- * @test TestLotsOfCycles
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test id=static
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm/timeout=480 -Xmx16m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=static
@@ -82,8 +82,8 @@
  */
 
 /*
- * @test TestLotsOfCycles
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test id=compact
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm/timeout=480 -Xmx16m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=compact
@@ -92,7 +92,7 @@
  */
 
 /*
- * @test TestLotsOfCycles
+ * @test id=iu-aggressive
  * @requires vm.gc.Shenandoah
  *
  * @run main/othervm/timeout=480 -Xmx16m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
@@ -114,8 +114,8 @@
  */
 
 /*
- * @test TestLotsOfCycles
- * @requires vm.gc.Shenandoah & !vm.graal.enabled
+ * @test id=iu
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm/timeout=480 -Xmx16m -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *      -XX:+UseShenandoahGC -XX:ShenandoahGCMode=iu

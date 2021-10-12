@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@
 #define SHARE_RUNTIME_THREADSMR_HPP
 
 #include "memory/allocation.hpp"
+#include "runtime/mutexLocker.hpp"
+#include "runtime/thread.hpp"
 #include "runtime/timer.hpp"
 
 class JavaThread;
@@ -33,6 +35,7 @@ class Monitor;
 class outputStream;
 class Thread;
 class ThreadClosure;
+class ThreadsList;
 
 // Thread Safe Memory Reclamation (Thread-SMR) support.
 //
@@ -82,32 +85,11 @@ class ThreadClosure;
 // but that target JavaThread * will not be deleted until it is no
 // longer protected by a ThreadsListHandle.
 //
-// Once a JavaThread has removed itself from the main ThreadsList it is
-// no longer visited by GC. To ensure that thread's threadObj() oop remains
-// valid while the thread is still accessible from a ThreadsListHandle we
-// maintain a special list of exiting threads:
-// - In remove() we add the exiting thread to the list (under the Threads_lock).
-// - In wait_until_not_protected() we remove it from the list (again under the
-//   Threads_lock).
-// - Universe::oops_do walks the list (at a safepoint so VMThread holds
-//   Threads_lock) and visits the _threadObj oop of each JavaThread.
-
 // SMR Support for the Threads class.
 //
 class ThreadsSMRSupport : AllStatic {
   friend class VMStructs;
   friend class SafeThreadsListPtr;  // for _nested_thread_list_max, delete_notify(), release_stable_list_wake_up() access
-
-  // Helper class for the exiting thread list
-  class Holder : public CHeapObj<mtInternal> {
-   public:
-    JavaThread* _thread;
-    Holder* _next;
-    Holder(JavaThread* thread, Holder* next) : _thread(thread), _next(next) {}
-  };
-
-  // The list of exiting threads
-  static Holder* _exiting_threads;
 
   // The coordination between ThreadsSMRSupport::release_stable_list() and
   // ThreadsSMRSupport::smr_delete() uses the delete_lock in order to
@@ -170,12 +152,6 @@ class ThreadsSMRSupport : AllStatic {
   static void smr_delete(JavaThread *thread);
   static void update_tlh_stats(uint millis);
 
-  // Exiting thread list maintenance
-  static void add_exiting_thread(JavaThread* thread);
-  static void remove_exiting_thread(JavaThread* thread);
-  DEBUG_ONLY(static bool contains_exiting_thread(JavaThread* thread);)
-  static void exiting_threads_oops_do(OopClosure* f);
-
   // Logging and printing support:
   static void log_statistics();
   static void print_info_elements_on(outputStream* st, ThreadsList* t_list);
@@ -186,14 +162,19 @@ class ThreadsSMRSupport : AllStatic {
 // A fast list of JavaThreads.
 //
 class ThreadsList : public CHeapObj<mtThread> {
+  enum { THREADS_LIST_MAGIC = (int)(('T' << 24) | ('L' << 16) | ('S' << 8) | 'T') };
   friend class VMStructs;
   friend class SafeThreadsListPtr;  // for {dec,inc}_nested_handle_cnt() access
   friend class ThreadsSMRSupport;  // for _nested_handle_cnt, {add,remove}_thread(), {,set_}next_list() access
+  friend class ThreadsListHandleTest;  // for _nested_handle_cnt access
 
+  uint _magic;
   const uint _length;
   ThreadsList* _next_list;
   JavaThread *const *const _threads;
   volatile intx _nested_handle_cnt;
+
+  NONCOPYABLE(ThreadsList);
 
   template <class T>
   void threads_do_dispatch(T *cl, JavaThread *const thread) const;
@@ -208,7 +189,7 @@ class ThreadsList : public CHeapObj<mtThread> {
   static ThreadsList* remove_thread(ThreadsList* list, JavaThread* java_thread);
 
 public:
-  ThreadsList(int entries);
+  explicit ThreadsList(int entries);
   ~ThreadsList();
 
   template <class T>
@@ -224,12 +205,17 @@ public:
   int find_index_of_JavaThread(JavaThread* target);
   JavaThread* find_JavaThread_from_java_tid(jlong java_tid) const;
   bool includes(const JavaThread * const p) const;
+
+#ifdef ASSERT
+  static bool is_valid(ThreadsList* list) { return list->_magic == THREADS_LIST_MAGIC; }
+#endif
 };
 
 // An abstract safe ptr to a ThreadsList comprising either a stable hazard ptr
 // for leaves, or a retained reference count for nested uses. The user of this
 // API does not need to know which mechanism is providing the safety.
 class SafeThreadsListPtr {
+  friend class ThreadsListHandleTest;  // for access to the fields
   friend class ThreadsListSetter;
 
   SafeThreadsListPtr* _previous;
@@ -301,6 +287,8 @@ public:
 // ThreadsList from being deleted until it is safe.
 //
 class ThreadsListHandle : public StackObj {
+  friend class ThreadsListHandleTest;  // for _list_ptr access
+
   SafeThreadsListPtr _list_ptr;
   elapsedTimer _timer;  // Enabled via -XX:+EnableThreadSMRStatistics.
 

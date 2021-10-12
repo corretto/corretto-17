@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,19 +36,13 @@ class Linux {
   friend class OSContainer;
   friend class TestReserveMemorySpecial;
 
-  static bool libjsig_is_loaded;        // libjsig that interposes sigaction(),
-                                        // __sigaction(), signal() is loaded
-  static struct sigaction *(*get_signal_action)(int);
-
-  static void check_signal_handler(int sig);
-
   static int (*_pthread_getcpuclockid)(pthread_t, clockid_t *);
   static int (*_pthread_setname_np)(pthread_t, const char*);
 
   static address   _initial_thread_stack_bottom;
   static uintptr_t _initial_thread_stack_size;
 
-  static const char *_glibc_version;
+  static const char *_libc_version;
   static const char *_libpthread_version;
 
   static bool _supports_fast_thread_cpu_time;
@@ -75,7 +69,7 @@ class Linux {
   static int commit_memory_impl(char* addr, size_t bytes,
                                 size_t alignment_hint, bool exec);
 
-  static void set_glibc_version(const char *s)      { _glibc_version = s; }
+  static void set_libc_version(const char *s)       { _libc_version = s; }
   static void set_libpthread_version(const char *s) { _libpthread_version = s; }
 
   static void rebuild_cpu_to_node_map();
@@ -84,24 +78,26 @@ class Linux {
   static GrowableArray<int>* nindex_to_node()  { return _nindex_to_node; }
 
   static size_t default_large_page_size();
-  static size_t find_default_large_page_size();
-  static size_t find_large_page_size(size_t page_size);
-  static size_t setup_large_page_size();
+  static size_t scan_default_large_page_size();
+  static os::PageSizes scan_multiple_page_support();
 
   static bool setup_large_page_type(size_t page_size);
   static bool transparent_huge_pages_sanity_check(bool warn, size_t pages_size);
   static bool hugetlbfs_sanity_check(bool warn, size_t page_size);
+  static bool shm_hugetlbfs_sanity_check(bool warn, size_t page_size);
+
+  static int hugetlbfs_page_size_flag(size_t page_size);
 
   static char* reserve_memory_special_shm(size_t bytes, size_t alignment, char* req_addr, bool exec);
-  static char* reserve_memory_special_huge_tlbfs(size_t bytes, size_t alignment, char* req_addr, bool exec);
-  static char* reserve_memory_special_huge_tlbfs_only(size_t bytes, char* req_addr, bool exec);
-  static char* reserve_memory_special_huge_tlbfs_mixed(size_t bytes, size_t alignment, char* req_addr, bool exec);
+  static char* reserve_memory_special_huge_tlbfs(size_t bytes, size_t alignment, size_t page_size, char* req_addr, bool exec);
+  static bool commit_memory_special(size_t bytes, size_t page_size, char* req_addr, bool exec);
 
   static bool release_memory_special_impl(char* base, size_t bytes);
   static bool release_memory_special_shm(char* base, size_t bytes);
   static bool release_memory_special_huge_tlbfs(char* base, size_t bytes);
 
-  static void print_full_memory_info(outputStream* st);
+  static void print_process_memory_info(outputStream* st);
+  static void print_system_memory_info(outputStream* st);
   static bool print_container_info(outputStream* st);
   static void print_steal_info(outputStream* st);
   static void print_distro_info(outputStream* st);
@@ -132,7 +128,6 @@ class Linux {
   // returns kernel thread id (similar to LWP id on Solaris), which can be
   // used to access /proc
   static pid_t gettid();
-  static void hotspot_sigmask(Thread* thread);
 
   static address   initial_thread_stack_bottom(void)                { return _initial_thread_stack_bottom; }
   static uintptr_t initial_thread_stack_size(void)                  { return _initial_thread_stack_size; }
@@ -140,32 +135,11 @@ class Linux {
   static int page_size(void)                                        { return _page_size; }
   static void set_page_size(int val)                                { _page_size = val; }
 
-  static address   ucontext_get_pc(const ucontext_t* uc);
-  static void ucontext_set_pc(ucontext_t* uc, address pc);
   static intptr_t* ucontext_get_sp(const ucontext_t* uc);
   static intptr_t* ucontext_get_fp(const ucontext_t* uc);
 
-  static bool get_frame_at_stack_banging_point(JavaThread* thread, ucontext_t* uc, frame* fr);
-
-  // This boolean allows users to forward their own non-matching signals
-  // to JVM_handle_linux_signal, harmlessly.
-  static bool signal_handlers_are_installed;
-
-  static int get_our_sigflags(int);
-  static void set_our_sigflags(int, int);
-  static void signal_sets_init();
-  static void install_signal_handlers();
-  static void set_signal_handler(int, bool);
-
-  static sigset_t* unblocked_signals();
-  static sigset_t* vm_signals();
-
-  // For signal-chaining
-  static struct sigaction *get_chained_signal_action(int sig);
-  static bool chained_handler(int sig, siginfo_t* siginfo, void* context);
-
   // GNU libc and libpthread version strings
-  static const char *glibc_version()          { return _glibc_version; }
+  static const char *libc_version()           { return _libc_version; }
   static const char *libpthread_version()     { return _libpthread_version; }
 
   static void libpthread_init();
@@ -196,6 +170,27 @@ class Linux {
 
   static jlong fast_thread_cpu_time(clockid_t clockid);
 
+  // Determine if the vmid is the parent pid for a child in a PID namespace.
+  // Return the namespace pid if so, otherwise -1.
+  static int get_namespace_pid(int vmid);
+
+  // Output structure for query_process_memory_info()
+  struct meminfo_t {
+    ssize_t vmsize;     // current virtual size
+    ssize_t vmpeak;     // peak virtual size
+    ssize_t vmrss;      // current resident set size
+    ssize_t vmhwm;      // peak resident set size
+    ssize_t vmswap;     // swapped out
+    ssize_t rssanon;    // resident set size (anonymous mappings, needs 4.5)
+    ssize_t rssfile;    // resident set size (file mappings, needs 4.5)
+    ssize_t rssshmem;   // resident set size (shared mappings, needs 4.5)
+  };
+
+  // Attempts to query memory information about the current process and return it in the output structure.
+  // May fail (returns false) or succeed (returns true) but not all output fields are available; unavailable
+  // fields will contain -1.
+  static bool query_process_memory_info(meminfo_t* info);
+
   // Stack repair handling
 
   // none present
@@ -206,6 +201,7 @@ class Linux {
 
   typedef int (*sched_getcpu_func_t)(void);
   typedef int (*numa_node_to_cpus_func_t)(int node, unsigned long *buffer, int bufferlen);
+  typedef int (*numa_node_to_cpus_v2_func_t)(int node, void *mask);
   typedef int (*numa_max_node_func_t)(void);
   typedef int (*numa_num_configured_nodes_func_t)(void);
   typedef int (*numa_available_func_t)(void);
@@ -222,6 +218,7 @@ class Linux {
 
   static sched_getcpu_func_t _sched_getcpu;
   static numa_node_to_cpus_func_t _numa_node_to_cpus;
+  static numa_node_to_cpus_v2_func_t _numa_node_to_cpus_v2;
   static numa_max_node_func_t _numa_max_node;
   static numa_num_configured_nodes_func_t _numa_num_configured_nodes;
   static numa_available_func_t _numa_available;
@@ -243,6 +240,7 @@ class Linux {
 
   static void set_sched_getcpu(sched_getcpu_func_t func) { _sched_getcpu = func; }
   static void set_numa_node_to_cpus(numa_node_to_cpus_func_t func) { _numa_node_to_cpus = func; }
+  static void set_numa_node_to_cpus_v2(numa_node_to_cpus_v2_func_t func) { _numa_node_to_cpus_v2 = func; }
   static void set_numa_max_node(numa_max_node_func_t func) { _numa_max_node = func; }
   static void set_numa_num_configured_nodes(numa_num_configured_nodes_func_t func) { _numa_num_configured_nodes = func; }
   static void set_numa_available(numa_available_func_t func) { _numa_available = func; }
@@ -270,11 +268,43 @@ class Linux {
   };
   static NumaAllocationPolicy _current_numa_policy;
 
+#ifdef __GLIBC__
+  struct glibc_mallinfo {
+    int arena;
+    int ordblks;
+    int smblks;
+    int hblks;
+    int hblkhd;
+    int usmblks;
+    int fsmblks;
+    int uordblks;
+    int fordblks;
+    int keepcost;
+  };
+
+  struct glibc_mallinfo2 {
+    size_t arena;
+    size_t ordblks;
+    size_t smblks;
+    size_t hblks;
+    size_t hblkhd;
+    size_t usmblks;
+    size_t fsmblks;
+    size_t uordblks;
+    size_t fordblks;
+    size_t keepcost;
+  };
+
+  typedef struct glibc_mallinfo (*mallinfo_func_t)(void);
+  typedef struct glibc_mallinfo2 (*mallinfo2_func_t)(void);
+
+  static mallinfo_func_t _mallinfo;
+  static mallinfo2_func_t _mallinfo2;
+#endif
+
  public:
   static int sched_getcpu()  { return _sched_getcpu != NULL ? _sched_getcpu() : -1; }
-  static int numa_node_to_cpus(int node, unsigned long *buffer, int bufferlen) {
-    return _numa_node_to_cpus != NULL ? _numa_node_to_cpus(node, buffer, bufferlen) : -1;
-  }
+  static int numa_node_to_cpus(int node, unsigned long *buffer, int bufferlen);
   static int numa_max_node() { return _numa_max_node != NULL ? _numa_max_node() : -1; }
   static int numa_num_configured_nodes() {
     return _numa_num_configured_nodes != NULL ? _numa_num_configured_nodes() : -1;
@@ -372,19 +402,17 @@ class Linux {
   // Returns true if bound to a single numa node, otherwise returns false.
   static bool is_bound_to_single_node() {
     int nodes = 0;
-    struct bitmask* bmp = NULL;
     unsigned int node = 0;
     unsigned int highest_node_number = 0;
 
-    if (_numa_get_membind != NULL && _numa_max_node != NULL && _numa_bitmask_isbitset != NULL) {
-      bmp = _numa_get_membind();
+    if (_numa_membind_bitmask != NULL && _numa_max_node != NULL && _numa_bitmask_isbitset != NULL) {
       highest_node_number = _numa_max_node();
     } else {
       return false;
     }
 
     for (node = 0; node <= highest_node_number; node++) {
-      if (_numa_bitmask_isbitset(bmp, node)) {
+      if (_numa_bitmask_isbitset(_numa_membind_bitmask, node)) {
         nodes++;
       }
     }

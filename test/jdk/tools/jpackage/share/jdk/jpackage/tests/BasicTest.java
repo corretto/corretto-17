@@ -48,7 +48,7 @@ import jdk.jpackage.test.Annotations.Parameter;
  * @summary jpackage basic testing
  * @library ../../../../helpers
  * @build jdk.jpackage.test.*
- * @modules jdk.incubator.jpackage/jdk.incubator.jpackage.internal
+ * @modules jdk.jpackage/jdk.jpackage.internal
  * @compile BasicTest.java
  * @run main/othervm/timeout=720 -Xmx512m jdk.jpackage.test.Main
  *  --jpt-run=jdk.jpackage.tests.BasicTest
@@ -62,6 +62,28 @@ public final class BasicTest {
         TKit.assertStringListEquals(List.of("Usage: jpackage <options>",
                 "Use jpackage --help (or -h) for a list of possible options"),
                 output, "Check jpackage output");
+    }
+
+    @Test
+    public void testJpackageProps() {
+        String appVersion = "3.0";
+        JPackageCommand cmd = JPackageCommand.helloAppImage(
+                JavaAppDesc.parse("Hello"))
+                // Disable default logic adding `--verbose` option
+                // to jpackage command line.
+                .ignoreDefaultVerbose(true)
+                .saveConsoleOutput(true)
+                .addArguments("--app-version", appVersion, "--arguments",
+                    "jpackage.app-version jpackage.app-path")
+                .ignoreDefaultRuntime(true);
+
+        cmd.executeAndAssertImageCreated();
+        Path launcherPath = cmd.appLauncherPath();
+
+        List<String> output = HelloApp.executeLauncher(cmd).getOutput();
+
+        TKit.assertTextStream("jpackage.app-version=" + appVersion).apply(output.stream());
+        TKit.assertTextStream("jpackage.app-path=").apply(output.stream());
     }
 
     @Test
@@ -116,7 +138,7 @@ public final class BasicTest {
 
         TKit.trace("Check parameters in help text");
         TKit.assertNotEquals(0, countStrings.apply(List.of(expectedPrefix)),
-                "Check help text contains plaform specific parameters");
+                "Check help text contains platform specific parameters");
         TKit.assertEquals(0, countStrings.apply(unexpectedPrefixes),
                 "Check help text doesn't contain unexpected parameters");
     }
@@ -204,6 +226,8 @@ public final class BasicTest {
     @Parameter("com.other/com.other.Hello")
     // Modular app in .jmod file
     @Parameter("hello.jmod:com.other/com.other.Hello")
+    // Modular app in exploded .jmod file
+    @Parameter("hello.ejmod:com.other/com.other.Hello")
     public void testApp(String javaAppDesc) {
         JavaAppDesc appDesc = JavaAppDesc.parse(javaAppDesc);
         JPackageCommand cmd = JPackageCommand.helloAppImage(appDesc);

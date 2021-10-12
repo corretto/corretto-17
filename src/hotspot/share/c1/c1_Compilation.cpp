@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -446,7 +446,7 @@ void Compilation::compile_method() {
     dependency_recorder()->assert_evol_method(method());
   }
 
-  if (directive()->BreakAtCompileOption) {
+  if (env()->break_at_compile()) {
     BREAKPOINT;
   }
 
@@ -583,7 +583,7 @@ Compilation::Compilation(AbstractCompiler* compiler, ciEnv* env, ciMethod* metho
 #endif
   compile_method();
   if (bailed_out()) {
-    _env->record_method_not_compilable(bailout_msg(), !TieredCompilation);
+    _env->record_method_not_compilable(bailout_msg());
     if (is_profiling()) {
       // Compilation failed, create MDO, which would signal the interpreter
       // to start profiling on its own.
@@ -700,7 +700,6 @@ void Compilation::compile_only_this_method() {
   compile_only_this_scope(&stream, hir()->top_scope());
 }
 
-
 void Compilation::compile_only_this_scope(outputStream* st, IRScope* scope) {
   st->print("CompileOnly=");
   scope->method()->holder()->name()->print_symbol_on(st);
@@ -708,7 +707,6 @@ void Compilation::compile_only_this_scope(outputStream* st, IRScope* scope) {
   scope->method()->name()->print_symbol_on(st);
   st->cr();
 }
-
 
 void Compilation::exclude_this_method() {
   fileStream stream(fopen(".hotspot_compiler", "at"));
@@ -719,4 +717,10 @@ void Compilation::exclude_this_method() {
   stream.cr();
   stream.cr();
 }
-#endif
+
+// Called from debugger to get the interval with 'reg_num' during register allocation.
+Interval* find_interval(int reg_num) {
+  return Compilation::current()->allocator()->find_interval_at(reg_num);
+}
+
+#endif // NOT PRODUCT

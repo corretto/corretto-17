@@ -54,18 +54,18 @@ public:
                                const char *file, int line);
 
   static void assert_in_heap(void* interior_loc, oop obj, const char* file, int line);
+  static void assert_in_heap_or_null(void* interior_loc, oop obj, const char* file, int line);
   static void assert_in_correct_region(void* interior_loc, oop obj, const char* file, int line);
 
   static void assert_correct(void* interior_loc, oop obj, const char* file, int line);
   static void assert_forwarded(void* interior_loc, oop obj, const char* file, int line);
   static void assert_not_forwarded(void* interior_loc, oop obj, const char* file, int line);
   static void assert_marked(void* interior_loc, oop obj, const char* file, int line);
+  static void assert_marked_weak(void* interior_loc, oop obj, const char* file, int line);
+  static void assert_marked_strong(void* interior_loc, oop obj, const char* file, int line);
   static void assert_in_cset(void* interior_loc, oop obj, const char* file, int line);
   static void assert_not_in_cset(void* interior_loc, oop obj, const char* file, int line);
   static void assert_not_in_cset_loc(void* interior_loc, const char* file, int line);
-
-  static void assert_rp_isalive_not_installed(const char *file, int line);
-  static void assert_rp_isalive_installed(const char *file, int line);
 
   static void assert_locked_or_shenandoah_safepoint(Mutex* lock, const char* file, int line);
 
@@ -76,6 +76,8 @@ public:
 #ifdef ASSERT
 #define shenandoah_assert_in_heap(interior_loc, obj) \
                     ShenandoahAsserts::assert_in_heap(interior_loc, obj, __FILE__, __LINE__)
+#define shenandoah_assert_in_heap_or_null(interior_loc, obj) \
+                    ShenandoahAsserts::assert_in_heap_or_null(interior_loc, obj, __FILE__, __LINE__)
 #define shenandoah_assert_in_correct_region(interior_loc, obj) \
                     ShenandoahAsserts::assert_in_correct_region(interior_loc, obj, __FILE__, __LINE__)
 
@@ -106,6 +108,20 @@ public:
   if (!(exception)) ShenandoahAsserts::assert_marked(interior_loc, obj, __FILE__, __LINE__)
 #define shenandoah_assert_marked(interior_loc, obj) \
                     ShenandoahAsserts::assert_marked(interior_loc, obj, __FILE__, __LINE__)
+
+#define shenandoah_assert_marked_weak_if(interior_loc, obj, condition) \
+  if (condition)    ShenandoahAsserts::assert_marked_weak(interior_loc, obj, __FILE__, __LINE__)
+#define shenandoah_assert_marked_weak_except(interior_loc, obj, exception) \
+  if (!(exception)) ShenandoahAsserts::assert_marked_weak(interior_loc, obj, __FILE__, __LINE__)
+#define shenandoah_assert_marked_weak(interior_loc, obj) \
+                    ShenandoahAsserts::assert_marked_weak(interior_loc, obj, __FILE__, __LINE__)
+
+#define shenandoah_assert_marked_strong_if(interior_loc, obj, condition) \
+  if (condition)    ShenandoahAsserts::assert_marked_strong(interior_loc, obj, __FILE__, __LINE__)
+#define shenandoah_assert_marked_strong_except(interior_loc, obj, exception) \
+  if (!(exception)) ShenandoahAsserts::assert_marked_strong(interior_loc, obj, __FILE__, __LINE__)
+#define shenandoah_assert_marked_strong(interior_loc, obj) \
+                    ShenandoahAsserts::assert_marked_strong(interior_loc, obj, __FILE__, __LINE__)
 
 #define shenandoah_assert_in_cset_if(interior_loc, obj, condition) \
   if (condition)    ShenandoahAsserts::assert_in_cset(interior_loc, obj, __FILE__, __LINE__)
@@ -149,6 +165,7 @@ public:
                     ShenandoahAsserts::assert_heaplocked_or_safepoint(__FILE__, __LINE__)
 #else
 #define shenandoah_assert_in_heap(interior_loc, obj)
+#define shenandoah_assert_in_heap_or_null(interior_loc, obj)
 #define shenandoah_assert_in_correct_region(interior_loc, obj)
 
 #define shenandoah_assert_correct_if(interior_loc, obj, condition)
@@ -166,6 +183,14 @@ public:
 #define shenandoah_assert_marked_if(interior_loc, obj, condition)
 #define shenandoah_assert_marked_except(interior_loc, obj, exception)
 #define shenandoah_assert_marked(interior_loc, obj)
+
+#define shenandoah_assert_marked_weak_if(interior_loc, obj, condition)
+#define shenandoah_assert_marked_weak_except(interior_loc, obj, exception)
+#define shenandoah_assert_marked_weak(interior_loc, obj)
+
+#define shenandoah_assert_marked_strong_if(interior_loc, obj, condition)
+#define shenandoah_assert_marked_strong_except(interior_loc, obj, exception)
+#define shenandoah_assert_marked_strong(interior_loc, obj)
 
 #define shenandoah_assert_in_cset_if(interior_loc, obj, condition)
 #define shenandoah_assert_in_cset_except(interior_loc, obj, exception)

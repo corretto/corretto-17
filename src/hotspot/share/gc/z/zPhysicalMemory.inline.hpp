@@ -25,6 +25,8 @@
 #define SHARE_GC_Z_ZPHYSICALMEMORY_INLINE_HPP
 
 #include "gc/z/zPhysicalMemory.hpp"
+
+#include "gc/z/zAddress.inline.hpp"
 #include "utilities/debug.hpp"
 
 inline ZPhysicalMemorySegment::ZPhysicalMemorySegment() :
@@ -58,16 +60,15 @@ inline void ZPhysicalMemorySegment::set_committed(bool committed) {
 }
 
 inline bool ZPhysicalMemory::is_null() const {
-  return _nsegments == 0;
+  return _segments.length() == 0;
 }
 
-inline uint32_t ZPhysicalMemory::nsegments() const {
-  return _nsegments;
+inline int ZPhysicalMemory::nsegments() const {
+  return _segments.length();
 }
 
-inline const ZPhysicalMemorySegment& ZPhysicalMemory::segment(uint32_t index) const {
-  assert(index < _nsegments, "Invalid segment index");
-  return _segments[index];
+inline const ZPhysicalMemorySegment& ZPhysicalMemory::segment(int index) const {
+  return _segments.at(index);
 }
 
 #endif // SHARE_GC_Z_ZPHYSICALMEMORY_INLINE_HPP

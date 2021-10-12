@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shared/tlab_globals.hpp"
 #include "gc/shared/c2/barrierSetC2.hpp"
 #include "opto/arraycopynode.hpp"
 #include "opto/convertnode.hpp"
@@ -141,6 +142,7 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
   bool control_dependent = (decorators & C2_CONTROL_DEPENDENT_LOAD) != 0;
   bool unknown_control = (decorators & C2_UNKNOWN_CONTROL_LOAD) != 0;
   bool unsafe = (decorators & C2_UNSAFE_ACCESS) != 0;
+  bool immutable = (decorators & C2_IMMUTABLE_MEMORY) != 0;
 
   bool in_native = (decorators & IN_NATIVE) != 0;
 
@@ -153,10 +155,14 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
     GraphKit* kit = parse_access.kit();
     Node* control = control_dependent ? kit->control() : NULL;
 
-    if (in_native) {
-      load = kit->make_load(control, adr, val_type, access.type(), mo, dep,
-                            requires_atomic_access, unaligned,
+    if (immutable) {
+      assert(!requires_atomic_access, "can't ensure atomicity");
+      Compile* C = Compile::current();
+      Node* mem = kit->immutable_memory();
+      load = LoadNode::make(kit->gvn(), control, mem, adr,
+                            adr_type, val_type, access.type(), mo, dep, unaligned,
                             mismatched, unsafe, access.barrier_data());
+      load = kit->gvn().transform(load);
     } else {
       load = kit->make_load(control, adr, val_type, access.type(), adr_type, mo,
                             dep, requires_atomic_access, unaligned, mismatched, unsafe,
@@ -687,14 +693,14 @@ void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* si
   Node* n = kit->gvn().transform(ac);
   if (n == ac) {
     const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
-    ac->_adr_type = TypeRawPtr::BOTTOM;
+    ac->set_adr_type(TypeRawPtr::BOTTOM);
     kit->set_predefined_output_for_runtime_call(ac, ac->in(TypeFunc::Memory), raw_adr_type);
   } else {
     kit->set_all_memory(n);
   }
 }
 
-Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* ctrl, Node* mem, Node* toobig_false, Node* size_in_bytes,
+Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobig_false, Node* size_in_bytes,
                                  Node*& i_o, Node*& needgc_ctrl,
                                  Node*& fast_oop_ctrl, Node*& fast_oop_rawmem,
                                  intx prefetch_lines) const {
@@ -714,7 +720,7 @@ Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* ctrl, Node* mem,
   //       this will require extensive changes to the loop optimization in order to
   //       prevent a degradation of the optimization.
   //       See comment in memnode.hpp, around line 227 in class LoadPNode.
-  Node *eden_end = macro->make_load(ctrl, mem, eden_end_adr, 0, TypeRawPtr::BOTTOM, T_ADDRESS);
+  Node *eden_end = macro->make_load(toobig_false, mem, eden_end_adr, 0, TypeRawPtr::BOTTOM, T_ADDRESS);
 
   // We need a Region for the loop-back contended case.
   enum { fall_in_path = 1, contended_loopback_path = 2 };
@@ -737,7 +743,7 @@ Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* ctrl, Node* mem,
   // Load(-locked) the heap top.
   // See note above concerning the control input when using a TLAB
   Node *old_eden_top = UseTLAB
-    ? new LoadPNode      (ctrl, contended_phi_rawmem, eden_top_adr, TypeRawPtr::BOTTOM, TypeRawPtr::BOTTOM, MemNode::unordered)
+    ? new LoadPNode      (toobig_false, contended_phi_rawmem, eden_top_adr, TypeRawPtr::BOTTOM, TypeRawPtr::BOTTOM, MemNode::unordered)
     : new LoadPLockedNode(contended_region, contended_phi_rawmem, eden_top_adr, MemNode::acquire);
 
   macro->transform_later(old_eden_top);
@@ -846,3 +852,5 @@ void BarrierSetC2::clone_at_expansion(PhaseMacroExpand* phase, ArrayCopyNode* ac
 
   phase->igvn().replace_node(ac, call);
 }
+
+#undef XTOP

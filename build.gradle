@@ -51,10 +51,10 @@ allprojects {
         buildRoot = file("$buildDir/buildRoot")
         distributionDir = file("$buildDir/distributions")
         packageInfo = [
-                url       : "https://github.com/corretto/corretto-${project.version.major}",
+                url       : "https://github.com/corretto/corretto-jdk",
                 vendor    : 'Amazon',
                 packager  : 'Amazon',
-                description  : 'Amazon Corretto\'s packaging of the runtime core elements of the OpenJDK 11 code.',
+                description  : 'Amazon Corretto\'s packaging of the runtime core elements of the OpenJDK code.',
                 license   : 'ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with ' +
                         'exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ' +
                         'ISC and FTL and RSA.',
@@ -72,21 +72,28 @@ allprojects {
                 "--with-freetype=bundled",
                 '--with-jvm-features=zgc',
                 "--with-version-build=${project.version.build}",
-                '--with-version-opt=LTS',
                 '--with-version-pre=',
-                "--with-version-string=${version.major}.${version.minor}.${version.security}",
-                "--with-vendor-bug-url=https://github.com/corretto/corretto-${project.version.major}/issues/",
+                "--with-vendor-bug-url=https://github.com/corretto/corretto-jdk/issues/",
+                "--with-vendor-vm-bug-url=https://github.com/corretto/corretto-jdk/issues/",
                 '--with-vendor-name=Amazon.com Inc.',
                 '--with-vendor-url=https://aws.amazon.com/corretto/',
                 "--with-vendor-version-string=Corretto-${project.version.full}"
         ]
+
+        def versionOpt = project.findProperty("corretto.versionOpt") ?: "LTS"
+        correttoCommonFlags += ["--with-version-opt=${versionOpt}"]
+
+        def versionDate = project.findProperty("corretto.versionDate")
+        if (versionDate) {
+            correttoCommonFlags += ["--with-version-date=${versionDate}"]
+        }
 
         // Valid value: null, release, debug, fastdebug, slowdebug
         def correttoDebugLevel = "release" // Default: release
         switch(project.findProperty("corretto.debug_level")) {
             case null:
             case "release":
-                correttoCommonFlags += ['--with-debug-level=release', '--with-native-debug-symbols=none']
+                correttoCommonFlags += ['--with-debug-level=release', '--with-native-debug-symbols=zipped']
                 break
             case "fastdebug":
                 correttoDebugLevel = "fastdebug"
@@ -121,7 +128,12 @@ allprojects {
         def os = ""
         if (Os.isFamily(Os.FAMILY_MAC)) {
             os = 'macosx'
-            jdkArch = "x86_64"
+            nativeArch = ['uname', '-m'].execute().text.trim()
+            if (nativeArch == "arm64") {
+                jdkArch = "aarch64"
+            } else {
+                jdkArch = "x86_64"
+            }
         } else if (Os.isFamily(Os.FAMILY_UNIX)) {
             os = 'linux'
             jdkArch = ['uname', '-m'].execute().text.trim()
@@ -164,6 +176,7 @@ allprojects {
             correttoJdkArchiveName =
                     "amazon-corretto-${project.version.full}-${os}-${correttoArch}-${correttoDebugLevel}".toString()
         }
+        correttoDebugSymbolsArchiveName = "amazon-corretto-debugsymbols-${project.version.full}-${os}-${correttoArch}".toString()
         correttoTestImageArchiveName = "amazon-corretto-testimage-${project.version.full}-${os}-${correttoArch}".toString()
     }
 }
@@ -242,9 +255,13 @@ project(':openjdksrc') {
             include 'LICENSE',
                     'ADDITIONAL_LICENSE_INFO',
                     'README',
+                    'README.md',
                     'ASSEMBLY_EXCEPTION',
+                    'commitId.txt',
                     'version.txt',
                     'amazon-cacerts',
+                    'configure',
+                    'Makefile',
                     'bin/**',
                     'doc/**',
                     'make/**',
@@ -257,4 +274,3 @@ project(':openjdksrc') {
         archives sourceDistributionTarball
     }
 }
-

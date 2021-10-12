@@ -632,6 +632,13 @@ public class JavapTask implements DisassemblerTool.DisassemblerTask, Messages {
             } catch (OutOfMemoryError e) {
                 reportError("err.nomem");
                 result = EXIT_ERROR;
+            } catch (FatalError e) {
+                Object msg = e.getLocalizedMessage();
+                if (msg == null) {
+                    msg = e;
+                }
+                reportError("err.fatal.err", msg);
+                result = EXIT_ERROR;
             } catch (Throwable t) {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
@@ -1017,7 +1024,7 @@ public class JavapTask implements DisassemblerTool.DisassemblerTask, Messages {
 
     private Diagnostic<JavaFileObject> createDiagnostic(
             final Diagnostic.Kind kind, final String key, final Object... args) {
-        return new Diagnostic<JavaFileObject>() {
+        return new Diagnostic<>() {
             public Kind getKind() {
                 return kind;
             }

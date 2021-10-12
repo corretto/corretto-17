@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2016, 2017, SAP SE. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2017 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -224,16 +224,16 @@ void LIRGenerator::cmp_reg_mem(LIR_Condition condition, LIR_Opr reg, LIR_Opr bas
   __ cmp_reg_mem(condition, reg, new LIR_Address(base, disp, type), info);
 }
 
-bool LIRGenerator::strength_reduce_multiply(LIR_Opr left, int c, LIR_Opr result, LIR_Opr tmp) {
+bool LIRGenerator::strength_reduce_multiply(LIR_Opr left, jint c, LIR_Opr result, LIR_Opr tmp) {
   if (tmp->is_valid()) {
     if (is_power_of_2(c + 1)) {
       __ move(left, tmp);
-      __ shift_left(left, log2_int(c + 1), left);
+      __ shift_left(left, log2i_exact(c + 1), left);
       __ sub(left, tmp, result);
       return true;
     } else if (is_power_of_2(c - 1)) {
       __ move(left, tmp);
-      __ shift_left(left, log2_int(c - 1), left);
+      __ shift_left(left, log2i_exact(c - 1), left);
       __ add(left, tmp, result);
       return true;
     }
@@ -331,7 +331,7 @@ void LIRGenerator::do_ArithmeticOp_FPU(ArithmeticOp* x) {
   } else {
     LIR_Opr reg = rlock(x);
     LIR_Opr tmp = LIR_OprFact::illegalOpr;
-    arithmetic_op_fpu(x->op(), reg, left.result(), right.result(), x->is_strictfp(), tmp);
+    arithmetic_op_fpu(x->op(), reg, left.result(), right.result(), tmp);
     set_result(x, reg);
   }
 }
