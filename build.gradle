@@ -51,7 +51,7 @@ allprojects {
         buildRoot = file("$buildDir/buildRoot")
         distributionDir = file("$buildDir/distributions")
         packageInfo = [
-                url       : "https://github.com/corretto/corretto-${project.version.major}",
+                url       : "https://github.com/corretto/corretto-jdk",
                 vendor    : 'Amazon',
                 packager  : 'Amazon',
                 description  : 'Amazon Corretto\'s packaging of the runtime core elements of the OpenJDK code.',
