@@ -44,7 +44,7 @@ template <class T>
 void ShenandoahMark::do_task(ShenandoahObjToScanQueue* q, T* cl, ShenandoahLiveData* live_data, ShenandoahMarkTask* task) {
   oop obj = task->obj();
 
-  // HEY! This will push array chunks into the mark queue with no regard for
+  // TODO: This will push array chunks into the mark queue with no regard for
   // generations. I don't think it will break anything, but the young generation
   // scan might end up processing some old generation array chunks.
 
