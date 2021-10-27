@@ -81,7 +81,7 @@ allprojects {
         ]
 
         def versionOpt = project.findProperty("corretto.versionOpt") ?: "LTS"
-        correttoCommonFlags += ["--with-version-opt=${versionOpt}"]
+        correttoCommonFlags += ["--with-version-opt=GenerationalShenandoah${versionOpt}"]
 
         def versionDate = project.findProperty("corretto.versionDate")
         if (versionDate) {
