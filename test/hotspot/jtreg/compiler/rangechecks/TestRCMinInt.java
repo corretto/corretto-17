@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2021, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +21,40 @@
  * questions.
  */
 
-#import "ComponentWrapperAccessibility.h"
+/**
+ * @test
+ * @bug 8259609
+ * @summary range checks with min int scale value
+ *
+ * @run main/othervm -XX:-BackgroundCompilation TestRCMinInt
+ *
+ */
 
-@interface ListRowAccessibility : ComponentWrapperAccessibility <NSAccessibilityRow>
-@end
+import java.util.Objects;
+
+public class TestRCMinInt {
+    public static void main(String[] args) {
+        for (int i = 0; i < 20_000; i++) {
+            test1(0, 10, 10);
+            test2(0, 10, 10);
+        }
+    }
+
+    private static float test1(int start, int stop, int offset) {
+        float v = 1;
+        for (int i = start; i < stop; i+=2) {
+            final int index = offset + Integer.MIN_VALUE * i;
+            Objects.checkIndex(index, 100);
+        }
+        return v;
+    }
+
+    private static float test2(int start, int stop, int offset) {
+        float v = 1;
+        for (int i = start; i < stop; i+=2) {
+            final int index = offset - Integer.MIN_VALUE * i;
+            Objects.checkIndex(index, 100);
+        }
+        return v;
+    }
+}
