@@ -131,6 +131,7 @@ task prepareArtifacts {
                 include "Contents/Home/release"
                 include "Contents/Info.plist"
                 include "Contents/MacOS/**"
+                exclude "Contents/Home/**/*.diz"
             }
             into "${buildDir}/${correttoMacDir}"
         }
@@ -154,6 +155,19 @@ task packaging(type: Exec) {
     outputs.file tarDir
 }
 
+task packageDebugSymbols(type: Tar) {
+    dependsOn prepareArtifacts
+    description 'Package debug symbols'
+    archiveName "${project.correttoDebugSymbolsArchiveName}.tar.gz"
+    compression Compression.GZIP
+    from("${jdkResultingImage}/${correttoMacDir}") {
+        include "Contents/Homebin/bin/*.diz"
+        include "Contents/Homebin/lib/*.diz"
+    }
+    into "${buildDir}/${correttoMacDir}"
+    into project.correttoDebugSymbolsArchiveName
+}
+
 task packageTestResults(type: Tar) {
     dependsOn executeTestBuild
     description 'Package test results'
@@ -163,10 +177,10 @@ task packageTestResults(type: Tar) {
         include '**'
     }
     into project.correttoTestImageArchiveName
-
 }
 
 build.dependsOn packaging
+build.dependsOn packageDebugSymbols
 build.dependsOn packageTestResults
 
 artifacts {
