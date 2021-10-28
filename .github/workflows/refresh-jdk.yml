@@ -24,3 +24,7 @@ jobs:
               with:
                 upstream: 'upstream-jdk'
                 merge-branch: 'develop'
+            - name: "Update Corretto version"
+              uses: ./.github/actions/update-version
+              with:
+                version-branch: 'develop'
