@@ -270,7 +270,7 @@ const char* Abstract_VM_Version::internal_vm_info_string() {
 
   #define INTERNAL_VERSION_SUFFIX VM_RELEASE ")" \
          " for " OS "-" CPU FLOAT_ARCH_STR LIBC_STR \
-         " JRE (" VERSION_STRING "), built on " HOTSPOT_BUILD_TIME \
+         " JRE (" VERSION_STRING " GenerationalShenandoah), built on " HOTSPOT_BUILD_TIME \
          " by " XSTR(HOTSPOT_BUILD_USER) " with " HOTSPOT_BUILD_COMPILER
 
   return strcmp(DEBUG_LEVEL, "release") == 0
