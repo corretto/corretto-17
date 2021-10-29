@@ -78,6 +78,8 @@ InstanceKlass* Management::_diagnosticCommandImpl_klass = NULL;
 InstanceKlass* Management::_garbageCollectorExtImpl_klass = NULL;
 InstanceKlass* Management::_garbageCollectorMXBean_klass = NULL;
 InstanceKlass* Management::_gcInfo_klass = NULL;
+InstanceKlass* Management::_pauseInfo_klass = NULL;
+InstanceKlass* Management::_concurrentInfo_klass = NULL;
 InstanceKlass* Management::_managementFactoryHelper_klass = NULL;
 InstanceKlass* Management::_memoryManagerMXBean_klass = NULL;
 InstanceKlass* Management::_memoryPoolMXBean_klass = NULL;
@@ -284,6 +286,20 @@ InstanceKlass* Management::com_sun_management_GcInfo_klass(TRAPS) {
     _gcInfo_klass = load_and_initialize_klass(vmSymbols::com_sun_management_GcInfo(), CHECK_NULL);
   }
   return _gcInfo_klass;
+}
+
+InstanceKlass* Management::com_sun_management_PauseInfo_klass(TRAPS) {
+  if (_pauseInfo_klass == NULL) {
+    _pauseInfo_klass = load_and_initialize_klass(vmSymbols::com_sun_management_PauseInfo(), CHECK_NULL);
+  }
+  return _pauseInfo_klass;
+}
+
+InstanceKlass* Management::com_sun_management_ConcurrentInfo_klass(TRAPS) {
+  if (_concurrentInfo_klass == NULL) {
+    _concurrentInfo_klass = load_and_initialize_klass(vmSymbols::com_sun_management_ConcurrentInfo(), CHECK_NULL);
+  }
+  return _concurrentInfo_klass;
 }
 
 InstanceKlass* Management::com_sun_management_internal_DiagnosticCommandImpl_klass(TRAPS) {
@@ -812,6 +828,24 @@ static jlong get_gc_attribute(GCMemoryManager* mgr, jmmLongAttribute att) {
   case JMM_GC_COUNT:
     return mgr->gc_count();
 
+  case JMM_GC_TIME_NS:
+    return mgr->gc_time_ns();
+  
+  case JMM_GC_PAUSE_COUNT:
+    return mgr->gc_pause_count();
+  
+  case JMM_GC_RUNNING_TIME_NS:
+    return mgr->gc_running_time_ns();
+  
+  case JMM_GC_THREADS:
+    return mgr->num_gc_threads();
+
+  case JMM_GC_MAX_PAUSES_PER_CYCLE:
+    return mgr->max_pauses_per_cycle();
+
+  case JMM_GC_MAX_CONCURRENT_PHASES_PER_CYCLE:
+    return mgr->max_concurrent_phases_per_cycle();
+  
   case JMM_GC_EXT_ATTRIBUTE_INFO_SIZE:
     return mgr->ext_attribute_info_size();
 
@@ -1813,6 +1847,56 @@ static objArrayOop get_memory_usage_objArray(jobjectArray array, int length, TRA
   return array_h();
 }
 
+static objArrayOop get_pause_info_objArray(jobjectArray array, int length, TRAPS) {
+  if (array == NULL) {
+    THROW_(vmSymbols::java_lang_NullPointerException(), 0);
+  }
+
+  objArrayOop oa = objArrayOop(JNIHandles::resolve_non_null(array));
+  objArrayHandle array_h(THREAD, oa);
+
+  // array must be of the given length
+  if (length != array_h->length()) {
+    THROW_MSG_(vmSymbols::java_lang_IllegalArgumentException(),
+               "The length of the given PauseInfo array does not match the number of pauses.", 0);
+  }
+
+  // check if the element of array is of type MemoryUsage class
+  Klass* pause_info_klass = Management::com_sun_management_PauseInfo_klass(CHECK_NULL);
+  Klass* element_klass = ObjArrayKlass::cast(array_h->klass())->element_klass();
+  if (element_klass != pause_info_klass) {
+    THROW_MSG_(vmSymbols::java_lang_IllegalArgumentException(),
+               "The element type is not PauseInfo class", 0);
+  }
+
+  return array_h();
+}
+
+static objArrayOop get_concurrent_info_objArray(jobjectArray array, int length, TRAPS) {
+  if (array == NULL) {
+    THROW_(vmSymbols::java_lang_NullPointerException(), 0);
+  }
+
+  objArrayOop oa = objArrayOop(JNIHandles::resolve_non_null(array));
+  objArrayHandle array_h(THREAD, oa);
+
+  // array must be of the given length
+  if (length != array_h->length()) {
+    THROW_MSG_(vmSymbols::java_lang_IllegalArgumentException(),
+               "The length of the given ConcurrentInfo array does not match the number of concurrent.", 0);
+  }
+
+  // check if the element of array is of type MemoryUsage class
+  Klass* concurrent_info_klass = Management::com_sun_management_ConcurrentInfo_klass(CHECK_NULL);
+  Klass* element_klass = ObjArrayKlass::cast(array_h->klass())->element_klass();
+  if (element_klass != concurrent_info_klass) {
+    THROW_MSG_(vmSymbols::java_lang_IllegalArgumentException(),
+               "The element type is not ConcurrentInfo class", 0);
+  }
+
+  return array_h();
+}
+
 // Gets the statistics of the last GC of a given GC memory manager.
 // Input parameters:
 //   obj     - GarbageCollectorMXBean object
@@ -1846,7 +1930,9 @@ JVM_ENTRY(void, jmm_GetLastGCStat(JNIEnv *env, jobject obj, jmmGCStat *gc_stat))
   // Make a copy of the last GC statistics
   // GC may occur while constructing the last GC information
   int num_pools = MemoryService::num_memory_pools();
-  GCStatInfo stat(num_pools);
+  int max_pauses = mgr->max_pauses_per_cycle();
+  int max_concurrent_phases = mgr->max_concurrent_phases_per_cycle();
+  GCStatInfo stat(num_pools, max_pauses, max_concurrent_phases);
   if (mgr->get_last_gc_stat(&stat) == 0) {
     gc_stat->gc_index = 0;
     return;
@@ -1855,6 +1941,24 @@ JVM_ENTRY(void, jmm_GetLastGCStat(JNIEnv *env, jobject obj, jmmGCStat *gc_stat))
   gc_stat->gc_index = stat.gc_index();
   gc_stat->start_time = Management::ticks_to_ns(stat.start_time());
   gc_stat->end_time = Management::ticks_to_ns(stat.end_time());
+
+  gc_stat->cause = stat.get_gc_cause();
+  gc_stat->previous_end_time = Management::ticks_to_ns(stat.get_previous_end_time());
+  gc_stat->allocated_since_previous = stat.get_allocated_since_previous();
+  gc_stat->allocated_during_collection = stat.get_allocated_during_collection();
+  gc_stat->copied_between_pools = stat.get_copied_between_pools();
+  gc_stat->garbage_collected = stat.get_garbage_collected();
+  gc_stat->garbage_found = stat.get_garbage_found();
+  gc_stat->app_thread_count_after_gc = stat.get_app_thread_count_after_gc();
+  gc_stat->max_app_thread_delay = stat.get_max_app_thread_delay();
+  gc_stat->total_app_thread_delay = stat.get_total_app_thread_delay();
+  gc_stat->delayed_app_thread_count = stat.get_delay_app_thread_count();
+  gc_stat->gc_thread_count = stat.get_gc_thread_count();
+  gc_stat->liveInPoolsBeforeGc = stat.get_live_in_pools_before_gc();
+  gc_stat->liveInPoolsAfterGc = stat.get_live_in_pools_after_gc();
+  gc_stat->num_pauses = stat.pause_array_used();
+  gc_stat->num_concurrent_phases = stat.concurrent_array_used();
+
 
   // Current implementation does not have GC extension attributes
   gc_stat->num_gc_ext_attributes = 0;
@@ -1888,11 +1992,31 @@ JVM_ENTRY(void, jmm_GetLastGCStat(JNIEnv *env, jobject obj, jmmGCStat *gc_stat))
     usage_after_gc_ah->obj_at_put(i, after_usage());
   }
 
+  // Fill the array of PauseInfo
+  objArrayOop pi = get_pause_info_objArray(gc_stat->pause_info, max_pauses, CHECK);
+
+  objArrayHandle pause_info_ah(THREAD, pi);
+
+  for (int i = 0; i < gc_stat->num_pauses; i++) {
+    Handle pause_info = MemoryService::create_PauseInfo_obj(stat.pause_stat_info_for_index(i), mgr->phase_prefix(), CHECK);
+
+    pause_info_ah->obj_at_put(i, pause_info());
+  }
+
+  // Fill the array of ConcurrentInfo
+  objArrayOop ci = get_concurrent_info_objArray(gc_stat->concurrent_info, max_concurrent_phases, CHECK);
+
+  objArrayHandle concurrent_info_ah(THREAD, ci);
+
+  for (int i = 0; i < gc_stat->num_concurrent_phases; i++) {
+    Handle concurrent_info = MemoryService::create_ConcurrentInfo_obj(stat.concurrent_stat_info_for_index(i), mgr->phase_prefix(), CHECK);
+
+    concurrent_info_ah->obj_at_put(i, concurrent_info());
+  }
+
+
   if (gc_stat->gc_ext_attribute_values_size > 0) {
     mgr->ext_attribute_values(gc_stat->gc_ext_attribute_values);
-    // Current implementation only has 1 attribute (number of GC threads)
-    // The type is 'I'
-    //gc_stat->gc_ext_attribute_values[0].i = mgr->num_gc_threads();
   }
 JVM_END
 
@@ -2060,6 +2184,12 @@ jlong Management::ticks_to_ms(jlong ticks) {
   return (jlong)(((double)ticks / (double)os::elapsed_frequency())
                  * (double)1000.0);
 }
+
+jlong Management::ticks_to_ns(jlong ticks) {
+  assert(os::elapsed_frequency() > 0, "Must be non-zero");
+  return (jlong)(((double)ticks / (double)os::elapsed_frequency())
+                 * (double)1000000000.0);
+}
 #endif // INCLUDE_MANAGEMENT
 
 // Gets the amount of memory allocated on the Java heap for a single thread.
@@ -2193,7 +2323,6 @@ JVM_ENTRY(void, jmm_GetThreadCpuTimesWithKind(JNIEnv *env, jlongArray ids,
     }
   }
 JVM_END
-
 
 
 #if INCLUDE_MANAGEMENT

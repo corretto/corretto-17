@@ -621,7 +621,11 @@
   template(getGcInfoBuilder_name,                      "getGcInfoBuilder")                                        \
   template(getGcInfoBuilder_signature,                 "()Lcom/sun/management/internal/GcInfoBuilder;")           \
   template(com_sun_management_GcInfo,                  "com/sun/management/GcInfo")                               \
-  template(com_sun_management_GcInfo_constructor_signature, "(Lcom/sun/management/internal/GcInfoBuilder;JJJ[Ljava/lang/management/MemoryUsage;[Ljava/lang/management/MemoryUsage;[Ljava/lang/Object;)V") \
+  template(com_sun_management_GcInfo_constructor_signature, "(Lcom/sun/management/internal/GcInfoBuilder;JJJ[Ljava/lang/management/MemoryUsage;[Ljava/lang/management/MemoryUsage;Ljava/lang/String;JJJJJJJJ[Lcom/sun/management/PauseInfo;I[Lcom/sun/management/ConcurrentInfo;IZ[Ljava/lang/Object;)V") \
+  template(com_sun_management_PauseInfo,               "com/sun/management/PauseInfo")                            \
+  template(com_sun_management_PauseInfo_constructor_signature, "(JJJLjava/lang/String;JJJ)V")                     \
+  template(com_sun_management_ConcurrentInfo,          "com/sun/management/ConcurrentInfo")                       \
+  template(com_sun_management_ConcurrentInfo_constructor_signature, "(JJJJLjava/lang/String;)V")                  \
   template(createGCNotification_name,                  "createGCNotification")                                    \
   template(createGCNotification_signature,             "(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/sun/management/GcInfo;)V") \
   template(createDiagnosticFrameworkNotification_name, "createDiagnosticFrameworkNotification")                   \

@@ -37,6 +37,7 @@
  * 2. There is a change in the contract between VM and Java classes.
  */
 
+
 #include "jni.h"
 
 #ifdef __cplusplus
@@ -80,6 +81,20 @@ typedef enum {
   JMM_GC_TIME_MS                     = 9,    /* Total accumulated time spent in collection */
   JMM_GC_COUNT                       = 10,   /* Total number of collections */
   JMM_JVM_UPTIME_MS                  = 11,   /* The JVM uptime in milliseconds */
+
+  /************************************
+   * Shenandoah metrics changes begin *
+   ************************************/
+  JMM_GC_TIME_NS                     = 12,   /* Total accumulated time spent in collection (nanos) */
+  JMM_GC_PAUSE_COUNT                 = 13,   /* Total number of stop the world pauses */
+  JMM_GC_RUNNING_TIME_NS             = 14,   /* Total accumulated time spent in pauses (nanos) */
+  JMM_GC_THREADS                     = 15,   /* Total number of threads for the garbage collector */
+  JMM_GC_MAX_PAUSES_PER_CYCLE        = 16,   /* Maximum possible amount of pauses per gc cycle */
+  JMM_GC_MAX_CONCURRENT_PHASES_PER_CYCLE = 17, /* Maximum possible amount of concurrent phases per gc cycle */
+
+  /***********************************
+   * Shenandoah metrics changes ends *
+   ***********************************/
 
   JMM_INTERNAL_ATTRIBUTE_INDEX       = 100,
   JMM_CLASS_LOADED_BYTES             = 101,  /* Number of bytes loaded instance classes */
@@ -193,6 +208,24 @@ typedef struct {
   jvalue*      gc_ext_attribute_values;        /* Array of jvalue for GC extension attributes */
   jint         num_gc_ext_attributes;          /* number of GC extension attribute values s are filled */
                                                /* -1 indicates gc_ext_attribute_values is not big enough */
+  const char*  cause;                          /* Cause for the gc collection */
+  jlong        previous_end_time;              /* Ent time of the previous GC */
+  jlong        allocated_since_previous;       /* Bytes allocated since end of previous collection until next start */
+  jlong        allocated_during_collection;    /* Bytes allocated during the GC cycle */
+  jlong        copied_between_pools;           /* Bytes copied between different memory pools during the collection */
+  jlong        garbage_collected;              /* Amount in bytes that were reclaimed during the collection */
+  jlong        garbage_found;                  /* Amount in bytes of garbage located during the collection */
+  jint         app_thread_count_after_gc;      /* Application threads after GC */
+  jlong        max_app_thread_delay;           /* Maximun amount of delay in ns for one thread during GC */
+  jlong        total_app_thread_delay;         /* Total amount of delay in ns across all threads during GC */
+  jint         delayed_app_thread_count;       /* Total number of threads delayed during GC */
+  jint         gc_thread_count;                /* Threads used during GC */
+  jlong        liveInPoolsBeforeGc;            /* LiveInPoolsBeforeGc */
+  jlong        liveInPoolsAfterGc;             /* LiveInPoolsAfterGc */
+  jobjectArray pause_info;                     /* Pause info array */
+  jint         num_pauses;                     /* Number of pause entries in the array */
+  jobjectArray concurrent_info;                /* Concurrent phase info array */
+  jint         num_concurrent_phases;          /* Number of concurrent phase entries in the array */
 } jmmGCStat;
 
 typedef struct {

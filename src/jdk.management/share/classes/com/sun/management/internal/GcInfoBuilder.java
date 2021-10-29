@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,9 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
+import com.sun.management.ConcurrentInfo;
 import com.sun.management.GcInfo;
+import com.sun.management.PauseInfo;
 import sun.management.Util;
 
 /**
@@ -72,10 +74,12 @@ public class GcInfoBuilder {
     GcInfo getLastGcInfo() {
         MemoryUsage[] usageBeforeGC = new MemoryUsage[poolNames.length];
         MemoryUsage[] usageAfterGC = new MemoryUsage[poolNames.length];
+        PauseInfo[] pauseInfo = new PauseInfo[getMaxPausesPerCycle(gc)];
+        ConcurrentInfo[] concurrentInfo = new ConcurrentInfo[getMaxConcurrentPhasesPerCycle(gc)];
         Object[] values = new Object[gcExtItemCount];
 
         return getLastGcInfo0(gc, gcExtItemCount, values, gcExtItemTypes,
-                              usageBeforeGC, usageAfterGC);
+                              usageBeforeGC, usageAfterGC, pauseInfo, concurrentInfo);
     }
 
     public String[] getPoolNames() {
@@ -183,6 +187,9 @@ public class GcInfoBuilder {
                                             char[] types,
                                             String[] descriptions);
 
+    private native int getMaxPausesPerCycle(GarbageCollectorMXBean gc);
+    private native int getMaxConcurrentPhasesPerCycle(GarbageCollectorMXBean gc);
+
     /**
      * Returns the last GcInfo
      *
@@ -191,11 +198,15 @@ public class GcInfoBuilder {
      * @param extAttValues Values of extension attributes to be filled.
      * @param before Memory usage before GC to be filled.
      * @param after Memory usage after GC to be filled.
+     * @param pauseInfo PauseInfo array to be filled.
+     * @param concurrentInfo ConcurrentInfo array to be filled.
      */
     private native GcInfo getLastGcInfo0(GarbageCollectorMXBean gc,
                                          int numExtAtts,
                                          Object[] extAttValues,
                                          char[] extAttTypes,
                                          MemoryUsage[] before,
-                                         MemoryUsage[] after);
+                                         MemoryUsage[] after,
+                                         PauseInfo[] pauseInfo,
+                                         ConcurrentInfo[] concurrentInfo);
 }

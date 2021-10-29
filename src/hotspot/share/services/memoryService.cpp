@@ -217,6 +217,65 @@ Handle MemoryService::create_MemoryUsage_obj(MemoryUsage usage, TRAPS) {
                           CHECK_NH);
 }
 
+Handle MemoryService::create_PauseInfo_obj(GCPauseStatInfo info, const char* phase_prefix, TRAPS) {
+  InstanceKlass* ik = Management::com_sun_management_PauseInfo_klass(CHECK_NH);
+  
+  Handle phase_cause_h;
+  if (strlen(phase_prefix) == 0) {
+    phase_cause_h = java_lang_String::create_from_str(info.get_phase_cause(), CHECK_NH);
+  } else {
+    char* phase_cause = NEW_C_HEAP_ARRAY(char, strlen(phase_prefix) + strlen(info.get_phase_cause()) + 1, mtGC);
+    strcpy(phase_cause, phase_prefix);
+    strcat(phase_cause, info.get_phase_cause());
+    phase_cause_h = java_lang_String::create_from_str(phase_cause, CHECK_NH);
+    FREE_C_HEAP_ARRAY(char, phase_cause);
+  }
+
+  JavaCallArguments args(14);
+  args.push_long(info.get_index());
+  args.push_long(info.get_start_time());
+  args.push_long(info.get_end_time());
+  args.push_oop(phase_cause_h);
+  args.push_long(info.get_operation_start_time());
+  args.push_long(info.get_operation_end_time());
+  args.push_long(info.get_phase_threads());
+
+  return JavaCalls::construct_new_instance(
+                        ik,
+                        vmSymbols::com_sun_management_PauseInfo_constructor_signature(),
+                        &args,
+                        CHECK_NH);
+}
+
+Handle MemoryService::create_ConcurrentInfo_obj(GCConcurrentStatInfo info, const char* phase_prefix, TRAPS) {
+  InstanceKlass* ik = Management::com_sun_management_ConcurrentInfo_klass(CHECK_NH);
+  
+  Handle phase_cause_h;
+  if (strlen(phase_prefix) == 0) {
+    phase_cause_h = java_lang_String::create_from_str(info.get_phase_cause(), CHECK_NH);
+  } else {
+    char* phase_cause = NEW_C_HEAP_ARRAY(char, strlen(phase_prefix) + strlen(info.get_phase_cause()) + 1, mtGC);
+    strcpy(phase_cause, phase_prefix);
+    strcat(phase_cause, info.get_phase_cause());
+    phase_cause_h = java_lang_String::create_from_str(phase_cause, CHECK_NH);
+    FREE_C_HEAP_ARRAY(char, phase_cause);
+  }
+
+  JavaCallArguments args(10);
+  args.push_long(info.get_index());
+  args.push_long(info.get_start_time());
+  args.push_long(info.get_end_time());
+  args.push_long(info.get_phase_threads());
+  args.push_oop(phase_cause_h);
+
+  return JavaCalls::construct_new_instance(
+                        ik,
+                        vmSymbols::com_sun_management_ConcurrentInfo_constructor_signature(),
+                        &args,
+                        CHECK_NH);
+
+}
+
 TraceMemoryManagerStats::TraceMemoryManagerStats(GCMemoryManager* gc_memory_manager,
                                                  GCCause::Cause cause,
                                                  bool allMemoryPoolsAffected,
@@ -263,4 +322,95 @@ void TraceMemoryManagerStats::initialize(GCMemoryManager* gc_memory_manager,
 TraceMemoryManagerStats::~TraceMemoryManagerStats() {
   MemoryService::gc_end(_gc_memory_manager, _recordPostGCUsage, _recordAccumulatedGCTime,
                         _recordGCEndTime, _countCollection, _cause, _allMemoryPoolsAffected);
+}
+
+TraceMemoryManagerPauseStats::TraceMemoryManagerPauseStats() :
+  _gc_memory_manager(NULL),
+  _record_accumulated_pause_time(false),
+  _record_individual_pauses(false),
+  _record_duration(false),
+  _record_operation_time(false),
+  _cycle_pause(false)
+  {}
+
+
+TraceMemoryManagerPauseStats::TraceMemoryManagerPauseStats(ConcurrentGCMemoryManager* gc_memory_manager,
+                        const char* phase_cause,
+                        size_t phase_threads,
+                        bool record_accumulated_pause_time,
+                        bool count_pauses,
+                        bool record_individual_pauses, 
+                        bool record_duration,
+                        bool record_operation_time,
+                        bool record_pause_cause,
+                        bool record_phase_threads,
+                        bool cycle_pause) {
+  initialize(gc_memory_manager, phase_cause, phase_threads, record_accumulated_pause_time, count_pauses,
+             record_individual_pauses, record_duration, record_operation_time, record_pause_cause, record_phase_threads, cycle_pause);
+}
+
+void TraceMemoryManagerPauseStats::initialize(ConcurrentGCMemoryManager* gc_memory_manager,
+                        const char* phase_cause,
+                        size_t phase_threads,
+                        bool record_accumulated_pause_time,
+                        bool count_pauses,
+                        bool record_individual_pauses, 
+                        bool record_duration,
+                        bool record_operation_time,
+                        bool record_pause_cause,
+                        bool record_phase_threads,
+                        bool cycle_pause) {
+  _gc_memory_manager = gc_memory_manager;
+  _record_accumulated_pause_time = record_accumulated_pause_time;
+  _record_individual_pauses = record_individual_pauses;
+  _record_duration = record_duration;
+  _record_operation_time = record_operation_time;
+  _cycle_pause = cycle_pause;
+  _gc_memory_manager->pause_begin(phase_cause, phase_threads, record_accumulated_pause_time, count_pauses, record_individual_pauses, 
+                                  record_duration, record_operation_time, record_pause_cause, record_phase_threads);
+}
+
+TraceMemoryManagerPauseStats::~TraceMemoryManagerPauseStats() {
+  if (_gc_memory_manager != NULL) {
+    _gc_memory_manager->pause_end(_record_accumulated_pause_time, _record_individual_pauses,
+                                  _record_duration, _record_operation_time, _cycle_pause);
+  }
+}
+
+TraceMemoryManagerConcurrentStats::TraceMemoryManagerConcurrentStats() :
+  _gc_memory_manager(NULL),
+  _phase_index(0),
+  _record_individual_phases(false),
+  _record_duration(false)
+  {}
+
+TraceMemoryManagerConcurrentStats::TraceMemoryManagerConcurrentStats(ConcurrentGCMemoryManager* gc_memory_manager,
+                          const char* phase_cause,
+                          size_t phase_threads,
+                          bool record_individual_phases,
+                          bool record_duration,
+                          bool record_pause_cause,
+                          bool record_phase_threads) {
+  initialize(gc_memory_manager, phase_cause, phase_threads, record_individual_phases,
+             record_duration, record_pause_cause, record_phase_threads);
+}
+
+void TraceMemoryManagerConcurrentStats::initialize(ConcurrentGCMemoryManager* gc_memory_manager,
+                          const char* phase_cause,
+                          size_t phase_threads,
+                          bool record_individual_phases,
+                          bool record_duration,
+                          bool record_pause_cause,
+                          bool record_phase_threads) {
+  _gc_memory_manager = gc_memory_manager;
+  _record_individual_phases = record_individual_phases;
+  _record_duration = record_duration;
+  _phase_index = _gc_memory_manager->concurrent_phase_begin(phase_cause, phase_threads, record_individual_phases, 
+                                                            record_duration, record_pause_cause, record_phase_threads);
+}
+
+TraceMemoryManagerConcurrentStats::~TraceMemoryManagerConcurrentStats() {
+  if (_gc_memory_manager != NULL) {
+    _gc_memory_manager->concurrent_phase_end(_phase_index, _record_individual_phases, _record_duration);
+  }
 }
