@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,38 +21,27 @@
  * questions.
  */
 
-import javax.security.auth.Subject;
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.auth.login.LoginException;
-import javax.security.auth.spi.LoginModule;
-import java.util.Map;
+package nsk.jdb.repeat.repeat001;
 
-public class SecondLoginModule implements LoginModule {
+import nsk.share.Log;
+import nsk.share.jdb.JdbArgumentHandler;
+
+import java.io.PrintStream;
 
 
-    @Override
-    public void initialize(Subject subject, CallbackHandler callbackHandler,
-            Map<String, ?> sharedState, Map<String, ?> options) {
-        // Nothing
+/* This is debuggee application */
+public class repeat001a {
+    static repeat001a _repeat001a = new repeat001a();
+
+    public static void main(String[] args) {
+       System.exit(repeat001.JCK_STATUS_BASE + _repeat001a.runIt(args, System.out));
     }
 
-    @Override
-    public boolean login() throws LoginException {
-        return true;
-    }
+    public int runIt(String[] args, PrintStream out) {
+        JdbArgumentHandler argumentHandler = new JdbArgumentHandler(args);
+        Log log = new Log(out, argumentHandler);
 
-    @Override
-    public boolean commit() throws LoginException {
-        return true;
-    }
-
-    @Override
-    public boolean abort() throws LoginException {
-        return true;
-    }
-
-    @Override
-    public boolean logout() throws LoginException {
-        return true;
+        log.display("Debuggee PASSED");
+        return repeat001.PASSED;
     }
 }
