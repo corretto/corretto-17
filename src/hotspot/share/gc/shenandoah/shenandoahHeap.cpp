@@ -972,6 +972,11 @@ void ShenandoahHeap::coalesce_and_fill_old_regions() {
     virtual void heap_region_do(ShenandoahHeapRegion* region) override {
       // old region is not in the collection set and was not immediately trashed
       if (region->is_old() && region->is_active() && !region->is_humongous()) {
+        // Reset the coalesce and fill boundary because this is a global collect
+        // and cannot be preempted by young collects. We want to be sure the entire
+        // region is coalesced here and does not resume from a previously interrupted
+        // or completed coalescing.
+        region->begin_preemptible_coalesce_and_fill();
         region->oop_fill_and_coalesce();
       }
     }
@@ -2705,7 +2710,8 @@ void ShenandoahHeap::verify_rem_set_at_mark() {
 
   log_debug(gc)("Verifying remembered set at %s mark", doing_mixed_evacuations()? "mixed": "young");
 
-  if (doing_mixed_evacuations() || active_generation()->generation_mode() == GLOBAL) {
+  if (doing_mixed_evacuations() ||
+      is_concurrent_prep_for_mixed_evacuation_in_progress() || active_generation()->generation_mode() == GLOBAL) {
     ctx = complete_marking_context();
   } else {
     ctx = nullptr;
@@ -2839,7 +2845,8 @@ void ShenandoahHeap::verify_rem_set_at_update_ref() {
   ShenandoahRegionIterator iterator;
   ShenandoahMarkingContext* ctx;
 
-  if (doing_mixed_evacuations() || active_generation()->generation_mode() == GLOBAL) {
+  if (doing_mixed_evacuations() ||
+      is_concurrent_prep_for_mixed_evacuation_in_progress() || active_generation()->generation_mode() == GLOBAL) {
     ctx = complete_marking_context();
   } else {
     ctx = nullptr;
