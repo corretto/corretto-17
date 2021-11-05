@@ -2,6 +2,9 @@ name: 'Update Corretto version'
 description: 'Update the version based on upstream configuration'
 
 inputs:
+    upstream:
+        description: 'upstream remote suffix'
+        required: true
     version-branch:
         description: 'Branch to update version of'
         required: true
@@ -11,6 +14,6 @@ outputs:
 runs:
     using: "composite"
     steps:
-        - run: $GITHUB_ACTION_PATH/update-version.sh ${{ inputs.version-branch }}
+        - run: $GITHUB_ACTION_PATH/update-version.sh ${{ inputs.upstream }} ${{ inputs.version-branch }}
           shell: bash
           id: update-version
