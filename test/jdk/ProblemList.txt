@@ -493,7 +493,6 @@ java/awt/Frame/DisposeParentGC/DisposeParentGC.java 8079786 macosx-all
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java 8169468 macosx-all
 
 java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223,8274106 macosx-aarch64,linux-all,windows-all
-java/awt/Window/WindowResizing/DoubleClickTitleBarTest.java 8233557 macosx-all
 java/awt/keyboard/AllKeyCode/AllKeyCode.java 8242930 macosx-all
 java/awt/FullScreen/8013581/bug8013581.java 8169471 macosx-all
 java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568 macosx-all
@@ -608,8 +607,6 @@ java/net/ServerSocket/AcceptInheritHandle.java                  8211854 aix-ppc6
 java/nio/channels/DatagramChannel/Unref.java                    8233519 generic-all
 
 java/nio/channels/AsynchronousSocketChannel/StressLoopback.java 8211851 aix-ppc64
-
-java/nio/channels/FileChannel/LargeGatheringWrite.java          8276199 windows-x64
 
 ############################################################################
 
