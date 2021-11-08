@@ -30,6 +30,7 @@
 #include "gc/shared/gcVMOperations.hpp"
 #include "gc/shared/isGCActiveMark.hpp"
 #include "gc/shared/suspendibleThreadSet.hpp"
+#include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "jfr/jfrEvents.hpp"
@@ -50,6 +51,8 @@ private:
   GCTracer* const _tracer;
 
   TraceMemoryManagerStats _trace_cycle;
+  TraceMemoryManagerStats _trace_memory_manager_stats;
+
 public:
   ShenandoahGCSession(GCCause::Cause cause, ShenandoahGeneration* generation);
   ~ShenandoahGCSession();
@@ -87,7 +90,7 @@ private:
   ConcurrentGCTimer* const _timer;
 
 public:
-  ShenandoahPausePhase(const char* title, ShenandoahPhaseTimings::Phase phase, bool log_heap_usage = false);
+  ShenandoahPausePhase(const char* title, ShenandoahPhaseTimings::Phase phase, GenerationMode generation_mode, size_t num_workers, bool log_heap_usage = false);
   ~ShenandoahPausePhase();
 };
 
@@ -99,9 +102,10 @@ class ShenandoahConcurrentPhase : public ShenandoahTimingsTracker {
 private:
   GCTraceTimeWrapper<LogLevel::Info, LOG_TAGS(gc)> _tracer;
   ConcurrentGCTimer* const _timer;
+  TraceMemoryManagerConcurrentStats  _trace_gc_concurrent_stats;
 
 public:
-  ShenandoahConcurrentPhase(const char* title, ShenandoahPhaseTimings::Phase phase, bool log_heap_usage = false);
+  ShenandoahConcurrentPhase(const char* title, ShenandoahPhaseTimings::Phase phase, GenerationMode generation_mode, size_t num_workers, bool log_heap_usage = false);
   ~ShenandoahConcurrentPhase();
 };
 
@@ -135,9 +139,11 @@ private:
   const SvcGCMarker             _svc_gc_mark;
   const IsGCActiveMark          _is_gc_active_mark;
   TraceMemoryManagerStats       _trace_pause;
+  TraceMemoryManagerPauseStats  _trace_gc_pause_stats;
 
 public:
-  ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type);
+  ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type,
+                        GenerationMode generation_mode);
 };
 
 class ShenandoahSafepoint : public AllStatic {

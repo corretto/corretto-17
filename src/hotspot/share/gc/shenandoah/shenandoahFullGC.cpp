@@ -41,6 +41,7 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
+#include "gc/shenandoah/shenandoahMemoryManager.hpp"
 #include "gc/shenandoah/shenandoahMetrics.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahReferenceProcessor.hpp"
@@ -141,6 +142,17 @@ void ShenandoahFullGC::vmop_entry_full(GCCause::Cause cause) {
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
   TraceCollectorStats tcs(heap->monitoring_support()->full_stw_collection_counters());
   ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::full_gc_gross);
+  TraceMemoryManagerPauseStats pause_stats(heap->memory_manager(GLOBAL),
+      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::full_gc_gross), 
+      /* phase_threads = */                 0L,
+      /* record_accumulated_pause_time = */ false,
+      /* count_pauses = */                  false,
+      /* record_individual_pauses = */      true,
+      /* record_duration = */               true,
+      /* record_operation_time = */         false,
+      /* record_phase_cause = */            true,
+      /* record_phase_threads = */          false,
+      /* cycle_pause = */                   true);
 
   heap->try_inject_alloc_failure();
   VM_ShenandoahFullGC op(cause, this);
@@ -149,11 +161,12 @@ void ShenandoahFullGC::vmop_entry_full(GCCause::Cause cause) {
 
 void ShenandoahFullGC::entry_full(GCCause::Cause cause) {
   static const char* msg = "Pause Full";
-  ShenandoahPausePhase gc_phase(msg, ShenandoahPhaseTimings::full_gc, true /* log_heap_usage */);
+  uint num_workers = ShenandoahWorkerPolicy::calc_workers_for_fullgc();
+  ShenandoahPausePhase gc_phase(msg, ShenandoahPhaseTimings::full_gc, GLOBAL, num_workers, true /* log_heap_usage */);
   EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(ShenandoahHeap::heap()->workers(),
-                              ShenandoahWorkerPolicy::calc_workers_for_fullgc(),
+                              num_workers,
                               "full gc");
 
   op_full(cause);

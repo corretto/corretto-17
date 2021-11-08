@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,15 @@
 package com.sun.management;
 
 import java.lang.management.MemoryUsage;
+import java.lang.management.MemoryPoolMXBean;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeDataView;
 import javax.management.openmbean.CompositeType;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import com.sun.management.internal.GcInfoCompositeData;
 import com.sun.management.internal.GcInfoBuilder;
@@ -69,7 +72,19 @@ public class GcInfo implements CompositeData, CompositeDataView {
     private final long endTime;
     private final Map<String, MemoryUsage> usageBeforeGc;
     private final Map<String, MemoryUsage> usageAfterGc;
+    private final String gcCause;
+    private final long previousEndTime;
+    private final long allocatedSincePrevious;
+    private final long allocatedDuringCollection;
+    private final long copiedBetweenPools;
+    private final long garbageFound;
+    private final long garbageCollected;
+    private final long liveInPoolsBeforeGc;
+    private final long liveInPoolsAfterGc;
+    private final PauseInfo[] pauseInfoArray;
+    private final ConcurrentInfo[] concurrentInfoArray;
     private final Object[] extAttributes;
+    private final boolean valid;
     private final CompositeData cdata;
     private final GcInfoBuilder builder;
 
@@ -77,6 +92,20 @@ public class GcInfo implements CompositeData, CompositeDataView {
                    long index, long startTime, long endTime,
                    MemoryUsage[] muBeforeGc,
                    MemoryUsage[] muAfterGc,
+                   String gcCause, 
+                   long previousEndTime,
+                   long allocatedSincePrevious,
+                   long allocatedDuringCollection,
+                   long copiedBetweenPools,
+                   long garbageFound,
+                   long garbageCollected,
+                   long liveInPoolsBeforeGc,
+                   long liveInPoolsAfterGc,
+                   PauseInfo[] pauseInfo,
+                   int pauseInfoSize,
+                   ConcurrentInfo[] concurrentInfo,
+                   int concurrentInfoSize,
+                   boolean valid,
                    Object[] extAttributes) {
         this.builder       = builder;
         this.index         = index;
@@ -89,28 +118,62 @@ public class GcInfo implements CompositeData, CompositeDataView {
             this.usageBeforeGc.put(poolNames[i],  muBeforeGc[i]);
             this.usageAfterGc.put(poolNames[i],  muAfterGc[i]);
         }
+        this.gcCause = gcCause;
+        this.previousEndTime = previousEndTime;
+        this.allocatedSincePrevious = allocatedSincePrevious;
+        this.allocatedDuringCollection = allocatedDuringCollection;
+        this.copiedBetweenPools = copiedBetweenPools;
+        this.garbageFound = garbageFound;
+        this.garbageCollected = garbageCollected;
+        this.liveInPoolsBeforeGc = liveInPoolsBeforeGc;
+        this.liveInPoolsAfterGc = liveInPoolsAfterGc;
+        this.pauseInfoArray = new PauseInfo[pauseInfoSize];
+        System.arraycopy(pauseInfo, 0, this.pauseInfoArray, 0, pauseInfoSize);
+        this.concurrentInfoArray = new ConcurrentInfo[concurrentInfoSize];
+        System.arraycopy(concurrentInfo, 0, this.concurrentInfoArray, 0, concurrentInfoSize);
+        this.valid = valid;
         this.extAttributes = extAttributes;
-        this.cdata = new GcInfoCompositeData(this, builder, extAttributes);
+        try {
+            this.cdata = new GcInfoCompositeData(this, builder, extAttributes);
+        } catch (Exception e) {
+            System.out.println("Exception");
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     private GcInfo(CompositeData cd) {
         GcInfoCompositeData.validateCompositeData(cd);
 
         this.index         = GcInfoCompositeData.getId(cd);
-        this.startTime     = GcInfoCompositeData.getStartTime(cd);
-        this.endTime       = GcInfoCompositeData.getEndTime(cd);
+        this.startTime     = GcInfoCompositeData.getStartTimeNanos(cd);
+        this.endTime       = GcInfoCompositeData.getEndTimeNanos(cd);
         this.usageBeforeGc = GcInfoCompositeData.getMemoryUsageBeforeGc(cd);
         this.usageAfterGc  = GcInfoCompositeData.getMemoryUsageAfterGc(cd);
+
+        this.gcCause                   = GcInfoCompositeData.getGarbageCollectionCause(cd);
+        this.previousEndTime           = GcInfoCompositeData.getPreviousEndTimeNanos(cd);
+        this.allocatedSincePrevious    = GcInfoCompositeData.getAllocatedBetweenEndOfPreviousAndStart(cd);
+        this.allocatedDuringCollection = GcInfoCompositeData.getAllocatedDuringCollection(cd);
+        this.copiedBetweenPools        = GcInfoCompositeData.getCopiedBetweenPools(cd);
+        this.garbageFound              = GcInfoCompositeData.getGarbageFound(cd);
+        this.garbageCollected          = GcInfoCompositeData.getGarbageCollected(cd);
+        this.liveInPoolsBeforeGc       = GcInfoCompositeData.getLiveInPoolsBeforeGc(cd);
+        this.liveInPoolsAfterGc        = GcInfoCompositeData.getLiveInPoolsAfterGc(cd);
+        this.valid                     = GcInfoCompositeData.isValid(cd);
+
+        this.pauseInfoArray = null;
+        this.concurrentInfoArray = null;
         this.extAttributes = null;
         this.builder       = null;
         this.cdata         = cd;
     }
 
     /**
-     * Returns the identifier of this garbage collection which is
+     * Returns the identifier of this garbage collection, which is
      * the number of collections that this collector has done.
      *
-     * @return the identifier of this garbage collection which is
+     * @return the identifier of this garbage collection, which is
      * the number of collections that this collector has done.
      */
     public long getId() {
@@ -124,7 +187,7 @@ public class GcInfo implements CompositeData, CompositeDataView {
      * @return the start time of this GC.
      */
     public long getStartTime() {
-        return startTime;
+        return startTime / 1000_000L;
     }
 
     /**
@@ -134,7 +197,7 @@ public class GcInfo implements CompositeData, CompositeDataView {
      * @return the end time of this GC.
      */
     public long getEndTime() {
-        return endTime;
+        return endTime / 1000_000L;
     }
 
     /**
@@ -143,7 +206,7 @@ public class GcInfo implements CompositeData, CompositeDataView {
      * @return the elapsed time of this GC in milliseconds.
      */
     public long getDuration() {
-        return endTime - startTime;
+        return (endTime - startTime) / 1000_000L;
     }
 
     /**
@@ -174,6 +237,320 @@ public class GcInfo implements CompositeData, CompositeDataView {
      */
     public Map<String, MemoryUsage> getMemoryUsageAfterGc() {
         return Collections.unmodifiableMap(usageAfterGc);
+    }
+
+    /**
+     * Whether the data returned by this {@code GCDetails} object has passed
+     * all validity tests.
+     *
+     * @return {@code true} if the data in this {@code GCDetails} is valid;
+     *         otherwise, {@code false}.
+     */
+    public boolean isValid() {
+        return valid;
+    }
+
+    /**
+     * The reason for this collection. The most common one is when the Java
+     * virtual machine detects that all available Java heap space has been
+     * occupied, or that the Java virtual machine estimates that all available
+     * space will soon be occupied. A Java virtual machine might use "Max" as
+     * the string to identify this cause for starting a collection, or
+     * possibly "Alo" for an object allocation failure. The reason is unique
+     * across all collectors supported by the Java virtual machine.
+     *
+     * @return a {@link String} representing the reason for this collection.
+     */
+    public String getGarbageCollectionCause() {
+        return gcCause;
+    }
+
+    /**
+     * At the start of this collection, the approximate number of bytes occupied
+     * by live objects in the memory pools affected by the associated collector.
+     * If this operation is not supported, this method returns {@code -1}.
+     * <p>
+     * Note that "the memory pools affected by the associated collector" may
+     * not be the same as "the memory pools affected by this collection".
+     *
+     * @return the approximate number of bytes occupied by live objects in the
+     *         memory pools affected by the associated collector at the start
+     *         of this collection; or {@code -1} if this operation is not
+     *         supported.
+     */
+    public long getLiveInPoolsBeforeGc() {
+        return liveInPoolsBeforeGc;
+    }
+
+    /**
+     * At the end of this collection, the approximate number of bytes occupied
+     * by live objects in the memory pools affected by the associated collector.
+     * If this operation is not supported, this method returns {@code -1}.
+     * <p>
+     * Note that "the memory pools affected by the associated collector" may
+     * not be the same as "the memory pools affected by this collection".
+     *
+     * @return the approximate number of bytes occupied by live objects in the
+     *         memory pools affected by the associated collector at the end of
+     *         this collection; or {@code -1} if this operation is not supported.
+     */
+    public long getLiveInPoolsAfterGc() {
+        return liveInPoolsAfterGc;
+    }
+
+    /**
+     * The aggregate size, in bytes, of all unreachable objects discovered
+     * by the associated collector during this collection.
+     *
+     * @return the aggregate size, in bytes, of all unreachable objects
+     *         discovered by the associated collector during this collection.
+     */
+    public long getGarbageFound() {
+        return garbageFound;
+    }
+
+    /**
+     * The aggregate size, in bytes, of all objects collected by the
+     * associated collector during this collection.
+     *
+     * @return the aggregate size, in bytes, of all objects collected by
+     *         the associated collector during this collection.
+    */
+    public long getGarbageCollected() {
+        return garbageCollected;
+    }
+
+    /**
+     * If objects were copied between the memory pools affected by this
+     * collection, their aggregate size in bytes. If this is a young
+     * collection in a two-generation system, this value is the total
+     * size of objects promoted to the old generation. This value is
+     * not the same as the difference in before and after {@link MemoryUsage}
+     * occupancy because allocation in the target {@link MemoryPoolMXBean MemoryPool}(s)
+     * may have been done by other than the GC threads that ran this
+     * collection.
+     *
+     * @return the aggregate size in bytes of objects copied between
+     *         the memory pools affected by this collection.
+     */
+    public long getCopiedBetweenPools() {
+        return copiedBetweenPools;
+    }
+
+    /**
+     * The approximate start time of this collection in nanoseconds
+     * since Java virtual machine launch.
+     *
+     * @return the start time of this collection.
+     */
+    public long getStartTimeNanos() {
+        return startTime;
+    }
+
+    /**
+     * The approximate start time of this collection (in seconds
+     * as a double) since Java virtual machine launch.
+     * <p>
+     * This method is a convenience method that returns an
+     * approximation of the value returned by
+     * {@link #getStartTimeNanos getStartTimeNanos}.
+     *
+     * @return the start time of this collection.
+     */
+    private double getStartTimeSeconds() {
+        return (double)startTime / 1.0e9;
+    }
+
+    /**
+     * The approximate end time of this collection in nanoseconds
+     * since Java virtual machine launch.
+     *
+     * @return the end time of this collection.
+     */
+    public long getEndTimeNanos() {
+        return endTime;
+    }
+
+    /**
+     * The approximate end time of this collection (in seconds
+     * as a double) since Java virtual machine launch.
+     * <p>
+     * This method is a convenience method that returns an
+     * approximation of the value returned by
+     * {@link #getEndTimeNanos getEndTimeNanos}.
+     *
+     * @return the end time of this collection.
+     */
+    private double getEndTimeSeconds() {
+        return (double)endTime / 1.0e9;
+    }
+
+    /**
+     * The approximate elapsed wall clock time in nanoseconds between
+     * the start and end of this collection. The returned value is
+     * equal to {@link #getEndTimeNanos getEndTimeNanos}() -
+     * {@link #getStartTimeNanos getStartTimeNanos}().
+     *
+     * @return the elapsed time of this collection. 
+     */
+    public long getDurationNanos() {
+        return endTime - startTime;
+    }
+
+    /**
+     * The approximate elapsed wall clock time (in seconds as a double)
+     * between the start and end of this collection. The returned value is
+     * equal to {@link #getEndTimeSeconds getEndTimeSeconds}() -
+     * {@link #getStartTimeSeconds getStartTimeSeconds}(), which is not
+     * the same as (double){@link #getDurationNanos getDurationNanos}().
+     *
+     * @return the elapsed time of this collection.
+     */
+    private double getDurationSeconds() {
+        return getEndTimeSeconds() - getStartTimeSeconds();
+    }
+
+    /** 
+     * The approximate amount of time in nanoseconds from the end of
+     * the last previous collection run by the associated collector
+     * to the start of this collection. The time interval represents
+     * the amount of time the collector did not run.
+     *
+     * @return the amount of time from the end of the last previous
+     *         collection run by the associated collector to the start
+     *         of this collection.
+     */
+    public long getTimeFromEndOfPreviousToStartNanos() {
+        return startTime - previousEndTime;
+    }
+
+    /** 
+     * The approximate amount of time (in seconds as a double) from
+     * the end of the last previous collection run by the associated
+     * collector to the start of this collection. The time interval
+     * represents the amount of time the collector did not run.
+     * <p>
+     * This method is a convenience method that returns an
+     * approximation of the value returned by
+     * {@link #getTimeFromEndOfPreviousToStartNanos getTimeFromEndOfPreviousToStartNanos}.
+     *
+     * @return the amount of time from the end of the last previous
+     *         collection run by the associated collector to the start
+     *         of this collection.
+     */
+    private double getTimeFromEndOfPreviousToStartSeconds() {
+        return (double)getTimeFromEndOfPreviousToStartNanos() / 1.0e9;
+    }
+
+    /**
+     * The percentage of time that the associated collector ran over the
+     * time interval between the end of the last previous collection run
+     * by it and the end of this collection.
+     *
+     * The percentage is calculated by:
+     * ( {@link #getDurationSeconds getDurationSeconds}() /
+     * ( (double){@link #getTimeFromEndOfPreviousToStartNanos getTimeFromEndOfPreviousToStartNanos}()
+     * + {@link #getDurationSeconds getDurationSeconds}() ) ) * 100.
+     *
+     * @return the percentage of time the associated collector ran
+     *         between the end of its last previous collection and
+     *         the end of this collection.
+     */
+    public double getPercentageOfTimeCollectorWasRunning() {
+        return (getDurationSeconds() / (getTimeFromEndOfPreviousToStartSeconds() + getDurationSeconds())) * 100;
+    }
+
+    /**
+     * The approximate object allocation rate in megabytes per second in
+     * the memory pools affected by the associated collector during the
+     * time interval returned by {@link #getDurationNanos getDurationNanos}.
+     * <p>
+     * Note that "the memory pools affected by the associated collector" may
+     * not be the same as "the memory pools affected by this collection".
+     *
+     * @return the object allocation rate in megabytes per second during the
+     *         time interval between the start and end of this collection.
+     */
+    public double getAllocRateDuringCollection() {
+        return (allocatedDuringCollection / (1024 * 1024)) / getDurationSeconds();
+    }
+
+    /**
+     * The approximate object allocation rate in megabytes per second in
+     * the memory pools affected by the associated collector during the
+     * time interval returned by
+     * {@link #getTimeFromEndOfPreviousToStartNanos getTimeFromEndOfPreviousToStartNanos}.
+     * <p>
+     * Note that "the memory pools affected by the associated collector" may
+     * not be the same as "the memory pools affected by this collection".
+     *
+     * @return the object allocation rate in megabytes per second during the
+     *         time interval between the end of the last previous collection
+     *         and the start of this collection.
+     */
+    public double getAllocRateBetweenEndOfPreviousAndStart() {
+        return (allocatedSincePrevious / (1024 * 1024)) / getTimeFromEndOfPreviousToStartSeconds();
+    }
+
+    /**
+     * The approximate end time of the last previous collection in nanoseconds
+     * since Java virtual machine launch.
+     *
+     * @return the end time of the last previous collection.
+     */
+    public long getPreviousEndTimeNanos() {
+        return previousEndTime;
+    }
+
+    /**
+     * The number of bytes allocated in the memory pools affected by the 
+     * associated collector during the time interval returned by {@link #getDurationNanos getDurationNanos}.
+     * <p>
+     * Note that "the memory pools affected by the associated collector" may
+     * not be the same as "the memory pools affected by this collection".
+     *
+     * @return the object allocated bytes during the time interval between 
+     *         the start and end of this collection.
+     */
+    public long getAllocatedDuringCollection() {
+        return allocatedDuringCollection;
+    }
+    
+    /**
+     * The number of bytes allocated in the memory pools affected by the 
+     * associated collector during the time interval returned by 
+     * {@link #getTimeFromEndOfPreviousToStartNanos getTimeFromEndOfPreviousToStartNanos}.
+     * <p>
+     * Note that "the memory pools affected by the associated collector" may
+     * not be the same as "the memory pools affected by this collection".
+     *
+     * @return the object allocated bytes during the time interval between 
+     *         the end of the last previous collection and the start of this 
+     *         collection.
+     */
+    public long getAllocatedBetweenEndOfPreviousAndStart() {
+        return allocatedSincePrevious;
+    }
+
+    /**
+     * A {@link List} of {@link PauseInfo} for the pauses required during
+     * this collection.
+     *
+     * @return a List of PauseInfo for the pauses during this collection.
+     */
+    public List<PauseInfo> getPauseInfo() {
+        return java.util.Collections.unmodifiableList(Arrays.asList(pauseInfoArray));
+    }
+
+    /**
+     * A {@link List} of {@link ConcurrentInfo} for the concurrent
+     * phases of this collection.
+     *
+     * @return a List of {@link ConcurrentInfo} for the concurrent
+     *         phases of this collection.
+     */
+    public List<ConcurrentInfo> getConcurrentInfo() {
+        return java.util.Collections.unmodifiableList(Arrays.asList(concurrentInfoArray));
     }
 
    /**

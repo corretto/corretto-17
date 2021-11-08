@@ -31,6 +31,7 @@
 #include "gc/shenandoah/shenandoahFullGC.hpp"
 #include "gc/shenandoah/shenandoahGeneration.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahMemoryManager.hpp"
 #include "gc/shenandoah/shenandoahMetrics.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
@@ -56,8 +57,21 @@ bool ShenandoahDegenGC::collect(GCCause::Cause cause) {
 }
 
 void ShenandoahDegenGC::vmop_degenerated() {
-  TraceCollectorStats tcs(ShenandoahHeap::heap()->monitoring_support()->full_stw_collection_counters());
+  ShenandoahHeap* const heap = ShenandoahHeap::heap();
+  TraceCollectorStats tcs(heap->monitoring_support()->full_stw_collection_counters());
   ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::degen_gc_gross);
+  TraceMemoryManagerPauseStats pause_stats(heap->memory_manager(_generation->generation_mode()),
+      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::degen_gc_gross),
+      /* phase_threads = */                 0L,
+      /* record_accumulated_pause_time = */ false,
+      /* count_pauses = */                  false,
+      /* record_individual_pauses = */      true,
+      /* record_duration = */               true,
+      /* record_operation_time = */         false,
+      /* record_phase_cause = */            true,
+      /* record_phase_threads = */          false,
+      /* cycle_pause = */                   true);
+
   VM_ShenandoahDegeneratedGC degenerated_gc(this);
   VMThread::execute(&degenerated_gc);
 }
@@ -65,7 +79,8 @@ void ShenandoahDegenGC::vmop_degenerated() {
 void ShenandoahDegenGC::entry_degenerated() {
   char msg[1024];
   degen_event_message(_degen_point, msg, sizeof(msg));
-  ShenandoahPausePhase gc_phase(msg, ShenandoahPhaseTimings::degen_gc, true /* log_heap_usage */);
+  uint num_workers = ShenandoahWorkerPolicy::calc_workers_for_stw_degenerated();
+  ShenandoahPausePhase gc_phase(msg, ShenandoahPhaseTimings::degen_gc, _generation->generation_mode(), num_workers, true /* log_heap_usage */);
   EventMark em("%s", msg);
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
 
@@ -74,7 +89,7 @@ void ShenandoahDegenGC::entry_degenerated() {
   heap->set_aging_cycle(false);
 
   ShenandoahWorkerScope scope(heap->workers(),
-                              ShenandoahWorkerPolicy::calc_workers_for_stw_degenerated(),
+                              num_workers,
                               "stw degenerated gc");
 
   heap->set_degenerated_gc_in_progress(true);

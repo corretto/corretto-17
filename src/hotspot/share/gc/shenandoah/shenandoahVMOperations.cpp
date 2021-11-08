@@ -48,36 +48,36 @@ void VM_ShenandoahReferenceOperation::doit_epilogue() {
 }
 
 void VM_ShenandoahInitMark::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT);
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
   _gc->entry_init_mark();
 }
 
 void VM_ShenandoahFinalMarkStartEvac::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT);
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
   _gc->entry_final_mark();
 }
 
 void VM_ShenandoahFullGC::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::FULL);
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::FULL, GLOBAL);
   _full_gc->entry_full(_gc_cause);
 }
 
 void VM_ShenandoahDegeneratedGC::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT);
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
   _gc->entry_degenerated();
 }
 
 void VM_ShenandoahInitUpdateRefs::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT);
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
   _gc->entry_init_updaterefs();
 }
 
 void VM_ShenandoahFinalUpdateRefs::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT);
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
   _gc->entry_final_updaterefs();
 }
 
 void VM_ShenandoahFinalRoots::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT);
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
   _gc->entry_final_roots();
 }

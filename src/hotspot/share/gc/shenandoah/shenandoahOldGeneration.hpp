@@ -69,6 +69,10 @@ class ShenandoahOldGeneration : public ShenandoahGeneration {
   // object at the barrier, but we reject this approach because it is likely
   // the performance impact would be too severe.
   void purge_satb_buffers(bool abandon);
+
+  // In order to track amount that is promoted during a collection, we need
+  // to notify the global and young memory managers of the reset
+  void reset_bytes_allocated_since_gc_start() override;
  protected:
   bool is_concurrent_mark_in_progress() override;
 };

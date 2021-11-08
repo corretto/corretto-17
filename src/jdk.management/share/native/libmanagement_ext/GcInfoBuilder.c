@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,32 @@ JNIEXPORT jint JNICALL Java_com_sun_management_internal_GcInfoBuilder_getNumGcEx
     }
     value = jmm_interface->GetLongAttribute(env, gc,
                                             JMM_GC_EXT_ATTRIBUTE_INFO_SIZE);
+    return (jint) value;
+}
+
+JNIEXPORT jint JNICALL Java_com_sun_management_internal_GcInfoBuilder_getMaxPausesPerCycle
+  (JNIEnv *env, jobject dummy, jobject gc) {
+    jlong value;
+
+    if (gc == NULL) {
+        JNU_ThrowNullPointerException(env, "Invalid GarbageCollectorMXBean");
+        return 0;
+    }
+    value = jmm_interface->GetLongAttribute(env, gc,
+                                            JMM_GC_MAX_PAUSES_PER_CYCLE);
+    return (jint) value;
+}
+
+JNIEXPORT jint JNICALL Java_com_sun_management_internal_GcInfoBuilder_getMaxConcurrentPhasesPerCycle
+  (JNIEnv *env, jobject dummy, jobject gc) {
+    jlong value;
+
+    if (gc == NULL) {
+        JNU_ThrowNullPointerException(env, "Invalid GarbageCollectorMXBean");
+        return 0;
+    }
+    value = jmm_interface->GetLongAttribute(env, gc,
+                                            JMM_GC_MAX_CONCURRENT_PHASES_PER_CYCLE);
     return (jint) value;
 }
 
@@ -199,7 +225,8 @@ static void setCharValueAtObjectArray(JNIEnv *env, jobjectArray array,
 JNIEXPORT jobject JNICALL Java_com_sun_management_internal_GcInfoBuilder_getLastGcInfo0
   (JNIEnv *env, jobject builder, jobject gc,
    jint ext_att_count, jobjectArray ext_att_values, jcharArray ext_att_types,
-   jobjectArray usageBeforeGC, jobjectArray usageAfterGC) {
+   jobjectArray usageBeforeGC, jobjectArray usageAfterGC, jobjectArray pauseInfo,
+   jobjectArray concurrentInfo) {
 
     jmmGCStat   gc_stat;
     jchar*      nativeTypes;
@@ -218,6 +245,8 @@ JNIEXPORT jobject JNICALL Java_com_sun_management_internal_GcInfoBuilder_getLast
 
     gc_stat.usage_before_gc = usageBeforeGC;
     gc_stat.usage_after_gc = usageAfterGC;
+    gc_stat.pause_info = pauseInfo;
+    gc_stat.concurrent_info = concurrentInfo;
     gc_stat.gc_ext_attribute_values_size = ext_att_count;
     if (ext_att_count > 0) {
         gc_stat.gc_ext_attribute_values = (jvalue*) malloc((size_t)ext_att_count *
@@ -294,14 +323,35 @@ JNIEXPORT jobject JNICALL Java_com_sun_management_internal_GcInfoBuilder_getLast
         free(nativeTypes);
     }
 
-    return JNU_NewObjectByName(env,
+    jstring cause = (*env)->NewStringUTF(env, gc_stat.cause);
+    if ((*env)->ExceptionCheck(env)) {
+        return 0;
+    }
+
+    jobject toReturn = JNU_NewObjectByName(env,
        "com/sun/management/GcInfo",
-       "(Lcom/sun/management/internal/GcInfoBuilder;JJJ[Ljava/lang/management/MemoryUsage;[Ljava/lang/management/MemoryUsage;[Ljava/lang/Object;)V",
+       "(Lcom/sun/management/internal/GcInfoBuilder;JJJ[Ljava/lang/management/MemoryUsage;[Ljava/lang/management/MemoryUsage;Ljava/lang/String;JJJJJJJJ[Lcom/sun/management/PauseInfo;I[Lcom/sun/management/ConcurrentInfo;IZ[Ljava/lang/Object;)V",
        builder,
        gc_stat.gc_index,
        gc_stat.start_time,
        gc_stat.end_time,
        usageBeforeGC,
        usageAfterGC,
+       cause,
+       gc_stat.previous_end_time,
+       gc_stat.allocated_since_previous,
+       gc_stat.allocated_during_collection,
+       gc_stat.copied_between_pools,
+       gc_stat.garbage_found,
+       gc_stat.garbage_collected,
+       gc_stat.liveInPoolsBeforeGc,
+       gc_stat.liveInPoolsAfterGc,
+       gc_stat.pause_info,
+       gc_stat.num_pauses,
+       gc_stat.concurrent_info,
+       gc_stat.num_concurrent_phases,
+       JNI_TRUE,
        ext_att_values);
+
+    return toReturn;
 }

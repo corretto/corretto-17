@@ -35,7 +35,10 @@
 // Forward declaration
 class MemoryPool;
 class MemoryManager;
+class GCPauseStatInfo;
+class GCConcurrentStatInfo;
 class GCMemoryManager;
+class ConcurrentGCMemoryManager;
 class CollectedHeap;
 class CodeHeap;
 
@@ -111,6 +114,10 @@ public:
 
   // Create an instance of java/lang/management/MemoryUsage
   static Handle create_MemoryUsage_obj(MemoryUsage usage, TRAPS);
+  // Create an instance of com/sun/management/PauseInfo
+  static Handle create_PauseInfo_obj(GCPauseStatInfo usage, const char* phase_prefix, TRAPS);
+  // Create an instance of com/sun/management/ConcurrentInfo
+  static Handle create_ConcurrentInfo_obj(GCConcurrentStatInfo usage, const char* phase_prefix, TRAPS);
 };
 
 class TraceMemoryManagerStats : public StackObj {
@@ -150,6 +157,72 @@ public:
                   bool countCollection);
 
   ~TraceMemoryManagerStats();
+};
+
+class TraceMemoryManagerPauseStats : public StackObj {
+private:
+  ConcurrentGCMemoryManager* _gc_memory_manager;
+  bool                       _record_accumulated_pause_time;
+  bool                       _record_individual_pauses;
+  bool                       _record_duration;
+  bool                       _record_operation_time;
+  bool                       _cycle_pause;
+
+public:
+  TraceMemoryManagerPauseStats();
+  TraceMemoryManagerPauseStats(ConcurrentGCMemoryManager* gc_memory_manager,
+                          const char* phase_cause,
+                          size_t phase_threads = 0,
+                          bool record_accumulated_pause_time = true,
+                          bool count_pauses = true,
+                          bool record_individual_pauses = false, 
+                          bool record_duration = false,
+                          bool record_operation_time = false,
+                          bool record_pause_cause = false,
+                          bool record_phase_threads = false,
+                          bool cycle_pause = false);
+
+  void initialize(ConcurrentGCMemoryManager* gc_memory_manager,
+                          const char* phase_cause,
+                          size_t phase_threads = 0,
+                          bool record_accumulated_pause_time = true,
+                          bool count_pauses = true,
+                          bool record_individual_pauses = false, 
+                          bool record_duration = false,
+                          bool record_operation_time = false,
+                          bool record_pause_cause = false,
+                          bool record_phase_threads = false,
+                          bool cycle_pause = false);
+
+  ~TraceMemoryManagerPauseStats();
+};
+
+class TraceMemoryManagerConcurrentStats : public StackObj {
+private:
+  ConcurrentGCMemoryManager* _gc_memory_manager;
+  int                        _phase_index;
+  bool                       _record_individual_phases;
+  bool                       _record_duration;
+
+public:
+  TraceMemoryManagerConcurrentStats();
+  TraceMemoryManagerConcurrentStats(ConcurrentGCMemoryManager* gc_memory_manager,
+                          const char* phase_name,
+                          size_t phase_threads = 0,
+                          bool record_individual_pauses = false,
+                          bool record_duration = false,
+                          bool record_pause_cause = false,
+                          bool record_phase_threads = false);
+
+  void initialize(ConcurrentGCMemoryManager* gc_memory_manager,
+                          const char* phase_name,
+                          size_t phase_threads = 0,
+                          bool record_individual_pauses = false,
+                          bool record_duration = false,
+                          bool record_pause_cause = false,
+                          bool record_phase_threads = false);
+
+  ~TraceMemoryManagerConcurrentStats();
 };
 
 #endif // SHARE_SERVICES_MEMORYSERVICE_HPP

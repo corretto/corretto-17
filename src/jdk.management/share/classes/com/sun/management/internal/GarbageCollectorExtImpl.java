@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,6 +69,60 @@ public class GarbageCollectorExtImpl extends GarbageCollectorImpl
         GcInfo info = getGcInfoBuilder().getLastGcInfo();
         return info;
     }
+
+    @Override
+    public native long getRunningTimeNanos();
+
+    @Override
+    public native long getPauseCount();
+
+    @Override
+    public native long getPauseTimeNanos();
+
+    private long startTime = System.nanoTime();
+    private long resetTime = startTime;
+    private long collectionsAtReset = 0;
+    private long runningTimeAtReset = 0;
+    private long pausesAtReset = 0;
+    private long pauseTimeAtReset = 0;
+
+    @Override
+    public long getCumulativeCollectionCount() {
+        return getCollectionCount() - collectionsAtReset;
+    }
+
+    @Override
+    public long getCumulativeRunningTimeNanos() {
+        return getRunningTimeNanos() - runningTimeAtReset;
+    }
+
+    @Override
+    public long getCumulativePauseCount() {
+        return getPauseCount() - pausesAtReset;
+    }
+
+    @Override
+    public long getCumulativePauseTimeNanos() {
+        return getPauseTimeNanos() - pauseTimeAtReset;
+    }
+
+    @Override
+    public long getLastResetCumulativeStatsTime() {
+        return resetTime - startTime;
+    }
+
+    @Override
+    public long resetCumulativeStats() {
+        collectionsAtReset = getCollectionCount();
+        pausesAtReset = getPauseCount();
+        runningTimeAtReset = getRunningTimeNanos();
+        pauseTimeAtReset = getPauseTimeNanos();
+        resetTime = System.nanoTime();
+        return resetTime;
+    }
+
+    @Override
+    public native long getGarbageCollectorThreadCount();
 
     private final static String notifName =
         "javax.management.Notification";

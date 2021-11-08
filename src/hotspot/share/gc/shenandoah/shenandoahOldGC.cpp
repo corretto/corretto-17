@@ -253,12 +253,13 @@ bool ShenandoahOldGC::entry_coalesce_and_fill() {
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
 
   entry_coalesce_and_fill_message(msg, sizeof(msg));
-  ShenandoahConcurrentPhase gc_phase(msg, ShenandoahPhaseTimings::coalesce_and_fill);
+  uint num_workers = ShenandoahWorkerPolicy::calc_workers_for_conc_marking();
+  ShenandoahConcurrentPhase gc_phase(msg, ShenandoahPhaseTimings::coalesce_and_fill, OLD, num_workers);
 
   TraceCollectorStats tcs(heap->monitoring_support()->concurrent_collection_counters());
   EventMark em("%s", msg);
   ShenandoahWorkerScope scope(heap->workers(),
-                              ShenandoahWorkerPolicy::calc_workers_for_conc_marking(),
+                              num_workers,
                               "concurrent coalesce and fill");
 
   return op_coalesce_and_fill();

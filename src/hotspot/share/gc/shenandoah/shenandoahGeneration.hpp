@@ -75,7 +75,7 @@ protected:
   virtual size_t available() const;
 
   size_t bytes_allocated_since_gc_start();
-  void reset_bytes_allocated_since_gc_start();
+  virtual void reset_bytes_allocated_since_gc_start();
   void increase_allocated(size_t bytes);
 
   void set_soft_max_capacity(size_t soft_max_capacity) {
