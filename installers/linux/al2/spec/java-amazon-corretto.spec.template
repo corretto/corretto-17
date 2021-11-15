@@ -28,7 +28,7 @@
 %global version_opt     $version_opt
 # If we need to rev the package for something outside of what the
 # Corretto team is doing, we can define release_ext.
-%global release_ext  2
+# %global release_ext  1
 
 %global java_home %{_jvmdir}/%{name}.%{_arch}
 %global java_lib  %{java_home}/lib
