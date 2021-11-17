@@ -883,11 +883,7 @@ jobs:
         run: |
           New-Item -Force -ItemType directory -Path "$HOME\cygwin"
           & curl -L "https://www.cygwin.com/setup-x86_64.exe" -o "$HOME/cygwin/setup-x86_64.exe"
-<<<<<<< HEAD
-          Start-Process -FilePath "$HOME\cygwin\setup-x86_64.exe" -ArgumentList "--quiet-mode --packages autoconf,make,zip,unzip --root $HOME\cygwin\cygwin64 --local-package-dir $HOME\cygwin\packages --site http://mirrors.kernel.org/sourceware/cygwin --no-desktop --no-shortcuts --no-startmenu --no-admin" -Wait -NoNewWindow
-=======
           Start-Process -FilePath "$HOME\cygwin\setup-x86_64.exe" -ArgumentList "--quiet-mode --packages cygwin=3.2.0-1,autoconf,make,zip,unzip --root $HOME\cygwin\cygwin64 --local-package-dir $HOME\cygwin\packages --site http://mirrors.kernel.org/sourceware/cygwin --no-desktop --no-shortcuts --no-startmenu --no-admin" -Wait -NoNewWindow
->>>>>>> upstream-jdk17u
 
       - name: Checkout the source
         uses: actions/checkout@v2
@@ -915,11 +911,7 @@ jobs:
         run: >
           Start-Process -FilePath 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe' -Wait -NoNewWindow -ArgumentList
           'modify --installPath "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise" --quiet
-<<<<<<< HEAD
-          --add Microsoft.VisualStudio.Component.VC.14.28.arm64'
-=======
           --add Microsoft.VisualStudio.Component.VC.14.29.arm64'
->>>>>>> upstream-jdk17u
 
       - name: Configure
         run: >
@@ -928,11 +920,7 @@ jobs:
           $env:BOOT_JDK = cygpath "$HOME/bootjdk/$env:BOOT_JDK_VERSION" ;
           & bash configure
           --with-conf-name=windows-aarch64
-<<<<<<< HEAD
-          --with-msvc-toolset-version=14.28
-=======
           --with-msvc-toolset-version=14.29
->>>>>>> upstream-jdk17u
           --openjdk-target=aarch64-unknown-cygwin
           ${{ matrix.flags }}
           --with-version-opt="$env:GITHUB_ACTOR-$env:GITHUB_SHA"
