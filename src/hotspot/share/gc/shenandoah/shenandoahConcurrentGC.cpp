@@ -52,24 +52,37 @@
 
 // Breakpoint support
 class ShenandoahBreakpointGCScope : public StackObj {
+private:
+  const GCCause::Cause _cause;
 public:
-  ShenandoahBreakpointGCScope() {
-    ShenandoahBreakpoint::at_before_gc();
+  ShenandoahBreakpointGCScope(GCCause::Cause cause) : _cause(cause) {
+    if (cause == GCCause::_wb_breakpoint) {
+      ShenandoahBreakpoint::start_gc();
+      ShenandoahBreakpoint::at_before_gc();
+    }
   }
 
   ~ShenandoahBreakpointGCScope() {
-    ShenandoahBreakpoint::at_after_gc();
+    if (_cause == GCCause::_wb_breakpoint) {
+      ShenandoahBreakpoint::at_after_gc();
+    }
   }
 };
 
 class ShenandoahBreakpointMarkScope : public StackObj {
+private:
+  const GCCause::Cause _cause;
 public:
-  ShenandoahBreakpointMarkScope() {
-    ShenandoahBreakpoint::at_after_marking_started();
+  ShenandoahBreakpointMarkScope(GCCause::Cause cause) : _cause(cause) {
+    if (_cause == GCCause::_wb_breakpoint) {
+      ShenandoahBreakpoint::at_after_marking_started();
+    }
   }
 
   ~ShenandoahBreakpointMarkScope() {
-    ShenandoahBreakpoint::at_before_marking_completed();
+    if (_cause == GCCause::_wb_breakpoint) {
+      ShenandoahBreakpoint::at_before_marking_completed();
+    }
   }
 };
 
@@ -87,10 +100,7 @@ ShenandoahGC::ShenandoahDegenPoint ShenandoahConcurrentGC::degen_point() const {
 
 bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
-  if (cause == GCCause::_wb_breakpoint) {
-    ShenandoahBreakpoint::start_gc();
-  }
-  ShenandoahBreakpointGCScope breakpoint_gc_scope;
+  ShenandoahBreakpointGCScope breakpoint_gc_scope(cause);
 
   // Reset for upcoming marking
   entry_reset();
@@ -99,7 +109,7 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
   vmop_entry_init_mark();
 
   {
-    ShenandoahBreakpointMarkScope breakpoint_mark_scope;
+    ShenandoahBreakpointMarkScope breakpoint_mark_scope(cause);
 
     // Reset task queue stats here, rather than in mark_concurrent_roots
     // because remembered set scan will `push` oops into the queues and
@@ -195,7 +205,7 @@ void ShenandoahConcurrentGC::vmop_entry_init_mark() {
   TraceCollectorStats tcs(heap->monitoring_support()->stw_collection_counters());
   ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::init_mark_gross);
   TraceMemoryManagerPauseStats pause_stats(heap->memory_manager(_generation->generation_mode()),
-      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::init_mark_gross), 
+      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::init_mark_gross),
       /* phase_threads = */                 0L,
       /* record_accumulated_pause_time = */ false,
       /* count_pauses = */                  false,
@@ -216,7 +226,7 @@ void ShenandoahConcurrentGC::vmop_entry_final_mark() {
   TraceCollectorStats tcs(heap->monitoring_support()->stw_collection_counters());
   ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::final_mark_gross);
   TraceMemoryManagerPauseStats pause_stats(heap->memory_manager(_generation->generation_mode()),
-      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::final_mark_gross), 
+      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::final_mark_gross),
       /* phase_threads = */                 0L,
       /* record_accumulated_pause_time = */ false,
       /* count_pauses = */                  false,
@@ -237,7 +247,7 @@ void ShenandoahConcurrentGC::vmop_entry_init_updaterefs() {
   TraceCollectorStats tcs(heap->monitoring_support()->stw_collection_counters());
   ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::init_update_refs_gross);
   TraceMemoryManagerPauseStats pause_stats(heap->memory_manager(_generation->generation_mode()),
-      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::init_update_refs_gross), 
+      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::init_update_refs_gross),
       /* phase_threads = */                 0L,
       /* record_accumulated_pause_time = */ false,
       /* count_pauses = */                  false,
@@ -258,7 +268,7 @@ void ShenandoahConcurrentGC::vmop_entry_final_updaterefs() {
   TraceCollectorStats tcs(heap->monitoring_support()->stw_collection_counters());
   ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::final_update_refs_gross);
   TraceMemoryManagerPauseStats pause_stats(heap->memory_manager(_generation->generation_mode()),
-      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::final_update_refs_gross), 
+      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::final_update_refs_gross),
       /* phase_threads = */                 0L,
       /* record_accumulated_pause_time = */ false,
       /* count_pauses = */                  false,
@@ -279,7 +289,7 @@ void ShenandoahConcurrentGC::vmop_entry_final_roots() {
   TraceCollectorStats tcs(heap->monitoring_support()->stw_collection_counters());
   ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::final_roots_gross);
   TraceMemoryManagerPauseStats pause_stats(heap->memory_manager(_generation->generation_mode()),
-      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::final_roots_gross), 
+      /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::final_roots_gross),
       /* phase_threads = */                 0L,
       /* record_accumulated_pause_time = */ false,
       /* count_pauses = */                  false,
@@ -779,7 +789,9 @@ void ShenandoahConcurrentGC::op_weak_refs() {
   assert(heap->is_concurrent_weak_root_in_progress(), "Only during this phase");
   // Concurrent weak refs processing
   ShenandoahGCWorkerPhase worker_phase(ShenandoahPhaseTimings::conc_weak_refs);
-  ShenandoahBreakpoint::at_after_reference_processing_started();
+  if (heap->gc_cause() == GCCause::_wb_breakpoint) {
+    ShenandoahBreakpoint::at_after_reference_processing_started();
+  }
   _generation->ref_processor()->process_references(ShenandoahPhaseTimings::conc_weak_refs, heap->workers(), true /* concurrent */);
 }
 
