@@ -1,0 +1,403 @@
+# Copyright (c) 2021, Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation. Amazon designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+
+# The Corretto github project provides tarfiles with five dotted
+# version parts.  The first four are the typical Java version + build,
+# and the last one is the release ID.
+%global java_version    $java_version
+%global java_major_version    $java_spec_version
+%global java_security_version    $java_security_version
+%global build_id        $build_id
+%global release_id      $release_id
+%global version_opt     $version_opt
+# If we need to rev the package for something outside of what the
+# Corretto team is doing, we can define release_ext.
+# %global release_ext  1
+
+%global java_home %{_jvmdir}/%{name}.%{_arch}
+%global java_lib  %{java_home}/lib
+%global java_inc  %{java_home}/include
+
+# Where the make targets actually get written out
+%global java_imgdir build/linux-%{_arch}-server-release/images/
+
+# Higher numbers win for the alternatives program.
+%global alternatives_priority %( printf '%02d%02d%02d%02d' %{java_major_version} %{java_security_version} %{build_id} %{release_id} )
+
+# Instruct rpmbuild to copy jars rather than de-compress and re-compress.
+%global __jar_repack 0
+
+# Don't create a separate debug package. Specifically disables running
+# this script:
+# https://github.com/rpm-software-management/rpm/blob/master/scripts/find-debuginfo.sh
+%define debug_package %{nil}
+
+# abs2rel: A macro to convert an absolute path to a relative path.
+# When making a symlink in an RPM, prefer a symbolic link to ensure
+# the link will work in a chroot environment.
+%global script 'use File::Spec; print File::Spec->abs2rel(\$ARGV[0], \$ARGV[1])'
+%global abs2rel %{__perl} -e %{script}
+
+# Filter out private libraries so RPM does not list them as provided/required
+%global _privatelibs libjli[.]so.*
+%global __provides_exclude ^(%{_privatelibs})\$
+%global __requires_exclude ^(%{_privatelibs})\$
+
+# By default install a bootstrap jdk. If one is already available,
+# this can be skipped using --without bootjdk
+%bcond_without bootjdk
+
+Summary: Amazon Corretto development environment
+Name: java-${java_spec_version}-amazon-corretto
+# Matches the 'full version' from Java's release notes:
+# https://www.oracle.com/technetwork/java/javase/11-0-2-relnotes-5188746.html
+# Eg: 11.0.2+7
+Version: %{java_version}+%{build_id}
+Release: %{release_id}%{?dist}%{?release_ext:.%{release_ext}}
+
+Epoch: 1
+Group: Development/Languages
+AutoReqProv: no
+License: ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ISC and FTL and RSA.
+Vendor: Amazon
+Url: https://github.com/corretto/corretto-${java_spec_version}
+Source0: amazon-corretto-source-%{java_version}.%{build_id}.%{release_id}.tar.gz
+
+# jpackage-utils is required for both build and runtime.
+# For build, it provides the jvmdir macro. For runtime,
+# it provides the /usr/lib/jvm directory.
+BuildRequires: jpackage-utils
+BuildRequires: autoconf
+BuildRequires: make
+BuildRequires: alsa-lib-devel
+BuildRequires: binutils
+BuildRequires: which
+BuildRequires: cups-devel
+BuildRequires: fontconfig-devel
+BuildRequires: freetype-devel
+BuildRequires: giflib-devel
+BuildRequires: gcc-c++
+BuildRequires: libjpeg-devel
+BuildRequires: libpng-devel
+BuildRequires: libxslt
+BuildRequires: libX11-devel
+BuildRequires: libXi-devel
+BuildRequires: libXinerama-devel
+BuildRequires: libXt-devel
+BuildRequires: libXrender-devel
+BuildRequires: libXrandr-devel
+BuildRequires: libXtst-devel
+BuildRequires: pkgconfig
+BuildRequires: xorg-x11-proto-devel
+
+%if %{with bootjdk}
+BuildRequires: java-${java_spec_version}-devel
+%endif
+
+Requires: libX11
+Requires: libXi
+Requires: libXinerama
+Requires: libXt
+Requires: libXrender
+Requires: libXrandr
+Requires: libXtst
+Requires: alsa-lib
+#Requires: giflib
+Requires: libjpeg
+Requires: libpng
+Requires: dejavu-sans-fonts
+Requires: dejavu-serif-fonts
+Requires: dejavu-sans-mono-fonts
+# Require headless package.
+Requires: %{name}-headless%{?_isa} = %{epoch}:%{version}-%{release}
+
+Provides: java = %{epoch}:%{java_version}
+Provides: java-${java_spec_version} = %{epoch}:%{java_version}
+Provides: java-${java_spec_version} = %{epoch}:%{version}-%{release}
+Provides: jre = %{java_version}
+Provides: jre-${java_spec_version} = %{epoch}:%{version}-%{release}
+Provides: jre-${java_spec_version}-amazon-corretto = %{epoch}:%{version}-%{release}
+
+%description
+Amazon Corretto's packaging of the runtime core elements of the
+OpenJDK ${java_spec_version} code.
+
+%package headless
+Summary: Amazon Corretto headless development environment
+Group:   Development/Tools
+AutoReqProv: no
+
+Requires: jpackage-utils
+Requires: zlib
+Requires: fontconfig
+Requires: freetype
+Requires: ca-certificates
+Requires(post): chkconfig
+Requires(postun): chkconfig
+
+Provides: java-headless = %{epoch}:%{java_version}
+Provides: java-${java_spec_version}-headless = %{epoch}:%{version}-%{release}
+Provides: jre-headless = %{epoch}:%{java_version}
+Provides: jre-${java_spec_version}-headless = %{epoch}:%{version}-%{release}
+Provides: jre-${java_spec_version}-amazon-corretto-headless = %{epoch}:%{version}-%{release}
+
+
+%description headless
+Amazon Corretto's packaging of the runtime core elements of the
+OpenJDK ${java_spec_version} code. (Headless environment)
+
+%package javadoc
+Summary: Amazon Corretto ${java_spec_version} API documentation
+Group: Documentation
+
+Provides: java-javadoc = %{epoch}:%{version}-%{release}
+Provides: java-${java_spec_version}-javadoc = %{epoch}:%{version}-%{release}
+
+%description javadoc
+Amazon Corretto's packaging of the OpenJDK ${java_spec_version} API documentation.
+
+%package devel
+Summary: Amazon Corretto ${java_spec_version} development tools
+Group: Development
+AutoReqProv: no
+
+Provides: java-${java_spec_version}-devel = %{epoch}:%{java_version}
+Provides: java-${java_spec_version}-devel = %{epoch}:%{version}-%{release}
+Requires: %{name}-headless%{?1}%{?_isa} = %{epoch}:%{version}-%{release}
+
+%description devel
+Amazon Corretto's packaging of the OpenJDK ${java_spec_version} development tools.
+
+%package jmods
+Summary: Amazon Corretto ${java_spec_version} jmods
+Group: Development
+
+Provides: java-${java_spec_version}-jmods = %{epoch}:%{java_version}
+Provides: java-${java_spec_version}-jmods = %{epoch}:%{version}-%{release}
+# Require devel package.
+Requires: %{name}-devel%{?1}%{?_isa} = %{epoch}:%{version}-%{release}
+
+%description jmods
+Amazon Corretto's packaging of the OpenJDK ${java_spec_version} jmods.
+
+%prep
+%setup -q
+
+%build
+# AmazonLinux ships with GifLib 4.x which does not define GIFLIB_MAJOR. This must be defined
+# because -Werror=undef is enabled.
+bash ./configure \\
+%ifarch aarch64
+        --with-extra-cflags="-moutline-atomics -DGIFLIB_MAJOR=4" \\
+        --with-extra-cxxflags="-moutline-atomics" \\
+%else
+        --with-extra-cflags="-DGIFLIB_MAJOR=4" \\
+%endif
+        --with-jvm-features="zgc shenandoahgc" \\
+        --with-version-feature="${java_spec_version}" \\
+        --with-freetype=system \\
+        --with-libjpeg=system \\
+        --with-giflib=system \\
+        --with-libpng=system \\
+        --with-zlib=system \\
+        --with-version-opt="%{version_opt}" \\
+        --with-version-build="%{build_id}" \\
+        --with-vendor-version-string="Corretto-%{java_version}.%{build_id}.%{release_id}" \\
+        --with-version-pre= \\
+        --with-vendor-name="Amazon.com Inc." \\
+        --with-vendor-url="https://aws.amazon.com/corretto/" \\
+        --with-vendor-bug-url="https://github.com/corretto/corretto-${java_spec_version}/issues/" \\
+        --with-vendor-vm-bug-url="https://github.com/corretto/corretto-${java_spec_version}/issues/" \\
+        --with-debug-level=release \\
+        --with-native-debug-symbols=none
+
+make images
+make LOG=debug docs
+
+%install
+rm -rf %{buildroot}
+install -d -m 755 %{buildroot}%{java_home}
+cp -a %{java_imgdir}/jdk/* %{buildroot}%{java_home}
+rm -rf %{buildroot}%{java_home}/demo
+
+# Make a *relative* symlink pointing to the cacerts file from ca-certificates.
+rm -f %{buildroot}%{java_home}/lib/security/cacerts
+pushd %{buildroot}%{java_home}/lib/security
+  RELATIVE=\$(%{abs2rel} %{_sysconfdir}/pki/java %{buildroot}%{java_home}/lib/security)
+  ln -sf \$RELATIVE/cacerts .
+popd
+
+%post headless
+if [ \$1 -eq 1 ] ; then
+  alternatives --install %{_bindir}/java java %{java_home}/bin/java %{alternatives_priority} \\
+               --slave %{_jvmdir}/jre jre %{java_home} \\
+               --slave %{_bindir}/keytool keytool %{java_home}/bin/keytool \\
+               --slave %{_bindir}/rmiregistry rmiregistry %{java_home}/bin/rmiregistry \\
+               --slave %{_mandir}/man1/java.1 java.1 %{java_home}/man/man1/java.1 \\
+               --slave %{_mandir}/man1/keytool.1 keytool.1 %{java_home}/man/man1/keytool.1 \\
+               --slave %{_mandir}/man1/rmiregistry.1 rmiregistry.1 %{java_home}/man/man1/rmiregistry.1 \\
+
+  alternatives --install %{_bindir}/javac javac %{java_home}/bin/javac %{alternatives_priority} \\
+               --slave %{_bindir}/jar jar %{java_home}/bin/jar \\
+               --slave %{_bindir}/jarsigner jarsigner %{java_home}/bin/jarsigner \\
+               --slave %{_bindir}/javadoc javadoc %{java_home}/bin/javadoc \\
+               --slave %{_bindir}/javap javap %{java_home}/bin/javap \\
+               --slave %{_bindir}/jcmd jcmd %{java_home}/bin/jcmd \\
+               --slave %{_bindir}/jconsole jconsole %{java_home}/bin/jconsole \\
+               --slave %{_bindir}/jdb jdb %{java_home}/bin/jdb \\
+               --slave %{_bindir}/jdeprscan jdeprscan %{java_home}/bin/jdeprscan \\
+               --slave %{_bindir}/jdeps jdeps %{java_home}/bin/jdeps \\
+               --slave %{_bindir}/jfr jfr %{java_home}/bin/jfr \\
+               --slave %{_bindir}/jhsdb jhsdb %{java_home}/bin/jhsdb \\
+               --slave %{_bindir}/jimage jimage %{java_home}/bin/jimage \\
+               --slave %{_bindir}/jinfo jinfo %{java_home}/bin/jinfo \\
+               --slave %{_bindir}/jlink jlink %{java_home}/bin/jlink \\
+               --slave %{_bindir}/jmap jmap %{java_home}/bin/jmap \\
+               --slave %{_bindir}/jmod jmod %{java_home}/bin/jmod \\
+               --slave %{_bindir}/jpackage jpackage %{java_home}/bin/jpackage \\
+               --slave %{_bindir}/jps jps %{java_home}/bin/jps \\
+               --slave %{_bindir}/jrunscript jrunscript %{java_home}/bin/jrunscript \\
+               --slave %{_bindir}/jshell jshell %{java_home}/bin/jshell \\
+               --slave %{_bindir}/jstack jstack %{java_home}/bin/jstack \\
+               --slave %{_bindir}/jstat jstat %{java_home}/bin/jstat \\
+               --slave %{_bindir}/jstatd jstatd %{java_home}/bin/jstatd \\
+               --slave %{_bindir}/serialver serialver %{java_home}/bin/serialver \\
+               --slave %{_jvmdir}/jre-openjdk jre-openjdk %{java_home} \\
+               --slave %{_jvmdir}/jre-${java_spec_version} jre-${java_spec_version} %{java_home} \\
+               --slave %{_jvmdir}/jre-${java_spec_version}-openjdk jre-${java_spec_version}-openjdk %{java_home} \\
+               --slave %{_mandir}/man1/jar.1 jar.1 %{java_home}/man/man1/jar.1 \\
+               --slave %{_mandir}/man1/jarsigner.1 jarsigner.1 %{java_home}/man/man1/jarsigner.1 \\
+               --slave %{_mandir}/man1/javac.1 javac.1 %{java_home}/man/man1/javac.1 \\
+               --slave %{_mandir}/man1/javadoc.1 javadoc.1 %{java_home}/man/man1/javadoc.1 \\
+               --slave %{_mandir}/man1/javap.1 javap.1 %{java_home}/man/man1/javap.1 \\
+               --slave %{_mandir}/man1/jcmd.1 jcmd.1 %{java_home}/man/man1/jcmd.1 \\
+               --slave %{_mandir}/man1/jconsole.1 jconsole.1 %{java_home}/man/man1/jconsole.1 \\
+               --slave %{_mandir}/man1/jdb.1 jdb.1 %{java_home}/man/man1/jdb.1 \\
+               --slave %{_mandir}/man1/jdeps.1 jdeps.1 %{java_home}/man/man1/jdeps.1 \\
+               --slave %{_mandir}/man1/jinfo.1 jinfo.1 %{java_home}/man/man1/jinfo.1 \\
+               --slave %{_mandir}/man1/jjs.1 jjs.1 %{java_home}/man/man1/jjs.1 \\
+               --slave %{_mandir}/man1/jmap.1 jmap.1 %{java_home}/man/man1/jmap.1 \\
+               --slave %{_mandir}/man1/jps.1 jps.1 %{java_home}/man/man1/jps.1 \\
+               --slave %{_mandir}/man1/jrunscript.1 jrunscript.1 %{java_home}/man/man1/jrunscript.1 \\
+               --slave %{_mandir}/man1/jstack.1 jstack.1 %{java_home}/man/man1/jstack.1 \\
+               --slave %{_mandir}/man1/jstat.1 jstat.1 %{java_home}/man/man1/jstat.1 \\
+               --slave %{_mandir}/man1/jstatd.1 jstatd.1 %{java_home}/man/man1/jstatd.1 \\
+               --slave %{_mandir}/man1/rmic.1 rmic.1 %{java_home}/man/man1/rmic.1 \\
+               --slave %{_mandir}/man1/serialver.1 serialver.1 %{java_home}/man/man1/serialver.1
+fi
+
+%postun headless
+if [ \$1 -eq 0 ] ; then
+  alternatives --remove java %{java_home}/bin/java
+  alternatives --remove javac %{java_home}/bin/javac
+fi
+
+%files
+%{java_lib}/libawt_xawt.so
+%{java_lib}/libjawt.so
+%{java_lib}/libsplashscreen.so
+
+%{java_inc}/jawt.h
+%{java_inc}/linux/jawt_md.h
+
+%files headless
+%{java_home}/bin/java
+%{java_home}/bin/keytool
+%{java_home}/bin/rmiregistry
+%{java_home}/conf
+%{java_home}/legal
+%{java_home}/lib
+%{java_home}/man/man1/java.1
+%{java_home}/man/man1/keytool.1
+%{java_home}/man/man1/rmiregistry.1
+%{java_home}/release
+
+# Keep the libs and includes that need X11 in the main package
+%exclude %{java_lib}/libawt_xawt.so
+%exclude %{java_lib}/libjawt.so
+%exclude %{java_lib}/libsplashscreen.so
+
+%files devel
+%{java_home}/bin/jar
+%{java_home}/bin/jarsigner
+%{java_home}/bin/javac
+%{java_home}/bin/javadoc
+%{java_home}/bin/javap
+%{java_home}/bin/jcmd
+%{java_home}/bin/jconsole
+%{java_home}/bin/jdb
+%{java_home}/bin/jdeprscan
+%{java_home}/bin/jdeps
+%{java_home}/bin/jfr
+%{java_home}/bin/jhsdb
+%{java_home}/bin/jimage
+%{java_home}/bin/jinfo
+%{java_home}/bin/jlink
+%{java_home}/bin/jmap
+%{java_home}/bin/jmod
+%{java_home}/bin/jpackage
+%{java_home}/bin/jps
+%{java_home}/bin/jrunscript
+%{java_home}/bin/jshell
+%{java_home}/bin/jstack
+%{java_home}/bin/jstat
+%{java_home}/bin/jstatd
+%{java_home}/bin/serialver
+%{java_home}/include
+%{java_home}/man/man1/jar.1
+%{java_home}/man/man1/jarsigner.1
+%{java_home}/man/man1/javac.1
+%{java_home}/man/man1/javadoc.1
+%{java_home}/man/man1/javap.1
+%{java_home}/man/man1/jcmd.1
+%{java_home}/man/man1/jconsole.1
+%{java_home}/man/man1/jdb.1
+%{java_home}/man/man1/jdeprscan.1
+%{java_home}/man/man1/jdeps.1
+%{java_home}/man/man1/jfr.1
+%{java_home}/man/man1/jhsdb.1
+%{java_home}/man/man1/jinfo.1
+%{java_home}/man/man1/jlink.1
+%{java_home}/man/man1/jmap.1
+%{java_home}/man/man1/jmod.1
+%{java_home}/man/man1/jpackage.1
+%{java_home}/man/man1/jps.1
+%{java_home}/man/man1/jrunscript.1
+%{java_home}/man/man1/jshell.1
+%{java_home}/man/man1/jstack.1
+%{java_home}/man/man1/jstat.1
+%{java_home}/man/man1/jstatd.1
+%{java_home}/man/man1/serialver.1
+
+%files jmods
+%{java_home}/jmods
+
+%files javadoc
+%doc %{java_imgdir}/docs/index.html
+%doc %{java_imgdir}/docs/api
+%doc %{java_imgdir}/docs/resources
+%doc %{java_imgdir}/docs/specs
+%license %{java_imgdir}/docs/legal
+
+%changelog
+* Fri Oct 29 2021 Dan Lutker <lutkerd@amazon.com>
+- Update packaging model to include devel and jmods
+- Fixes for alternatives priority
+* Mon Sep 27 2021 Dan Lutker <lutkerd@amazon.com> - 17.0.0+35
+- Initial release of Corretto 17 for AL2
