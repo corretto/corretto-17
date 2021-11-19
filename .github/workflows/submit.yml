@@ -2,9 +2,11 @@ name: Pre-submit tests
 
 on:
   push:
-    branches-ignore:
-      - master
-      - pr/*
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
   workflow_dispatch:
     inputs:
       platforms:
