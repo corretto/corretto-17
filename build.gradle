@@ -229,7 +229,7 @@ project(':prebuild') {
                 '-srckeystore', "$rootDir/amazon-cacerts",
                 '-srcstorepass', keystore_password,
                 '-destkeystore', caCerts,
-                '-deststorepass', keystore_password
+                '-deststorepass', ''
     }
 
     task copyCacerts(type: Copy) {
