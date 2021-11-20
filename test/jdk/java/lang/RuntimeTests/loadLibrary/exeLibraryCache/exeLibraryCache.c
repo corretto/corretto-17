@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,22 +19,31 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#ifndef SHARE_GC_G1_G1COMMITTEDREGIONMAP_INLINE_HPP
-#define SHARE_GC_G1_G1COMMITTEDREGIONMAP_INLINE_HPP
+#include <stdio.h>
+#include <stdlib.h>
+#include <dlfcn.h>
 
-#include "gc/g1/g1CommittedRegionMap.hpp"
+int main(int argc, char** argv)
+{
+    void *handle;
 
-#include "utilities/bitMap.inline.hpp"
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <lib_filename_or_full_path>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
 
-inline bool G1CommittedRegionMap::active(uint index) const {
-  return _active.par_at(index);
+    printf("Attempting to load library '%s'...\n", argv[1]);
+
+    handle = dlopen(argv[1], RTLD_LAZY);
+
+    if (handle == NULL) {
+       fprintf(stderr, "Unable to load library!\n");
+       return EXIT_FAILURE;
+    }
+
+    printf("Library successfully loaded!\n");
+
+    return dlclose(handle);
 }
-
-inline bool G1CommittedRegionMap::inactive(uint index) const {
-  return _inactive.at(index);
-}
-
-#endif // SHARE_GC_G1_G1COMMITTEDREGIONMAP_INLINE_HPP
