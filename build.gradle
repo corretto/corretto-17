@@ -81,7 +81,7 @@ allprojects {
         ]
 
         // If the version opt is empty, then the JDK will set to  'adhoc.<username>.<base dir name>'
-        def versionOpt = project.findProperty("corretto.versionOpt") ?: "FR" // Set the LTS when needed
+        versionOpt = project.findProperty("corretto.versionOpt") ?: "FR" // Set the LTS when needed
         correttoCommonFlags += ["--with-version-opt=${versionOpt}"]
 
         def versionDate = project.findProperty("corretto.versionDate")

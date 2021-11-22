@@ -11,7 +11,9 @@ if (Os.isFamily(Os.FAMILY_MAC)) {
     subProjects += [':installers:linux:universal:tar',
                     ':installers:linux:universal:rpm',
                     ':installers:linux:universal:deb',
+                    ':installers:linux:al2:spec',
                     ':installers:linux:alpine:tar']
+
 } else if (Os.isFamily(Os.FAMILY_WINDOWS)) {
     subProjects += [':installers:windows:zip']
 }
