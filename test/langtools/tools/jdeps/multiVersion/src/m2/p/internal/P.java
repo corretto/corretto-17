@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,26 +21,10 @@
  * questions.
  */
 
-/*
- * @test
- * @bug 8025692
- * @summary Test jcmd PrintTouchedMethods VM.print_touched_methods
- * @modules java.base/jdk.internal.misc
- *          java.management
- * @library /test/lib
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+LogTouchedMethods PrintTouchedMethodsJcmd
- */
+package p.internal;
 
-import jdk.test.lib.process.OutputAnalyzer;
-import jdk.test.lib.JDKToolFinder;
+import java.util.logging.Logger;
 
-public class PrintTouchedMethodsJcmd {
-
-    public static void main(String args[]) throws Exception {
-      var pid = Long.toString(ProcessHandle.current().pid());
-      var pb = new ProcessBuilder();
-      pb.command(new String[] {JDKToolFinder.getJDKTool("jcmd"), pid, "VM.print_touched_methods"});
-      var output = new OutputAnalyzer(pb.start());
-      output.shouldContain("PrintTouchedMethodsJcmd.main:([Ljava/lang/String;)V");
-    }
+public class P {
+     private static final Logger LOGGER = Logger.getLogger("p");
 }
