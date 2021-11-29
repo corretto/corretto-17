@@ -41,6 +41,12 @@ public:
   virtual MemoryUsage get_memory_usage();
   virtual size_t used_in_bytes();
   virtual size_t max_size() const;
+
+protected:
+  ShenandoahMemoryPool(ShenandoahHeap* pool,
+                       const char* name,
+                       size_t initial_capacity,
+                       size_t max_capacity);
 };
 
 class ShenandoahYoungGenMemoryPool : public ShenandoahMemoryPool {
