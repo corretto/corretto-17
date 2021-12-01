@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 THL A29 Limited, a Tencent company. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,26 +21,28 @@
  * questions.
  */
 
-import jdk.test.lib.process.OutputAnalyzer;
+package jdk.internal.net.http.websocket;
 
-/*
- * @test
- * @bug 8251155
- * @summary Test host names starting with digits
- * @library /test/lib
- * @build JpsHelper
- * @run driver TestJpsHostName
+import java.nio.ByteBuffer;
+
+/**
+ * No implementation provided for onInit() because that must always be
+ * implemented by user
  */
-public class TestJpsHostName {
+abstract class DefaultMessageStreamHandler implements MessageStreamHandler {
 
-    public static void main(String[] args) throws Throwable {
-        testJpsHostName("12345");
-        testJpsHostName("12345:37266");
-    }
+    public void onText(CharSequence data, boolean last) {}
 
-    private static void testJpsHostName(String hostname) throws Exception {
-        OutputAnalyzer output = JpsHelper.jps(hostname);
-        output.shouldNotContain("Malformed Host Identifier: " + hostname);
-    }
+    public void onBinary(ByteBuffer data, boolean last) {}
 
+    public void onPing(ByteBuffer data) {}
+
+    public void onPong(ByteBuffer data) {}
+
+    public void onClose(int statusCode, CharSequence reason) {}
+
+    public void onComplete() {}
+
+    public void onError(Throwable e) {}
 }
+
