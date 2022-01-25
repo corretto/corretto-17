@@ -2,6 +2,50 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.2.8.1
+
+ Release Date: January 18, 2022
+
+ **Target Platforms**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Alpine-based Linux, x86_64
++ Windows 7 or later, x86_64
++ macos 10.13 and later, x86_64
++ macos 11.0 and later, aarch64
+
+ The following issues are addressed in 17.0.2.8.1
+
+ | Issue Name | Platform | Description | Link |
+ | --- | --- | --- | --- |
+ | Import jdk-17.0.2+8 | All | Updates Corretto patch set to OpenJDK 17.0.2+8 | [jdk-17.0.2+8](https://github.com/openjdk/jdk17/releases/tag/jdk-17.0.2%2B8)
+ | Use SHA256 hashes in RPM File Digest | RPM-based Linux | Update plugins to support FIPS compliant file digests in generated RPMs | [#344](https://github.com/corretto/corretto-8/issues/344) |
+ | Sign Mac bundle | Macos | The Macos tgz contained signed files, but was not signed as a bundle. | |
+ | Update Amazon CACerts | All | Pull in the latest CA Certificates from Amazon Linux | |
+
+ The following CVEs are addressed in 17.0.2.8.1
+
+ | CVE | CVSS | Component |
+ | --- | --- | --- |
+ | CVE-2022-21341 | 5.3 | core-libs/java.io:serialization |
+ | CVE-2022-21365 | 5.3 | client-libs/javax.imageio |
+ | CVE-2022-21282 | 5.3 | xml/jaxp |
+ | CVE-2022-21291 | 5.3 | hotspot/runtime |
+ | CVE-2022-21277 | 5.3 | client-libs/javax.imageio |
+ | CVE-2022-21305 | 5.3 | hotspot/compiler |
+ | CVE-2022-21299 | 5.3 | xml/jaxp |
+ | CVE-2022-21296 | 5.3 | xml/jaxp |
+ | CVE-2022-21283 | 5.3 | core-libs/java.util |
+ | CVE-2022-21340 | 5.3 | security-libs/java.security |
+ | CVE-2022-21293 | 5.3 | core-libs/java.lang |
+ | CVE-2022-21294 | 5.3 | core-libs/java.util |
+ | CVE-2022-21360 | 5.3 | client-libs/javax.imageio |
+ | CVE-2022-21366 | 5.3 | client-libs/javax.imageio |
+ | CVE-2022-21248 | 3.7 | core-libs/java.io:serialization |
+
 ## Corretto version: 17.0.1.12.2
 
  Release Date: November 19, 2021
