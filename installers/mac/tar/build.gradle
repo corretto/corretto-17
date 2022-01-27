@@ -83,7 +83,7 @@ task executeBuild(type: Exec) {
 task executeTestBuild(type: Exec) {
     dependsOn executeBuild
     workingDir "$buildRoot"
-    commandLine 'make','test-image-hotspot-jtreg-native','test-image-jdk-jtreg-native'
+    commandLine 'make','test-image'
 }
 
 task prepareArtifacts {
@@ -139,11 +139,6 @@ task prepareArtifacts {
         exec {
             commandLine "SetFile", "-a", "B", "${buildDir}/${correttoMacDir}"
         }
-        // Gradle does not preserve symlink, fix it before packaging
-        exec {
-            workingDir "${buildDir}/${correttoMacDir}/Contents"
-            commandLine "ln", "-sf", "../Home/lib/libjli.dylib", "MacOS/libjli.dylib"
-        }
     }
 }
 
@@ -161,8 +156,9 @@ task packageDebugSymbols(type: Tar) {
     archiveName "${project.correttoDebugSymbolsArchiveName}.tar.gz"
     compression Compression.GZIP
     from("${jdkResultingImage}/${correttoMacDir}") {
-        include "Contents/Homebin/bin/*.diz"
-        include "Contents/Homebin/lib/*.diz"
+        include "Contents/Home/bin/*.diz"
+        include "Contents/Home/lib/*.diz"
+        include "Contents/Home/lib/server/*.diz"
     }
     into "${buildDir}/${correttoMacDir}"
     into project.correttoDebugSymbolsArchiveName

@@ -1,13 +1,13 @@
-name: "Refresh jdk17 from Upstream"
+name: "Refresh jdk17u-dev from Upstream"
 on:
   schedule:
-    - cron: '0 8 * * *'
+    - cron: '0 9 * * *'
   workflow_dispatch:
 
 jobs:
-    refresh-jdk17:
+    refresh-jdk17-dev:
         runs-on: ubuntu-latest
-        name: "Update Corretto-17"
+        name: "Update Corretto-17 nightly"
         if: github.repository_owner == 'corretto'
         steps:
             - name: "Checkout code"
@@ -17,15 +17,15 @@ jobs:
             - name: "Fetch Corretto-17"
               uses: ./.github/actions/fetch-repo
               with:
-                upstream: 'https://github.com/openjdk/jdk17u.git'
-                local-branch: 'upstream-jdk17u'
+                upstream: 'https://github.com/openjdk/jdk17u-dev.git'
+                local-branch: 'upstream-jdk17u-dev'
             - name: "Merge Corretto-17"
               uses: ./.github/actions/merge-repo
               with:
-                upstream: 'upstream-jdk17u'
-                merge-branch: 'develop'
+                upstream: 'upstream-jdk17u-dev'
+                merge-branch: 'nightly'
             - name: "Update Corretto version"
               uses: ./.github/actions/update-version
               with:
-                upstream: 'upstream-jdk17u'
-                version-branch: 'develop'
+                upstream: 'upstream-jdk17u-dev'
+                version-branch: 'nightly'

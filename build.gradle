@@ -25,6 +25,7 @@
 
 import org.apache.tools.ant.taskdefs.condition.Os
 
+
 allprojects {
     apply plugin: 'base'
 
@@ -80,7 +81,7 @@ allprojects {
                 "--with-vendor-version-string=Corretto-${project.version.full}"
         ]
 
-        def versionOpt = project.findProperty("corretto.versionOpt") ?: "LTS"
+        versionOpt = project.findProperty("corretto.versionOpt") ?: "LTS"
         correttoCommonFlags += ["--with-version-opt=${versionOpt}"]
 
         def versionDate = project.findProperty("corretto.versionDate")

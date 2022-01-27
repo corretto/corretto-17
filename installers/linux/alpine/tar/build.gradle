@@ -106,7 +106,7 @@ task executeBuild(type: Exec) {
 task createTestImage(type: Exec) {
     dependsOn executeBuild
     workingDir "$buildRoot"
-    commandLine 'make','test-image-hotspot-jtreg-native','test-image-jdk-jtreg-native'
+    commandLine 'make','test-image'
 }
 
 task packageTestImage(type: Tar) {
@@ -128,6 +128,7 @@ task packageDebugSymbols(type: Tar) {
     from(jdkResultingImage) {
         include 'bin/*.diz'
         include 'lib/*.diz'
+        include 'lib/server/*.diz'
         into "amazon-corretto-debugsymbols-${project.version.full}-alpine-linux-${arch_alias}"
     }
 }
