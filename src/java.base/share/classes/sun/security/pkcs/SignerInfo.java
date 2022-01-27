@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -380,8 +380,15 @@ public class SignerInfo implements DerEncoder {
                 if (digestAlgName.equals("SHAKE256")
                         || digestAlgName.equals("SHAKE256-LEN")) {
                     if (digestAlgName.equals("SHAKE256-LEN")) {
-                        int v = new DerValue(digestAlgorithmId
-                                .getEncodedParams()).getInteger();
+                        // RFC8419: for EdDSA in CMS, the id-shake256-len
+                        // algorithm id must contain parameter value 512
+                        // encoded as a positive integer value
+                        byte[] params = digestAlgorithmId.getEncodedParams();
+                        if (params == null) {
+                            throw new SignatureException(
+                                    "id-shake256-len oid missing length");
+                        }
+                        int v = new DerValue(params).getInteger();
                         if (v != 512) {
                             throw new SignatureException(
                                     "Unsupported id-shake256-" + v);
@@ -515,6 +522,15 @@ public class SignerInfo implements DerEncoder {
             case "RSASSA-PSS":
                 PSSParameterSpec spec = (PSSParameterSpec)
                         SignatureUtil.getParamSpec(encAlg, encAlgId.getParameters());
+                /*
+                 * RFC 4056 section 3 for Signed-data:
+                 * signatureAlgorithm MUST contain id-RSASSA-PSS. The algorithm
+                 * parameters field MUST contain RSASSA-PSS-params.
+                 */
+                if (spec == null) {
+                    throw new NoSuchAlgorithmException("Missing PSSParameterSpec for RSASSA-PSS algorithm");
+                }
+
                 if (!AlgorithmId.get(spec.getDigestAlgorithm()).equals(digAlgId)) {
                     throw new NoSuchAlgorithmException("Incompatible digest algorithm");
                 }

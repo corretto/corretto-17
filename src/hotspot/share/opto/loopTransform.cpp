@@ -899,7 +899,7 @@ bool IdealLoopTree::policy_unroll(PhaseIdealLoop *phase) {
   //   Progress defined as current size less than 20% larger than previous size.
   if (UseSuperWord && cl->node_count_before_unroll() > 0 &&
       future_unroll_cnt > LoopUnrollMin &&
-      (future_unroll_cnt - 1) * (100 / LoopPercentProfileLimit) > cl->profile_trip_cnt() &&
+      (future_unroll_cnt - 1) * (100.0 / LoopPercentProfileLimit) > cl->profile_trip_cnt() &&
       1.2 * cl->node_count_before_unroll() < (double)_body.size()) {
     return false;
   }
@@ -2555,7 +2555,7 @@ Node* PhaseIdealLoop::add_range_check_predicate(IdealLoopTree* loop, CountedLoop
                                                 Node* predicate_proj, int scale_con, Node* offset,
                                                 Node* limit, jint stride_con, Node* value) {
   bool overflow = false;
-  BoolNode* bol = rc_predicate(loop, predicate_proj, scale_con, offset, value, NULL, stride_con, limit, (stride_con > 0) != (scale_con > 0), overflow);
+  BoolNode* bol = rc_predicate(loop, predicate_proj, scale_con, offset, value, NULL, stride_con, limit, (stride_con > 0) != (scale_con > 0), overflow, false);
   Node* opaque_bol = new Opaque4Node(C, bol, _igvn.intcon(1));
   register_new_node(opaque_bol, predicate_proj);
   IfNode* new_iff = NULL;

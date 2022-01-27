@@ -663,7 +663,7 @@ void LIRGenerator::new_instance(LIR_Opr dst, ciInstanceKlass* klass, bool is_unr
 
     assert(klass->is_loaded(), "must be loaded");
     // allocate space for instance
-    assert(klass->size_helper() >= 0, "illegal instance size");
+    assert(klass->size_helper() > 0, "illegal instance size");
     const int instance_size = align_object_size(klass->size_helper());
     __ allocate_object(dst, scratch1, scratch2, scratch3, scratch4,
                        oopDesc::header_size(), instance_size, klass_reg, !klass->is_initialized(), slow_path);
@@ -979,6 +979,14 @@ void LIRGenerator::move_to_phi(PhiResolver* resolver, Value cur_val, Value sux_v
   Phi* phi = sux_val->as_Phi();
   // cur_val can be null without phi being null in conjunction with inlining
   if (phi != NULL && cur_val != NULL && cur_val != phi && !phi->is_illegal()) {
+    if (phi->is_local()) {
+      for (int i = 0; i < phi->operand_count(); i++) {
+        Value op = phi->operand_at(i);
+        if (op != NULL && op->type()->is_illegal()) {
+          bailout("illegal phi operand");
+        }
+      }
+    }
     Phi* cur_phi = cur_val->as_Phi();
     if (cur_phi != NULL && cur_phi->is_illegal()) {
       // Phi and local would need to get invalidated

@@ -550,19 +550,19 @@ void VM_PopulateDumpSharedSpace::doit() {
 
 class CollectCLDClosure : public CLDClosure {
   GrowableArray<ClassLoaderData*> _loaded_cld;
+  GrowableArray<OopHandle> _loaded_cld_handles; // keep the CLDs alive
+  Thread* _current_thread;
 public:
-  CollectCLDClosure() {}
+  CollectCLDClosure(Thread* thread) : _current_thread(thread) {}
   ~CollectCLDClosure() {
-    for (int i = 0; i < _loaded_cld.length(); i++) {
-      ClassLoaderData* cld = _loaded_cld.at(i);
-      cld->dec_keep_alive();
+    for (int i = 0; i < _loaded_cld_handles.length(); i++) {
+      _loaded_cld_handles.at(i).release(Universe::vm_global());
     }
   }
   void do_cld(ClassLoaderData* cld) {
-    if (!cld->is_unloading()) {
-      cld->inc_keep_alive();
-      _loaded_cld.append(cld);
-    }
+    assert(cld->is_alive(), "must be");
+    _loaded_cld.append(cld);
+    _loaded_cld_handles.append(OopHandle(Universe::vm_global(), cld->holder_phantom()));
   }
 
   int nof_cld() const                { return _loaded_cld.length(); }
@@ -591,11 +591,10 @@ bool MetaspaceShared::link_class_for_cds(InstanceKlass* ik, TRAPS) {
 }
 
 void MetaspaceShared::link_and_cleanup_shared_classes(TRAPS) {
-  // Collect all loaded ClassLoaderData.
-  ResourceMark rm;
-
   LambdaFormInvokers::regenerate_holder_classes(CHECK);
-  CollectCLDClosure collect_cld;
+
+  // Collect all loaded ClassLoaderData.
+  CollectCLDClosure collect_cld(THREAD);
   {
     // ClassLoaderDataGraph::loaded_cld_do requires ClassLoaderDataGraph_lock.
     // We cannot link the classes while holding this lock (or else we may run into deadlock).
