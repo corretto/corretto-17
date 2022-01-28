@@ -399,7 +399,7 @@ fi
 %license %{java_imgdir}/docs/legal
 
 %changelog
-* Tue Dec 16 2021 Clive Verghese <verghese@amazon.com> 
+* Tue Dec 16 2021 Clive Verghese <verghese@amazon.com>
 - Add requires for log4j CVE-2021-44228 static mitigation
 * Mon Nov 22 2021 Dan Lutker <lutkerd@amazon.com>
 - Setup AL2 package for CorrettoJdk
