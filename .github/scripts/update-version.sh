@@ -2,13 +2,7 @@
 
 set -x
 
-UPSTREAM_REMOTE=upstream-$1
-VERSION_BRANCH=$2
-
-git config user.email "no-reply@amazon.com"
-git config user.name "corretto-github-robot"
-
-git checkout ${VERSION_BRANCH}
+UPSTREAM_REMOTE=$1
 
 # Load the current OpenJDK version
 source make/conf/version-numbers.conf
@@ -25,5 +19,4 @@ else
     NEW_VERSION="${DEFAULT_VERSION_FEATURE}.${DEFAULT_VERSION_INTERIM}.${DEFAULT_VERSION_UPDATE}.${BUILD_NUMBER}.1"
     echo  "${NEW_VERSION}" > version.txt
     git commit -m "Update Corretto version to match upstream: ${NEW_VERSION}" version.txt
-    git push origin ${VERSION_BRANCH}
 fi

@@ -3,29 +3,30 @@ on:
   schedule:
     - cron: '0 8 * * *'
   workflow_dispatch:
-
+env:
+  UPSTREAM_REMOTE: https://github.com/openjdk/jdk.git
+  LOCAL_BRANCH: develop
 jobs:
     refresh-jdk:
         runs-on: ubuntu-latest
-        name: "Update Corretto-tip"
+        name: "Update Corretto-jdk"
         if: github.repository_owner == 'corretto'
         steps:
             - name: "Checkout code"
               uses: actions/checkout@v2
               with:
                 fetch-depth: 0
-            - name: "Fetch Corretto-jdk"
-              uses: ./.github/actions/fetch-repo
-              with:
-                upstream: 'https://github.com/openjdk/jdk.git'
-                local-branch: 'upstream-jdk'
-            - name: "Merge Corretto-tip"
-              uses: ./.github/actions/merge-repo
-              with:
-                upstream: 'upstream-jdk'
-                merge-branch: 'develop'
+                ref: ${{ env.LOCAL_BRANCH }}
+            - name: "Configure the user"
+              run: |
+                git config user.email "no-reply@amazon.com"
+                git config user.name "corretto-github-robot"
+            - name: "Merge openjdk/jdk:master to the corretto-jdk:develop"
+              run: |
+                git fetch $UPSTREAM_REMOTE master || exit 1
+                git merge -m "Merge upstream-jdk" FETCH_HEAD
             - name: "Update Corretto version"
-              uses: ./.github/actions/update-version
-              with:
-                upstream: 'upstream-jdk'
-                version-branch: 'develop'
+              shell: bash
+              run: bash ./.github/scripts/update-version.sh $UPSTREAM_REMOTE
+            - name: "Push to the corretto-jdk"
+              run: git push origin $LOCAL_BRANCH
