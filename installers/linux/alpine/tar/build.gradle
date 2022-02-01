@@ -151,11 +151,17 @@ task packageBuildResults(type: Tar) {
         include 'conf/**'
         include 'include/**'
         include 'jmods/**'
-        include 'legal/**'
         include 'lib/**'
         include 'man/man1/**'
         include 'release'
         exclude '**/*.diz'
+    }
+    
+    // Copy legal directory specifically to set permission correctly.
+    // See https://github.com/corretto/corretto-11/issues/129
+    from(jdkResultingImage) {
+        include 'legal/**'
+        fileMode 0444
     }
     into "amazon-corretto-${project.version.full}-alpine-linux-${arch_alias}"
 }
