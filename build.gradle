@@ -218,6 +218,9 @@ project(':prebuild') {
 
         description = 'Generate Cacerts from JDK source'
         classpath = files(classPath)
+
+        // See commit for [JDK-8275252](https://github.com/corretto/corretto-jdk/commit/bd2b41dd7062c50f3aaebec2137d5fdd9546c120)
+        jvmArgs = ['-Dkeystore.pkcs12.certProtectionAlgorithm=NONE', '-Dkeystore.pkcs12.macAlgorithm=NONE']
         main = generateToolMain
         args = [jdkCaDir, project.caCerts]
     }
