@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,18 +21,40 @@
  * questions.
  */
 
-import jdk.test.lib.apps.LingeredApp;
+/*
+ * @test
+ * bug 8280842
+ * @summary Access violation in ciTypeFlow::profiled_count
+ * @run main/othervm -XX:-BackgroundCompilation TestSharedHeadExceptionBackedges
+ */
 
-import java.lang.ref.Reference;
-
-public class LingeredAppWithLargeStringArray extends LingeredApp {
-    public static void main(String args[]) {
-        String[] hugeArray = new String[Integer.MAX_VALUE/8];
-        String[] smallArray = {"Just", "for", "testing"};
-        for (int i = 0; i < hugeArray.length/16; i++) {
-            hugeArray[i] = new String(smallArray[i%3]);
+public class TestSharedHeadExceptionBackedges {
+    public static void main(String[] args) {
+        for (int i = 0; i < 20_000; i++) {
+            test();
         }
-        LingeredApp.main(args);
-        Reference.reachabilityFence(hugeArray);
     }
- }
+
+    static class MyException extends Exception {
+    }
+
+    private static void test() {
+        int i = 0;
+        while (i < 10) {
+            try {
+                int j = 0;
+                i++;
+                if (i % 2 == 0) {
+                    throw new MyException();
+                }
+                do {
+                    j++;
+                } while (j < 100);
+
+                throw new MyException();
+
+            } catch (MyException me) {
+            }
+        }
+    }
+}

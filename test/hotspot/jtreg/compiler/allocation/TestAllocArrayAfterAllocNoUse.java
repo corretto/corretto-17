@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,18 +21,32 @@
  * questions.
  */
 
-import jdk.test.lib.apps.LingeredApp;
+/**
+ * @test
+ * @bug 8279125
+ * @summary fatal error: no reachable node should have no use
+ * @requires vm.flavor == "server"
+ *
+ * @run main/othervm -XX:-BackgroundCompilation -XX:-DoEscapeAnalysis TestAllocArrayAfterAllocNoUse
+ *
+ */
 
-import java.lang.ref.Reference;
+public class TestAllocArrayAfterAllocNoUse {
+    private static Object field;
 
-public class LingeredAppWithLargeStringArray extends LingeredApp {
-    public static void main(String args[]) {
-        String[] hugeArray = new String[Integer.MAX_VALUE/8];
-        String[] smallArray = {"Just", "for", "testing"};
-        for (int i = 0; i < hugeArray.length/16; i++) {
-            hugeArray[i] = new String(smallArray[i%3]);
+    public static void main(String[] args) {
+        for (int i = 0; i < 20_000; i++) {
+            test();
         }
-        LingeredApp.main(args);
-        Reference.reachabilityFence(hugeArray);
     }
- }
+
+    private static void test() {
+        try {
+            final TestAllocArrayAfterAllocNoUse o = new TestAllocArrayAfterAllocNoUse();
+        } catch (Exception e) {
+            final int[] array = new int[100];
+            field = array;
+        }
+
+    }
+}

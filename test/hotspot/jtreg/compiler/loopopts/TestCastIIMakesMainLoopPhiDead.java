@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,18 +21,33 @@
  * questions.
  */
 
-import jdk.test.lib.apps.LingeredApp;
+/*
+ * @test
+ * bug 8280600
+ * @summary C2: assert(!had_error) failed: bad dominance
+ * @run main/othervm -Xcomp -XX:CompileOnly=TestCastIIMakesMainLoopPhiDead TestCastIIMakesMainLoopPhiDead
+ */
 
-import java.lang.ref.Reference;
+public class TestCastIIMakesMainLoopPhiDead {
+    int iArr[] = new int[0];
 
-public class LingeredAppWithLargeStringArray extends LingeredApp {
-    public static void main(String args[]) {
-        String[] hugeArray = new String[Integer.MAX_VALUE/8];
-        String[] smallArray = {"Just", "for", "testing"};
-        for (int i = 0; i < hugeArray.length/16; i++) {
-            hugeArray[i] = new String(smallArray[i%3]);
+    void test() {
+        int x = 8;
+        try {
+            for (int i = 0; i < 8; i++) {
+                iArr[1] = 9;
+                for (int j = -400; 1 > j; j++) {
+                    iArr[j] = 4;
+                    x -= 2;
+                }
+            }
+        } catch (ArrayIndexOutOfBoundsException e) {
         }
-        LingeredApp.main(args);
-        Reference.reachabilityFence(hugeArray);
     }
- }
+    public static void main(String[] k) {
+        TestCastIIMakesMainLoopPhiDead t = new TestCastIIMakesMainLoopPhiDead();
+        for (int i = 0; i < 3; i++) {
+            t.test();
+        }
+    }
+}
