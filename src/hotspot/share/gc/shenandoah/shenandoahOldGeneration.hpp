@@ -73,7 +73,7 @@ class ShenandoahOldGeneration : public ShenandoahGeneration {
   // In order to track amount that is promoted during a collection, we need
   // to notify the global and young memory managers of the reset
   void reset_bytes_allocated_since_gc_start() override;
- protected:
+
   bool is_concurrent_mark_in_progress() override;
 };
 
