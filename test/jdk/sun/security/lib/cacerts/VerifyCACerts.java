@@ -54,12 +54,12 @@ public class VerifyCACerts {
             + File.separator + "security" + File.separator + "cacerts";
 
     // The numbers of certs now.
-    private static final int COUNT = 89;
+    private static final int COUNT = 221;
 
     // SHA-256 of cacerts, can be generated with
     // shasum -a 256 cacerts | sed -e 's/../&:/g' | tr '[:lower:]' '[:upper:]' | cut -c1-95
     private static final String CHECKSUM
-            = "0D:9C:40:8F:CE:B1:C7:27:89:54:FD:80:DA:B6:91:F4:C9:94:15:C4:8D:25:62:34:D4:70:32:60:1A:6F:13:27";
+            = "2C:35:DC:6F:AD:22:58:0B:3E:47:9B:A6:75:C5:3E:CD:09:29:E7:96:50:30:2F:FF:C5:4A:EE:72:58:76:8A:B7";
 
     // Hex formatter to upper case with ":" delimiter
     private static final HexFormat HEX = HexFormat.ofDelimiter(":").withUpperCase();
@@ -266,6 +266,14 @@ public class VerifyCACerts {
             add("quovadisrootca [jdk]");
             // Valid until: Sat May 21 04:00:00 GMT 2022
             add("geotrustglobalca [jdk]");
+
+            // Amazon Linux
+            add("dstrootcax3");
+            add("soneraclass2rootca");
+            add("globalsignrootca-r2");
+            add("geotrustglobalca");
+            add("quovadisrootca");
+            add("cybertrustglobalroot");
         }
     };
 
