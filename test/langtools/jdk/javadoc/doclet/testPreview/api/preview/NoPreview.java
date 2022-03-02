@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,11 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package preview;
 
-package pkg3;
+import jdk.internal.javac.PreviewFeature;
+import jdk.internal.javac.PreviewFeature.Feature;
 
-public interface I3 extends I4 {
+public class NoPreview {
 
-    public void foo();
+    @PreviewFeature(feature=Feature.TEST)
+    public T get() {
+        return null;
+    }
 
+    @PreviewFeature(feature=Feature.TEST)
+    public static class T {}
 }
