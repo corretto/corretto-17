@@ -276,7 +276,6 @@ public class VerifyCACerts {
             add("quovadisrootca [jdk]");
             // Valid until: Sat May 21 04:00:00 GMT 2022
             add("geotrustglobalca [jdk]");
-            
             // Amazon Linux
             add("globalsignrootca-r2");
             add("cybertrustglobalroot");
