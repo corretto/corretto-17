@@ -472,7 +472,7 @@ void ShenandoahHeap::initialize_heuristics() {
       vm_exit_during_initialization("Unknown -XX:ShenandoahGCMode option");
     }
   } else {
-    ShouldNotReachHere();
+    vm_exit_during_initialization("Unknown -XX:ShenandoahGCMode option (null)");
   }
   _gc_mode->initialize_flags();
   if (_gc_mode->is_diagnostic() && !UnlockDiagnosticVMOptions) {
@@ -1205,6 +1205,8 @@ HeapWord* ShenandoahHeap::allocate_memory_under_lock(ShenandoahAllocRequest& req
         // This is a shared allocation for evacuation.  Memory has already been reserved for this purpose.
       }
     }
+  }
+
   HeapWord* result = _free_set->allocate(req, in_new_region);
   if (result != NULL) {
     if (req.affiliation() == ShenandoahRegionAffiliation::OLD_GENERATION) {
