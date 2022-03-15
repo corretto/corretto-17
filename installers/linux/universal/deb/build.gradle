@@ -157,7 +157,7 @@ task generateJdkDeb(type: Deb) {
     provides('java11-runtime')
     17.upto(project.version.major.toInteger()) {
       provides("java${it}-runtime")
-    }    
+    }
     // TODO: Move this to the headless jre when splitting the fat deb
     provides('java-runtime-headless')
     provides('java5-runtime-headless')
@@ -170,8 +170,17 @@ task generateJdkDeb(type: Deb) {
     }
 
     from(jdkBinaryDir) {
+        include(project.configurationFiles)
+        // Deb actually uses configuationFile and not fileType see https://github.com/nebula-plugins/gradle-ospackage-plugin/issues/118#issuecomment-656004360
+        // Path must be the fully qualified install path
+        configurationFile = project.configurationFiles.collect{ "${jdkHome}/${it}" }.join("\n")
+        into jdkHome
+    }
+
+    from(jdkBinaryDir) {
         into jdkHome
         exclude 'legal'
+        exclude(project.configurationFiles)
     }
 
     // Copy legal directory specifically to set permission correctly.
@@ -181,7 +190,7 @@ task generateJdkDeb(type: Deb) {
         fileMode 0444
     }
 
-    from("$buildRoot/jinfo") {
+    from("${buildRoot}/jinfo") {
         include '**/*.jinfo'
         into jvmDir
     }
