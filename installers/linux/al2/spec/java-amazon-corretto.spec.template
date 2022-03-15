@@ -280,6 +280,7 @@ if [ \$1 -eq 1 ] ; then
                --slave %{_bindir}/jstack jstack %{java_home}/bin/jstack \\
                --slave %{_bindir}/jstat jstat %{java_home}/bin/jstat \\
                --slave %{_bindir}/jstatd jstatd %{java_home}/bin/jstatd \\
+               --slave %{_bindir}/jwebserver jwebserver %{java_home}/bin/jwebserver \\
                --slave %{_bindir}/serialver serialver %{java_home}/bin/serialver \\
                --slave %{_jvmdir}/jre-openjdk jre-openjdk %{java_home} \\
                --slave %{_jvmdir}/jre-${java_spec_version} jre-${java_spec_version} %{java_home} \\
@@ -301,6 +302,7 @@ if [ \$1 -eq 1 ] ; then
                --slave %{_mandir}/man1/jstack.1 jstack.1 %{java_home}/man/man1/jstack.1 \\
                --slave %{_mandir}/man1/jstat.1 jstat.1 %{java_home}/man/man1/jstat.1 \\
                --slave %{_mandir}/man1/jstatd.1 jstatd.1 %{java_home}/man/man1/jstatd.1 \\
+               --slave %{_mandir}/man1/jwebserver.1 jwebserver.1 %{java_home}/man/man1/jwebserver.1 \\
                --slave %{_mandir}/man1/rmic.1 rmic.1 %{java_home}/man/man1/rmic.1 \\
                --slave %{_mandir}/man1/serialver.1 serialver.1 %{java_home}/man/man1/serialver.1
 fi
@@ -361,6 +363,7 @@ fi
 %{java_home}/bin/jstack
 %{java_home}/bin/jstat
 %{java_home}/bin/jstatd
+%{java_home}/bin/jwebserver
 %{java_home}/bin/serialver
 %{java_home}/include
 %{java_home}/man/man1/jar.1
@@ -386,6 +389,7 @@ fi
 %{java_home}/man/man1/jstack.1
 %{java_home}/man/man1/jstat.1
 %{java_home}/man/man1/jstatd.1
+%{java_home}/man/man1/jwebserver.1
 %{java_home}/man/man1/serialver.1
 
 %files jmods
@@ -399,7 +403,9 @@ fi
 %license %{java_imgdir}/docs/legal
 
 %changelog
-* Tue Dec 16 2021 Clive Verghese <verghese@amazon.com>
+* Fri Feb 18 2022 Dan Lutker <lutkerd@amazon.com>
+- Add jwebserver to devel package
+* Thu Dec 16 2021 Clive Verghese <verghese@amazon.com>
 - Add requires for log4j CVE-2021-44228 static mitigation
 * Mon Nov 22 2021 Dan Lutker <lutkerd@amazon.com>
 - Setup AL2 package for CorrettoJdk
