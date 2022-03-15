@@ -254,8 +254,11 @@ if [ \$1 -eq 1 ] ; then
                --slave %{_bindir}/rmiregistry rmiregistry %{java_home}/bin/rmiregistry \\
                --slave %{_mandir}/man1/java.1 java.1 %{java_home}/man/man1/java.1 \\
                --slave %{_mandir}/man1/keytool.1 keytool.1 %{java_home}/man/man1/keytool.1 \\
-               --slave %{_mandir}/man1/rmiregistry.1 rmiregistry.1 %{java_home}/man/man1/rmiregistry.1 \\
+               --slave %{_mandir}/man1/rmiregistry.1 rmiregistry.1 %{java_home}/man/man1/rmiregistry.1
+fi
 
+%post devel
+if [ \$1 -eq 1 ] ; then
   alternatives --install %{_bindir}/javac javac %{java_home}/bin/javac %{alternatives_priority} \\
                --slave %{_bindir}/jar jar %{java_home}/bin/jar \\
                --slave %{_bindir}/jarsigner jarsigner %{java_home}/bin/jarsigner \\
@@ -310,6 +313,10 @@ fi
 %postun headless
 if [ \$1 -eq 0 ] ; then
   alternatives --remove java %{java_home}/bin/java
+fi
+
+%postun devel
+if [ \$1 -eq 0 ] ; then
   alternatives --remove javac %{java_home}/bin/javac
 fi
 
@@ -403,6 +410,8 @@ fi
 %license %{java_imgdir}/docs/legal
 
 %changelog
+* Fri Feb 18 2022 Dan Lutker <lutkerd@amazon.com>
+- Fix alternatives for devel package
 * Fri Feb 18 2022 Dan Lutker <lutkerd@amazon.com>
 - Add jwebserver to devel package
 * Thu Dec 16 2021 Clive Verghese <verghese@amazon.com>
