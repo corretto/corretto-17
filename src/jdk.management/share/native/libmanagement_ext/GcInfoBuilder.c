@@ -77,7 +77,7 @@ JNIEXPORT void JNICALL Java_com_sun_management_internal_GcInfoBuilder_fillGcAttr
     jchar* nativeTypes;
     jstring attName = NULL;
     jstring desc = NULL;
-    jint ret = 0;
+    jlong ret = 0;
     jint i;
 
     if (gc == NULL) {
