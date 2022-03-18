@@ -215,7 +215,7 @@ typedef struct {
   jlong        copied_between_pools;           /* Bytes copied between different memory pools during the collection */
   jlong        garbage_collected;              /* Amount in bytes that were reclaimed during the collection */
   jlong        garbage_found;                  /* Amount in bytes of garbage located during the collection */
-  jint         app_thread_count_after_gc;      /* Application threads after GC */
+  jlong        app_thread_count_after_gc;      /* Application threads after GC */
   jlong        max_app_thread_delay;           /* Maximun amount of delay in ns for one thread during GC */
   jlong        total_app_thread_delay;         /* Total amount of delay in ns across all threads during GC */
   jint         delayed_app_thread_count;       /* Total number of threads delayed during GC */
@@ -323,7 +323,7 @@ typedef struct jmmInterface_1_ {
                                                   jlong threshold);
   jobject      (JNICALL *GetPoolCollectionUsage) (JNIEnv* env, jobject pool);
 
-  jint         (JNICALL *GetGCExtAttributeInfo)  (JNIEnv *env,
+  jlong        (JNICALL *GetGCExtAttributeInfo)  (JNIEnv *env,
                                                   jobject mgr,
                                                   jmmExtAttributeInfo *ext_info,
                                                   jint count);

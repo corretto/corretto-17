@@ -73,9 +73,9 @@ public:
   virtual void gc_end(bool recordPostGCUsage, bool recordAccumulatedGCTime,
                       bool recordGCEndTime, bool countCollection, GCCause::Cause cause,
                       bool allMemoryPoolsAffected) override;
-  virtual size_t ext_attribute_info_size() override;
-  virtual size_t ext_attribute_info(jmmExtAttributeInfo* info, jint count) override;
-  virtual size_t ext_attribute_values(jvalue* ext_attribute_values) override;
+  virtual jlong ext_attribute_info_size() override;
+  virtual jlong ext_attribute_info(jmmExtAttributeInfo* info, jint count) override;
+  virtual jlong ext_attribute_values(jvalue* ext_attribute_values) override;
 };
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAHMEMORYMANAGER_HPP

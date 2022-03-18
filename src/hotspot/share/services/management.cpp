@@ -1806,7 +1806,7 @@ JVM_END
 // Returns the number of GC extension attributes filled in the info array; or
 // -1 if info is not big enough
 //
-JVM_ENTRY(jint, jmm_GetGCExtAttributeInfo(JNIEnv *env, jobject obj, jmmExtAttributeInfo* info, jint count))
+JVM_ENTRY(jlong, jmm_GetGCExtAttributeInfo(JNIEnv *env, jobject obj, jmmExtAttributeInfo* info, jint count))
   if (count == 0) {
     return 0;
   }
