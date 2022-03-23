@@ -323,7 +323,7 @@ typedef struct jmmInterface_1_ {
                                                   jlong threshold);
   jobject      (JNICALL *GetPoolCollectionUsage) (JNIEnv* env, jobject pool);
 
-  jlong        (JNICALL *GetGCExtAttributeInfo)  (JNIEnv *env,
+  jint         (JNICALL *GetGCExtAttributeInfo)  (JNIEnv *env,
                                                   jobject mgr,
                                                   jmmExtAttributeInfo *ext_info,
                                                   jint count);

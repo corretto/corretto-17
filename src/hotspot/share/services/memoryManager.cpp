@@ -407,7 +407,7 @@ size_t GCMemoryManager::get_last_gc_stat(GCStatInfo* dest) {
   return _last_gc_stat->gc_index();
 }
 
-jlong GCMemoryManager::ext_attribute_info(jmmExtAttributeInfo* info, jint count) {
+jint GCMemoryManager::ext_attribute_info(jmmExtAttributeInfo* info, jint count) {
   info[0].name = "GcThreadCount";
   info[0].type = 'I';
   info[0].description = "Number of GC threads";

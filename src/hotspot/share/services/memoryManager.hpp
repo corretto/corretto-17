@@ -318,7 +318,7 @@ public:
   size_t get_last_gc_stat(GCStatInfo* dest);
 
   virtual jlong ext_attribute_info_size() { return 1; }
-  virtual jlong ext_attribute_info(jmmExtAttributeInfo* info, jint count);
+  virtual jint  ext_attribute_info(jmmExtAttributeInfo* info, jint count);
   virtual jlong ext_attribute_values(jvalue* ext_attribute_values);
 
   void set_notification_enabled(bool enabled) { _notification_enabled = enabled; }

@@ -147,8 +147,8 @@ jlong ShenandoahOldGenMemoryManager::ext_attribute_info_size() {
   return ShenandoahMemoryManager::ext_attribute_info_size() + 2;
 }
 
-jlong ShenandoahOldGenMemoryManager::ext_attribute_info(jmmExtAttributeInfo* info, jint count) {
-  jlong base = ShenandoahMemoryManager::ext_attribute_info(info, count);
+jint ShenandoahOldGenMemoryManager::ext_attribute_info(jmmExtAttributeInfo* info, jint count) {
+  jint base = ShenandoahMemoryManager::ext_attribute_info(info, count);
 
   info[base].name = "interrupted";
   info[base].type = 'Z';

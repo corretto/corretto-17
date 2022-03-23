@@ -74,7 +74,7 @@ public:
                       bool recordGCEndTime, bool countCollection, GCCause::Cause cause,
                       bool allMemoryPoolsAffected) override;
   virtual jlong ext_attribute_info_size() override;
-  virtual jlong ext_attribute_info(jmmExtAttributeInfo* info, jint count) override;
+  virtual jint  ext_attribute_info(jmmExtAttributeInfo* info, jint count) override;
   virtual jlong ext_attribute_values(jvalue* ext_attribute_values) override;
 };
 
