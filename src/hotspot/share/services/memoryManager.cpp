@@ -407,14 +407,14 @@ size_t GCMemoryManager::get_last_gc_stat(GCStatInfo* dest) {
   return _last_gc_stat->gc_index();
 }
 
-size_t GCMemoryManager::ext_attribute_info(jmmExtAttributeInfo* info, jint count) {
+jint GCMemoryManager::ext_attribute_info(jmmExtAttributeInfo* info, jint count) {
   info[0].name = "GcThreadCount";
   info[0].type = 'I';
   info[0].description = "Number of GC threads";
   return 1;
 }
 
-size_t GCMemoryManager::ext_attribute_values(jvalue* ext_attribute_values) {
+jlong GCMemoryManager::ext_attribute_values(jvalue* ext_attribute_values) {
   ext_attribute_values[0].i = _num_gc_threads;
   return 1;
 }

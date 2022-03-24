@@ -22,13 +22,14 @@
  *
  */
 
+#include "precompiled.hpp"
+
 #include "oops/oop.inline.hpp"
 #include "oops/oopHandle.inline.hpp"
 #include "services/memoryPool.hpp"
 
 #include "gc/shenandoah/shenandoahGeneration.hpp"
 #include "gc/shenandoah/shenandoahMemoryManager.hpp"
-#include "gc/shenandoah/shenandoahOldGeneration.hpp"
 #include "gc/shenandoah/shenandoahYoungGeneration.hpp"
 
 
@@ -142,12 +143,12 @@ void ShenandoahOldGenMemoryManager::gc_end(bool recordPostGCUsage, bool recordAc
   ShenandoahMemoryManager::gc_end(recordPostGCUsage, recordAccumulatedGCTime, recordGCEndTime, countCollection, cause, allMemoryPoolsAffected);
 }
 
-size_t ShenandoahOldGenMemoryManager::ext_attribute_info_size() {
+jlong ShenandoahOldGenMemoryManager::ext_attribute_info_size() {
   return ShenandoahMemoryManager::ext_attribute_info_size() + 2;
 }
 
-size_t ShenandoahOldGenMemoryManager::ext_attribute_info(jmmExtAttributeInfo* info, jint count) {
-  size_t base = ShenandoahMemoryManager::ext_attribute_info(info, count);
+jint ShenandoahOldGenMemoryManager::ext_attribute_info(jmmExtAttributeInfo* info, jint count) {
+  jint base = ShenandoahMemoryManager::ext_attribute_info(info, count);
 
   info[base].name = "interrupted";
   info[base].type = 'Z';
@@ -160,8 +161,8 @@ size_t ShenandoahOldGenMemoryManager::ext_attribute_info(jmmExtAttributeInfo* in
   return base + 2;
 }
 
-size_t ShenandoahOldGenMemoryManager::ext_attribute_values(jvalue* ext_attribute_values) {
-  size_t base = ShenandoahMemoryManager::ext_attribute_values(ext_attribute_values);
+jlong ShenandoahOldGenMemoryManager::ext_attribute_values(jvalue* ext_attribute_values) {
+  jlong base = ShenandoahMemoryManager::ext_attribute_values(ext_attribute_values);
 
   ext_attribute_values[base].z = _interrupted;
   ext_attribute_values[base + 1].j = _completed_cycles;
