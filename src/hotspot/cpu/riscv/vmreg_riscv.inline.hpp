@@ -1,12 +1,11 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2006, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Huawei Technologies Co., Ltd. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,26 +20,27 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
-#include "java_net_InetAddressImplFactory.h"
+#ifndef CPU_RISCV_VM_VMREG_RISCV_INLINE_HPP
+#define CPU_RISCV_VM_VMREG_RISCV_INLINE_HPP
 
-#include "net_util.h"
-
-/************************************************************************
- * InetAddressImplFactory
- */
-
-/*
- * Class:     java_net_InetAddressImplFactory
- * Method:    isIPv6Supported
- * Signature: ()I
- */
-JNIEXPORT jboolean JNICALL
-Java_java_net_InetAddressImplFactory_isIPv6Supported(JNIEnv *env, jclass cls) {
-    if (ipv6_available()) {
-        return JNI_TRUE;
-    } else {
-        return JNI_FALSE;
-    }
+inline VMReg RegisterImpl::as_VMReg() const {
+  if (this == noreg) {
+    return VMRegImpl::Bad();
+  }
+  return VMRegImpl::as_VMReg(encoding() * RegisterImpl::max_slots_per_register);
 }
+
+inline VMReg FloatRegisterImpl::as_VMReg() const {
+  return VMRegImpl::as_VMReg((encoding() * FloatRegisterImpl::max_slots_per_register) +
+                             ConcreteRegisterImpl::max_gpr);
+}
+
+inline VMReg VectorRegisterImpl::as_VMReg() const {
+  return VMRegImpl::as_VMReg((encoding() * VectorRegisterImpl::max_slots_per_register) +
+                             ConcreteRegisterImpl::max_fpr);
+}
+
+#endif // CPU_RISCV_VM_VMREG_RISCV_INLINE_HPP

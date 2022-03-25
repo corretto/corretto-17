@@ -1,12 +1,11 @@
 /*
- * Copyright (c) 1997, 2003, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Huawei Technologies Co., Ltd. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,26 +20,12 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- */
-#include "java_net_InetAddressImplFactory.h"
-#include "net_util.h"
-
-/*
- * InetAddressImplFactory
+ *
  */
 
+#ifndef OS_CPU_LINUX_RISCV_VM_COPY_LINUX_RISCV_HPP
+#define OS_CPU_LINUX_RISCV_VM_COPY_LINUX_RISCV_HPP
 
-/*
- * Class:     java_net_InetAddressImplFactory
- * Method:    isIPv6Supported
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL
-Java_java_net_InetAddressImplFactory_isIPv6Supported(JNIEnv *env, jobject this)
-{
-    if (ipv6_available()) {
-        return JNI_TRUE;
-    } else {
-        return JNI_FALSE;
-    }
-}
+// Empty for build system
+
+#endif // OS_CPU_LINUX_RISCV_VM_COPY_LINUX_RISCV_HPP
