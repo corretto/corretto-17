@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,22 +21,43 @@
  * questions.
  */
 
-/*
- * @test
- * @bug 8022585 8277055
- * @summary VM crashes when ran with -XX:+PrintInlining
- * @run main/othervm -Xcomp -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining
- *                   compiler.print.PrintInlining
- * @run main/othervm -Xcomp -XX:-TieredCompilation -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining
- *                   compiler.print.PrintInlining
- * @run main/othervm -Xcomp -XX:-TieredCompilation -XX:+UnlockDiagnosticVMOptions -XX:+PrintIntrinsics
- *                   compiler.print.PrintInlining
+package compiler/interpreter;
+
+/* JASM simplified from the following Java pattern:
+ *
+ * public class Custom {
+ *
+ *  static void test(int v) {
+ *      int i8 = 1;
+ *      try {
+ *          v += 1;
+ *      } catch (ArithmeticException exc1) {
+ *      } finally {
+ *          for (; i8 < 100; i8++) {
+ *          }
+ *      }
+ *  }
+ *
  */
 
-package compiler.print;
+super public class Custom {
 
-public class PrintInlining {
-    public static void main(String[] args) {
-        System.out.println("Passed");
+    public static Method test:"(I)V" stack 2 locals 3 {
+        iconst_1;
+        istore_1;
+    try t0;
+        iinc          0, 1;
+    endtry t0;
+Loop:
+        iload_1;
+        bipush        100;
+        if_icmpge     Lexit;
+        iinc          1, 1;
+        goto          Loop;                 // deoptimize here on backwards branch
+    catch t0 java/lang/ArithmeticException; // unreachable block
+        astore_2;
+Lexit:
+        return
     }
+
 }

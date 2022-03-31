@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,22 +21,32 @@
  * questions.
  */
 
-/*
+/**
  * @test
- * @bug 8022585 8277055
- * @summary VM crashes when ran with -XX:+PrintInlining
- * @run main/othervm -Xcomp -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining
- *                   compiler.print.PrintInlining
- * @run main/othervm -Xcomp -XX:-TieredCompilation -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining
- *                   compiler.print.PrintInlining
- * @run main/othervm -Xcomp -XX:-TieredCompilation -XX:+UnlockDiagnosticVMOptions -XX:+PrintIntrinsics
- *                   compiler.print.PrintInlining
+ * @bug 8279125
+ * @summary fatal error: no reachable node should have no use
+ * @requires vm.flavor == "server"
+ *
+ * @run main/othervm -XX:-BackgroundCompilation -XX:-DoEscapeAnalysis TestAllocArrayAfterAllocNoUse
+ *
  */
 
-package compiler.print;
+public class TestAllocArrayAfterAllocNoUse {
+    private static Object field;
 
-public class PrintInlining {
     public static void main(String[] args) {
-        System.out.println("Passed");
+        for (int i = 0; i < 20_000; i++) {
+            test();
+        }
+    }
+
+    private static void test() {
+        try {
+            final TestAllocArrayAfterAllocNoUse o = new TestAllocArrayAfterAllocNoUse();
+        } catch (Exception e) {
+            final int[] array = new int[100];
+            field = array;
+        }
+
     }
 }

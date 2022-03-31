@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Alibaba Group Holding Limited. All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,24 +20,23 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
 /*
- * @test
- * @bug 8022585 8277055
- * @summary VM crashes when ran with -XX:+PrintInlining
- * @run main/othervm -Xcomp -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining
- *                   compiler.print.PrintInlining
- * @run main/othervm -Xcomp -XX:-TieredCompilation -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining
- *                   compiler.print.PrintInlining
- * @run main/othervm -Xcomp -XX:-TieredCompilation -XX:+UnlockDiagnosticVMOptions -XX:+PrintIntrinsics
- *                   compiler.print.PrintInlining
+ * @test VerifyStackWithUnreachableBlock
+ * @bug 8271055
+ * @compile Custom.jasm VerifyStackWithUnreachableBlock.java
+ * @summary Using VerifyStack for method that contains unreachable basic blocks
+ * @run main/othervm -XX:+IgnoreUnrecognizedVMOptions -XX:+VerifyStack compiler.interpreter.VerifyStackWithUnreachableBlock
  */
 
-package compiler.print;
+package compiler.interpreter;
 
-public class PrintInlining {
-    public static void main(String[] args) {
-        System.out.println("Passed");
+public class VerifyStackWithUnreachableBlock {
+    public static void main(String[] strArr) {
+        for (int i = 0; i < 10000; i++) {
+            Custom.test(i);
+        }
     }
 }

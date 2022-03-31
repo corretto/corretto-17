@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,20 +23,31 @@
 
 /*
  * @test
- * @bug 8022585 8277055
- * @summary VM crashes when ran with -XX:+PrintInlining
- * @run main/othervm -Xcomp -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining
- *                   compiler.print.PrintInlining
- * @run main/othervm -Xcomp -XX:-TieredCompilation -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining
- *                   compiler.print.PrintInlining
- * @run main/othervm -Xcomp -XX:-TieredCompilation -XX:+UnlockDiagnosticVMOptions -XX:+PrintIntrinsics
- *                   compiler.print.PrintInlining
+ * bug 8280600
+ * @summary C2: assert(!had_error) failed: bad dominance
+ * @run main/othervm -Xcomp -XX:CompileOnly=TestCastIIMakesMainLoopPhiDead TestCastIIMakesMainLoopPhiDead
  */
 
-package compiler.print;
+public class TestCastIIMakesMainLoopPhiDead {
+    int iArr[] = new int[0];
 
-public class PrintInlining {
-    public static void main(String[] args) {
-        System.out.println("Passed");
+    void test() {
+        int x = 8;
+        try {
+            for (int i = 0; i < 8; i++) {
+                iArr[1] = 9;
+                for (int j = -400; 1 > j; j++) {
+                    iArr[j] = 4;
+                    x -= 2;
+                }
+            }
+        } catch (ArrayIndexOutOfBoundsException e) {
+        }
+    }
+    public static void main(String[] k) {
+        TestCastIIMakesMainLoopPhiDead t = new TestCastIIMakesMainLoopPhiDead();
+        for (int i = 0; i < 3; i++) {
+            t.test();
+        }
     }
 }
