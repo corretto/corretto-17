@@ -19,8 +19,9 @@ This branch adds a young generation to the Shenandoah garbage collector. Althoug
 
 | Platform | Download Link | Checksum | Sig File |
 | :--------|:--------------|:---------|:---------|
-| Linux x86\_64 | [amazon-corretto-17.0.1.12.2-684a794107-linux-x64.tar.gz](https://corretto.aws/downloads/resources/17.0.1.12.2/amazon-corretto-17.0.1.12.2-684a794107-linux-x64.tar.gz) | c50b25f7b70494ebceaf1252d58e388d | [Download](https://corretto.aws/downloads/resources/17.0.1.12.2/amazon-corretto-17.0.1.12.2-684a794107-linux-x64.tar.gz.sig) |
-| Linux aarch64 | [amazon-corretto-17.0.1.12.2-684a794107-linux-aarch64.tar.gz](https://corretto.aws/downloads/resources/17.0.1.12.2/amazon-corretto-17.0.1.12.2-684a794107-linux-aarch64.tar.gz) | 23a7f13bbd50cd8018a576c4d15259d5 | [Download](https://corretto.aws/downloads/resources/17.0.1.12.2/amazon-corretto-17.0.1.12.2-684a794107-linux-aarch64.tar.gz.sig) |
+| Linux x86\_64 | [amazon-corretto-17.0.2.8.1-linux-x64-6774fee6c9.tar.gz](https://corretto.aws/downloads/resources/17.0.2.8.1/amazon-corretto-17.0.2.8.1-linux-x64-6774fee6c9.tar.gz) | 393406c7c4c4ae82f25e64ef440fcc13  /tmp/amazon-corretto-17.0.2.8.1-linux-x64-6774fee6c9.tar.gz | [Download](https://corretto.aws/downloads/resources/17.0.2.8.1/amazon-corretto-17.0.2.8.1-linux-x64-6774fee6c9.tar.gz.sig) |
+| Linux aarch64 | [amazon-corretto-17.0.2.8.1-linux-aarch64-6774fee6c9.tar.gz](https://corretto.aws/downloads/resources/17.0.2.8.1/amazon-corretto-17.0.2.8.1-linux-aarch64-6774fee6c9.tar.gz) | 44565ca24c15686b98adfc6ce83b174e  /tmp/amazon-corretto-17.0.2.8.1-linux-aarch64-6774fee6c9.tar.gz | [Download](https://corretto.aws/downloads/resources/17.0.2.8.1/amazon-corretto-17.0.2.8.1-linux-aarch64-6774fee6c9.tar.gz.sig) |
+
 
 To activate the young generation, you must change the gc mode with: `-XX:+UseShenandoahGC -XX:ShenandoahGCMode=generational`.
 
