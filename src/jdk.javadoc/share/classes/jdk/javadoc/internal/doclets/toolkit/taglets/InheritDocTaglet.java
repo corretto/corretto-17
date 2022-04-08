@@ -40,11 +40,10 @@ import jdk.javadoc.internal.doclets.toolkit.util.DocFinder.Input;
 import jdk.javadoc.internal.doclets.toolkit.util.Utils;
 
 /**
- * An inline Taglet representing the {@code inheritDoc} tag. This tag should only
+ * An inline taglet representing the {@code {@inheritDoc}} tag. This tag should only
  * be used with a method.  It is used to inherit documentation from overridden
  * and implemented methods.
  */
-
 public class InheritDocTaglet extends BaseTaglet {
 
     /**
@@ -82,7 +81,9 @@ public class InheritDocTaglet extends BaseTaglet {
                         ? utils.flatSignature((ExecutableElement)e, writer.getCurrentPageElement())
                         : "");
                 //This tag does not support inheritance.
-                messages.warning(e, "doclet.noInheritedDoc", message);
+                var path = writer.configuration().utils.getCommentHelper(e).getDocTreePath(holderTag);
+                messages.warning(path, "doclet.inheritDocWithinInappropriateTag", message);
+                return replacement;
         }
         Input input = new DocFinder.Input(utils, e,
                 (InheritableTaglet) inheritableTaglet, new DocFinder.DocTreeInfo(holderTag, e),
