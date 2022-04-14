@@ -54,7 +54,7 @@ public class VerifyCACerts {
             + File.separator + "security" + File.separator + "cacerts";
 
     // The numbers of certs now.
-    private static final int COUNT = 216;
+    private static final int COUNT = 214;
 
     // SHA-256 of cacerts, can be generated with
     // shasum -a 256 cacerts | sed -e 's/../&:/g' | tr '[:lower:]' '[:upper:]' | cut -c1-95
@@ -294,12 +294,16 @@ public class VerifyCACerts {
         md = MessageDigest.getInstance("SHA-256");
 
         byte[] data = Files.readAllBytes(Path.of(CACERTS));
+        /* Ignore whole-file checksum as the checksum of the cacerts
+         * file changes with each build, due to the way we merge upstream
+         * OpenJDK certs and Amazon Linux certs at build time.
         String checksum = HEX.formatHex(md.digest(data));
         if (!checksum.equals(CHECKSUM)) {
             atLeastOneFailed = true;
             System.err.println("ERROR: wrong checksum\n" + checksum);
             System.err.println("Expected checksum\n" + CHECKSUM);
         }
+        */
 
         KeyStore ks = KeyStore.getInstance("JKS");
         ks.load(new ByteArrayInputStream(data), "changeit".toCharArray());
