@@ -327,27 +327,7 @@ void ShenandoahControlThread::run_service() {
         global_heuristics->clear_metaspace_oom();
       }
 
-      // Commit worker statistics to cycle data
-      heap->phase_timings()->flush_par_workers_to_cycle();
-      if (ShenandoahPacing) {
-        heap->pacer()->flush_stats_to_cycle();
-      }
-
-      // Print GC stats for current cycle
-      {
-        LogTarget(Info, gc, stats) lt;
-        if (lt.is_enabled()) {
-          ResourceMark rm;
-          LogStream ls(lt);
-          heap->phase_timings()->print_cycle_on(&ls);
-          if (ShenandoahPacing) {
-            heap->pacer()->print_cycle_on(&ls);
-          }
-        }
-      }
-
-      // Commit statistics to globals
-      heap->phase_timings()->flush_cycle_to_global();
+      process_phase_timings(heap);
 
       // Print Metaspace change following GC (if logging is enabled).
       MetaspaceUtils::print_metaspace_change(meta_sizes);
@@ -396,6 +376,31 @@ void ShenandoahControlThread::run_service() {
   while (!should_terminate()) {
     os::naked_short_sleep(ShenandoahControlIntervalMin);
   }
+}
+
+void ShenandoahControlThread::process_phase_timings(const ShenandoahHeap* heap) {
+
+  // Commit worker statistics to cycle data
+  heap->phase_timings()->flush_par_workers_to_cycle();
+  if (ShenandoahPacing) {
+    heap->pacer()->flush_stats_to_cycle();
+  }
+
+  // Print GC stats for current cycle
+  {
+    LogTarget(Info, gc, stats) lt;
+    if (lt.is_enabled()) {
+      ResourceMark rm;
+      LogStream ls(lt);
+      heap->phase_timings()->print_cycle_on(&ls);
+      if (ShenandoahPacing) {
+        heap->pacer()->print_cycle_on(&ls);
+      }
+    }
+  }
+
+  // Commit statistics to globals
+  heap->phase_timings()->flush_cycle_to_global();
 }
 
 // Young and old concurrent cycles are initiated by the regulator. Implicit
@@ -471,6 +476,9 @@ void ShenandoahControlThread::service_concurrent_old_cycle(const ShenandoahHeap*
   young_generation->set_mark_incomplete();
   old_generation->set_mark_incomplete();
   service_concurrent_cycle(young_generation, cause, true);
+
+  process_phase_timings(heap);
+
   if (heap->cancelled_gc()) {
     // Young generation bootstrap cycle has failed. Concurrent mark for old generation
     // is not going to resume after degenerated young cycle completes.
@@ -480,11 +488,6 @@ void ShenandoahControlThread::service_concurrent_old_cycle(const ShenandoahHeap*
     // of the control loop, but here we have just completed a young cycle
     // which has bootstrapped the old concurrent marking.
     _degen_point = ShenandoahGC::_degenerated_outside_cycle;
-
-    // TODO: Bit of a hack here to keep the phase timings happy as we transition
-    // to concurrent old marking. We need to revisit this.
-    heap->phase_timings()->flush_par_workers_to_cycle();
-    heap->phase_timings()->flush_cycle_to_global();
 
     // From here we will 'resume' the old concurrent mark. This will skip reset
     // and init mark for the concurrent mark. All of that work will have been
@@ -534,7 +537,7 @@ void ShenandoahControlThread::resume_concurrent_old_cycle(ShenandoahGeneration* 
   ShenandoahOldGC gc(generation, _allow_old_preemption);
   if (gc.collect(cause)) {
     generation->heuristics()->record_success_concurrent();
-    heap->shenandoah_policy()->record_success_concurrent();
+    heap->shenandoah_policy()->record_success_old();
   }
 
   if (heap->cancelled_gc()) {
@@ -548,6 +551,9 @@ void ShenandoahControlThread::resume_concurrent_old_cycle(ShenandoahGeneration* 
     // cycle, then we are not actually going to a degenerated cycle,
     // so the degenerated point doesn't matter here.
     check_cancellation_or_degen(ShenandoahGC::_degenerated_outside_cycle);
+    if (_requested_gc_cause == GCCause::_shenandoah_concurrent_gc) {
+      heap->shenandoah_policy()->record_interrupted_old();
+    }
   }
 }
 
@@ -757,6 +763,7 @@ bool ShenandoahControlThread::request_concurrent_gc(GenerationMode generation) {
     _preemption_requested.set();
     ShenandoahHeap::heap()->cancel_gc(GCCause::_shenandoah_concurrent_gc);
     notify_control_thread();
+
     MonitorLocker ml(&_regulator_lock, Mutex::_no_safepoint_check_flag);
     ml.wait();
     return true;
