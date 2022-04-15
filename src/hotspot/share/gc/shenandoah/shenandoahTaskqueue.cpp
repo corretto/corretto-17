@@ -59,7 +59,7 @@ void ShenandoahObjToScanQueueSet::print_taskqueue_stats_hdr(outputStream* const 
 }
 
 void ShenandoahObjToScanQueueSet::print_taskqueue_stats() const {
-  if (!log_develop_is_enabled(Trace, gc, task, stats)) {
+  if (!log_is_enabled(Trace, gc, task, stats)) {
     return;
   }
   Log(gc, task, stats) log;
