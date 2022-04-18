@@ -21,7 +21,7 @@ The following sections describe the changes for each release of Amazon Corretto 
 
  | Issue Name | Platform | Description | Link |
  | --- | --- | --- | --- |
- | Import jdk-17.0.3+5 | All | Updates Corretto patch set to OpenJDK 17.0.3+6 | [jdk-17.0.3+6](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.3%2B6)
+ | Import jdk-17.0.3+6 | All | Updates Corretto patch set to OpenJDK 17.0.3+6 | [jdk-17.0.3+6](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.3%2B6)
  | Fix alternatives for devel package | Amazon Linux 2 | Fix alternatives for devel package | [PR #59](https://github.com/corretto/corretto-17/pull/59) |
  | Fix missing libLingeredApp.so failing jtregs | All | Fix jtreg tier 1 test failures caused by UnsatisfiedLinkError | [PR #50](https://github.com/corretto/corretto-17/pull/50) |
  | Update CACerts | All | Pull in the latest CA Certificates from Amazon Linux | [PR #64](https://github.com/corretto/corretto-17/pull/64) |
