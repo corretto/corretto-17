@@ -25,6 +25,7 @@ The following sections describe the changes for each release of Amazon Corretto 
  | Fix alternatives for devel package | Amazon Linux 2 | Fix alternatives for devel package | [PR #59](https://github.com/corretto/corretto-17/pull/59) |
  | Fix missing libLingeredApp.so failing jtregs | All | Fix jtreg tier 1 test failures caused by UnsatisfiedLinkError | [PR #50](https://github.com/corretto/corretto-17/pull/50) |
  | Update CACerts | All | Pull in the latest CA Certificates from Amazon Linux | [PR #64](https://github.com/corretto/corretto-17/pull/64) |
+ | Update zlib | All | CVE-2018-25032: based upon our analysis, OpenJDK/Corretto is not affected by CVE-2018-25032, because the zlib “memLevel” parameter is not settable and is fixed at 8, and the usage of the Z_FIXED strategy is prevented. With these settings there is no way to invoke the issue described in the CVE and we only include this fix out of an abundance of caution. | |
 
  The following CVEs are addressed in 17.0.3.6.1
 
