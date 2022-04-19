@@ -2,6 +2,41 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.3.6.1
+
+ Release Date: April 17, 2022
+
+ **Target Platforms**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Alpine-based Linux, x86_64
++ Windows 7 or later, x86_64
++ macos 10.13 and later, x86_64
++ macos 11.0 and later, aarch64
+
+ The following issues are addressed in 17.0.3.6.1
+
+ | Issue Name | Platform | Description | Link |
+ | --- | --- | --- | --- |
+ | Import jdk-17.0.3+6 | All | Updates Corretto patch set to OpenJDK 17.0.3+6 | [jdk-17.0.3+6](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.3%2B6)
+ | Fix alternatives for devel package | Amazon Linux 2 | Fix alternatives for devel package | [PR #59](https://github.com/corretto/corretto-17/pull/59) |
+ | Fix missing libLingeredApp.so failing jtregs | All | Fix jtreg tier 1 test failures caused by UnsatisfiedLinkError | [PR #50](https://github.com/corretto/corretto-17/pull/50) |
+ | Update CACerts | All | Pull in the latest CA Certificates from Amazon Linux | [PR #64](https://github.com/corretto/corretto-17/pull/64) |
+ | Update zlib | All | CVE-2018-25032: based upon our analysis, OpenJDK/Corretto is not affected by CVE-2018-25032, because the zlib “memLevel” parameter is not settable and is fixed at 8, and the usage of the Z_FIXED strategy is prevented. With these settings there is no way to invoke the issue described in the CVE and we only include this fix out of an abundance of caution. | |
+
+ The following CVEs are addressed in 17.0.3.6.1
+
+ | CVE | CVSS | Component |
+ | --- | --- | --- |
+ | CVE-2022-21449 | 7.5 | security-libs/java.security |
+ | CVE-2022-21496 | 5.3 | core-libs/javax.naming |
+ | CVE-2022-21434 | 5.3 | core-libs/java.lang |
+ | CVE-2022-21426 | 5.3 | xml/jaxp |
+ | CVE-2022-21443 | 3.7 | security-libs/java.security |
+
 ## Corretto version: 17.0.2.8.1
 
  Release Date: January 18, 2022
