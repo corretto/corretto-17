@@ -78,9 +78,8 @@ ShenandoahHeuristics::~ShenandoahHeuristics() {
   FREE_C_HEAP_ARRAY(RegionGarbage, _region_data);
 }
 
-// Returns true iff the chosen collection set includes old-gen regions
-bool ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collection_set, ShenandoahOldHeuristics* old_heuristics) {
-  bool result = false;
+void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collection_set, ShenandoahOldHeuristics* old_heuristics) {
+
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   assert(collection_set->count() == 0, "Must be empty");
@@ -185,9 +184,7 @@ bool ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
   if (immediate_percent <= ShenandoahImmediateThreshold) {
 
     if (old_heuristics != NULL) {
-      if (old_heuristics->prime_collection_set(collection_set)) {
-        result = true;
-      }
+      old_heuristics->prime_collection_set(collection_set);
 
       size_t bytes_reserved_for_old_evacuation = collection_set->get_old_bytes_reserved_for_evacuation();
       if (bytes_reserved_for_old_evacuation * ShenandoahEvacWaste < heap->get_old_evac_reserve()) {
@@ -207,7 +204,7 @@ bool ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
     // we'll need to borrow from old-gen in order to evacuate.  If there's nothing to borrow, we're going to
     // degenerate to full GC.
 
-    // TODO: younng_available can include available (between top() and end()) within each young region that is not
+    // TODO: young_available can include available (between top() and end()) within each young region that is not
     // part of the collection set.  Making this memory available to the young_evacuation_reserve allows a larger
     // young collection set to be chosen when available memory is under extreme pressure.  Implementing this "improvement"
     // is tricky, because the incremental construction of the collection set actually changes the amount of memory
@@ -359,7 +356,6 @@ bool ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
                      cset_percent);
 
   heap->memory_manager(_generation->generation_mode())->report_garbage(total_garbage, collectable_garbage);
-  return result;
 }
 
 void ShenandoahHeuristics::record_cycle_start() {
