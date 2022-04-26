@@ -176,7 +176,6 @@ java/awt/Mixing/AWT_Mixing/JTextFieldInGlassPaneOverlapping.java 8158801 windows
 java/awt/Mixing/AWT_Mixing/JTextFieldOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JToggleButtonOverlapping.java 8158801 windows-all
-java/awt/Mixing/MixingOnDialog.java 8225777 linux-all
 java/awt/Mixing/NonOpaqueInternalFrame.java 7124549 macosx-all
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowRetaining.java 6829264 generic-all
 java/awt/datatransfer/DragImage/MultiResolutionDragImageTest.java 8080982 generic-all
@@ -192,10 +191,7 @@ java/awt/Focus/6981400/Test1.java 8029675 windows-all,macosx-all
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all,macosx-all
 java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055 macosx-all,windows-all
-java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java 8129778 generic-all
-java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java 8129778 generic-all
 java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java 8252713 linux-all
-java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java 8129778 generic-all
 
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.java 8194947 generic-all
 java/awt/Frame/FramesGC/FramesGC.java 8079069 macosx-all
