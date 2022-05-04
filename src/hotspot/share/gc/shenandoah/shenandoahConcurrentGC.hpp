@@ -51,7 +51,7 @@ protected:
 
 private:
   ShenandoahDegenPoint        _degen_point;
-  bool                        _mixed_evac; // true iff most recent evacuation includes old-gen HeapRegions
+  bool                        _abbreviated;
   const bool                  _do_old_gc_bootstrap;
 
 protected:
@@ -61,6 +61,7 @@ public:
   ShenandoahConcurrentGC(ShenandoahGeneration* generation, bool do_old_gc_bootstrap);
   bool collect(GCCause::Cause cause);
   ShenandoahDegenPoint degen_point() const;
+  bool abbreviated() const { return _abbreviated; }
 
 private:
   // Entry points to STW GC operations, these cause a related safepoint, that then
