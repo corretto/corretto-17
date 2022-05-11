@@ -232,7 +232,7 @@ project(':prebuild') {
 
     task generateJdkCacerts(type: JavaExec) {
         dependsOn buildTool
-        def jdkCaDir = "$rootDir/make/data/cacerts"
+        def jdkCaDir = "$rootDir/src/java.base/share/data/cacerts"
 
         description = 'Generate Cacerts from JDK source'
         classpath = files(classPath)
