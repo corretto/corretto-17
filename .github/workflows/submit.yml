@@ -12,7 +12,7 @@ on:
       platforms:
         description: "Platform(s) to execute on"
         required: true
-        default: "Linux additional (hotspot only), Linux x64, Linux x86, Windows aarch64, Windows x64, macOS x64"
+        default: "Linux additional (hotspot only), Linux x64, Linux x86, Windows aarch64, Windows x64, macOS x64, macOS aarch64"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -80,7 +80,10 @@ jobs:
           FEATURE=${{ fromJson(steps.check_deps.outputs.dependencies).DEFAULT_VERSION_FEATURE }}
           INTERIM=${{ fromJson(steps.check_deps.outputs.dependencies).DEFAULT_VERSION_INTERIM }}
           UPDATE=${{ fromJson(steps.check_deps.outputs.dependencies).DEFAULT_VERSION_UPDATE }}
-          if [ "x${UPDATE}" != "x0" ]; then
+          PATCH=${{ fromJson(steps.check_deps.outputs.dependencies).DEFAULT_VERSION_PATCH }}
+          if [ "x${PATCH}" != "x0" ]; then
+             V=${FEATURE}.${INTERIM}.${UPDATE}.${PATCH}
+          elif [ "x${UPDATE}" != "x0" ]; then
              V=${FEATURE}.${INTERIM}.${UPDATE}
           elif [ "x${INTERIM}" != "x0" ]; then
              V={FEATURE}.${INTERIM}
@@ -923,7 +926,7 @@ jobs:
 
       - name: Install cygwin
         run: |
-          Start-Process -FilePath "$HOME\cygwin\setup-x86_64.exe" -ArgumentList "--quiet-mode --packages cygwin=3.2.0-1,autoconf,make,zip,unzip --root $HOME\cygwin\cygwin64 --local-package-dir $HOME\cygwin\packages --site http://mirrors.kernel.org/sourceware/cygwin --no-desktop --no-shortcuts --no-startmenu --no-admin" -Wait -NoNewWindow
+          Start-Process -FilePath "$HOME\cygwin\setup-x86_64.exe" -ArgumentList "--quiet-mode --packages cygwin=3.3.5-1,autoconf,make,zip,unzip --root $HOME\cygwin\cygwin64 --local-package-dir $HOME\cygwin\packages --site http://mirrors.kernel.org/sourceware/cygwin --no-desktop --no-shortcuts --no-startmenu --no-admin" -Wait -NoNewWindow
 
       - name: Checkout the source
         uses: actions/checkout@v3
@@ -1023,7 +1026,7 @@ jobs:
 
       - name: Install cygwin
         run: |
-          Start-Process -FilePath "$HOME\cygwin\setup-x86_64.exe" -ArgumentList "--quiet-mode --packages cygwin=3.2.0-1,autoconf,make,zip,unzip --root $HOME\cygwin\cygwin64 --local-package-dir $HOME\cygwin\packages --site http://mirrors.kernel.org/sourceware/cygwin --no-desktop --no-shortcuts --no-startmenu --no-admin" -Wait -NoNewWindow
+          Start-Process -FilePath "$HOME\cygwin\setup-x86_64.exe" -ArgumentList "--quiet-mode --packages cygwin=3.3.5-1,autoconf,make,zip,unzip --root $HOME\cygwin\cygwin64 --local-package-dir $HOME\cygwin\packages --site http://mirrors.kernel.org/sourceware/cygwin --no-desktop --no-shortcuts --no-startmenu --no-admin" -Wait -NoNewWindow
 
       - name: Checkout the source
         uses: actions/checkout@v3
@@ -1206,7 +1209,7 @@ jobs:
 
       - name: Install cygwin
         run: |
-          Start-Process -FilePath "$HOME\cygwin\setup-x86_64.exe" -ArgumentList "--quiet-mode --packages cygwin=3.2.0-1,autoconf,make,zip,unzip --root $HOME\cygwin\cygwin64 --local-package-dir $HOME\cygwin\packages --site http://mirrors.kernel.org/sourceware/cygwin --no-desktop --no-shortcuts --no-startmenu --no-admin" -Wait -NoNewWindow
+          Start-Process -FilePath "$HOME\cygwin\setup-x86_64.exe" -ArgumentList "--quiet-mode --packages cygwin=3.3.5-1,autoconf,make,zip,unzip --root $HOME\cygwin\cygwin64 --local-package-dir $HOME\cygwin\packages --site http://mirrors.kernel.org/sourceware/cygwin --no-desktop --no-shortcuts --no-startmenu --no-admin" -Wait -NoNewWindow
 
       - name: Restore jtreg artifact
         id: jtreg_restore
