@@ -1,12 +1,10 @@
 #
-# Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.  Oracle designates this
-# particular file as subject to the "Classpath" exception as provided
-# by Oracle in the LICENSE file that accompanied this code.
+# published by the Free Software Foundation.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,20 +21,9 @@
 # questions.
 #
 
-# Default version, product, and vendor information to use,
-# unless overridden by configure
+// ASSEMBLY_SRC_FILE gets replaced by relative or absolute file path
+// in NativeCompilation.gmk for gcc tooling on Linux. This ensures a
+// reproducible object file through a predictable value of the STT_FILE
+// symbol, and subsequently a reproducible .debuginfo.
+.file ASSEMBLY_SRC_FILE
 
-DEFAULT_VERSION_FEATURE=17
-DEFAULT_VERSION_INTERIM=0
-DEFAULT_VERSION_UPDATE=5
-DEFAULT_VERSION_PATCH=0
-DEFAULT_VERSION_EXTRA1=0
-DEFAULT_VERSION_EXTRA2=0
-DEFAULT_VERSION_EXTRA3=0
-DEFAULT_VERSION_DATE=2022-10-18
-DEFAULT_VERSION_CLASSFILE_MAJOR=61  # "`$EXPR $DEFAULT_VERSION_FEATURE + 44`"
-DEFAULT_VERSION_CLASSFILE_MINOR=0
-DEFAULT_VERSION_DOCS_API_SINCE=11
-DEFAULT_ACCEPTABLE_BOOT_VERSIONS="16 17"
-DEFAULT_JDK_SOURCE_TARGET_VERSION=17
-DEFAULT_PROMOTED_VERSION_PRE=
