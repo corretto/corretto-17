@@ -202,7 +202,7 @@ Requires: %{name}-devel%{?1}%{?_isa} = %{epoch}:%{version}-%{release}
 Amazon Corretto's packaging of the OpenJDK ${java_spec_version} jmods.
 
 %prep
-%setup -q
+%setup -q -n src -c
 
 %build
 # AmazonLinux ships with GifLib 4.x which does not define GIFLIB_MAJOR. This must be defined
