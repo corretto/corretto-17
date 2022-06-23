@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2009, 2010 Red Hat, Inc.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,15 +23,21 @@
  *
  */
 
-#include "precompiled.hpp"
-#include "runtime/frame.inline.hpp"
-#include "runtime/thread.inline.hpp"
+#ifndef OS_CPU_LINUX_S390_JAVATHREAD_LINUX_S390_HPP
+#define OS_CPU_LINUX_S390_JAVATHREAD_LINUX_S390_HPP
 
-frame JavaThread::pd_last_frame() {
-  assert(has_last_Java_frame(), "must have last_Java_sp() when suspended");
-  return frame(last_Java_fp(), last_Java_sp());
-}
+ private:
 
-void JavaThread::cache_global_variables() {
-  // nothing to do
-}
+  void pd_initialize() {
+    _anchor.clear();
+  }
+
+  // The `last' frame is the youngest Java frame on the thread's stack.
+  frame pd_last_frame();
+
+ public:
+  bool pd_get_top_frame_for_signal_handler(frame* fr_addr, void* ucontext, bool isInJava);
+
+  bool pd_get_top_frame_for_profiling(frame* fr_addr, void* ucontext, bool isInJava);
+
+#endif // OS_CPU_LINUX_S390_JAVATHREAD_LINUX_S390_HPP

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2022, Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +19,26 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
+#include <stdio.h>
+#include <pthread.h>
 
-#ifndef OS_CPU_LINUX_RISCV_THREAD_LINUX_RISCV_HPP
-#define OS_CPU_LINUX_RISCV_THREAD_LINUX_RISCV_HPP
+#define STACK_SIZE 0x100000
 
- private:
-  void pd_initialize() {
-    _anchor.clear();
-  }
+/**
+ * Creates n threads to execute the given function.
+ */
+void start_threads(int n, void *(*f)(void *)) {
+    pthread_t tid;
+    pthread_attr_t attr;
+    int i;
 
-  frame pd_last_frame();
-
- public:
-  static ByteSize last_Java_fp_offset()          {
-    return byte_offset_of(JavaThread, _anchor) + JavaFrameAnchor::last_Java_fp_offset();
-  }
-
-  bool pd_get_top_frame_for_signal_handler(frame* fr_addr, void* ucontext,
-    bool isInJava);
-
-  bool pd_get_top_frame_for_profiling(frame* fr_addr, void* ucontext, bool isInJava);
-private:
-  bool pd_get_top_frame(frame* fr_addr, void* ucontext, bool isInJava);
-
-#endif // OS_CPU_LINUX_RISCV_THREAD_LINUX_RISCV_HPP
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, STACK_SIZE);
+    for (i = 0; i < n ; i++) {
+        int res = pthread_create(&tid, &attr, f, NULL);
+        if (res != 0) {
+            fprintf(stderr, "pthread_create failed: %d\n", res);
+        }
+    }
+}
