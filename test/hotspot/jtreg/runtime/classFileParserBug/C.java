@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,35 +21,6 @@
  * questions.
  */
 
-/*
- * @test
- *
- * @summary converted from VM Testbase nsk/jvmti/GetFrameCount/framecnt003.
- * VM Testbase keywords: [quick, jpda, jvmti, noras]
- * VM Testbase readme:
- * DESCRIPTION
- *     The test exercises JVMTI function GetFrameCount(thread, countPtr).
- *     The test checks if the function returns JVMTI_ERROR_INVALID_THREAD
- *     if thread is not a thread object.
- * COMMENTS
- *     Ported from JVMDI.
- *
- * @library /test/lib
- * @run main/othervm/native -agentlib:framecnt03 framecnt03
- */
-
-public class framecnt03 {
-
-    static {
-        System.loadLibrary("framecnt03");
-    }
-
-    native static int check();
-
-    public static void main(String args[]) {
-        int result = check();
-        if (result != 0) {
-            throw new RuntimeException("check failed with result " + result);
-        }
-    }
-}
+// class used by test Bad_NCDFE_Msg.java.
+package pkg;
+public class C { }
