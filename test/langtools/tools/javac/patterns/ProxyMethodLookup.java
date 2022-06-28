@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,40 +19,29 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
-package com.sun.hotspot.igv.view.actions;
-
-import com.sun.hotspot.igv.view.EditorTopComponent;
-import org.openide.util.HelpCtx;
-import org.openide.util.actions.CallableSystemAction;
 
 /**
- *
- * @author Thomas Wuerthinger
+ * @test
+ * @bug 8288120
+ * @summary Verify an appropriate accessor method is looked up.
+ * @compile --enable-preview -source ${jdk.version} ProxyMethodLookup.java
+ * @run main/othervm --enable-preview ProxyMethodLookup
  */
-public final class ExpandPredecessorsAction extends CallableSystemAction {
+public class ProxyMethodLookup {
 
-    @Override
-    public void performAction() {
-        EditorTopComponent editor = EditorTopComponent.getActive();
-        if (editor != null) {
-            editor.expandPredecessors();
-        }
+    public static void main(String[] args) {
+        Object val = new R(new Component());
+        boolean b = val instanceof R(var c);
+   }
+
+    interface ComponentBase {}
+
+    record Component() implements ComponentBase {}
+
+    sealed interface Base {
+        ComponentBase c();
     }
 
-    @Override
-    public String getName() {
-        return "Expand Above";
-    }
-
-    @Override
-    public HelpCtx getHelpCtx() {
-        return HelpCtx.DEFAULT_HELP;
-    }
-
-    @Override
-    protected boolean asynchronous() {
-        return false;
-    }
+    record R(Component c) implements Base {}
 }
