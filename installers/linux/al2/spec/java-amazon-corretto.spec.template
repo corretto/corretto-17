@@ -81,6 +81,9 @@ Vendor: Amazon
 Url: https://github.com/corretto/corretto-${java_spec_version}
 Source0: amazon-corretto-source-%{java_version}.%{build_id}.%{release_id}.tar.gz
 
+# jpackage-utils/javapackages-filesystem is required for both build and runtime.
+# For build, it provides the jvmdir macro. For runtime,
+# it provides the /usr/lib/jvm directory.
 %if "%{dist}" == ".amzn2" || "%{dist}" == ".amzn2int"
 BuildRequires: jpackage-utils
 %else
