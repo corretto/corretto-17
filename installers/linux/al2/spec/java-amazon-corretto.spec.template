@@ -220,7 +220,7 @@ Amazon Corretto's packaging of the OpenJDK ${java_spec_version} jmods.
 
 bash ./configure \\
 %ifarch aarch64
-        --with-extra-cflags="-moutline-atomics %{GIFLIB_DEFINE}" \\
+        --with-extra-cflags="-moutline-atomics%{?GIFLIB_DEFINE: %{GIFLIB_DEFINE}}" \\
         --with-extra-cxxflags="-moutline-atomics" \\
 %else
 %if "%{?GIFLIB_DEFINE:1}" == "1"
