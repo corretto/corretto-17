@@ -79,7 +79,10 @@ Vendor: Amazon
 Url: https://github.com/corretto/corretto-${java_spec_version}
 Source0: amazon-corretto-source-%{java_version}.%{build_id}.%{release_id}.tar.gz
 
-%if "%{dist}" == ".amzn2"
+# jpackage-utils/javapackages-filesystem is required for both build and runtime.
+# For build, it provides the jvmdir macro. For runtime,
+# it provides the /usr/lib/jvm directory.
+%if "%{dist}" == ".amzn2" || "%{dist}" == ".amzn2int"
 BuildRequires: jpackage-utils
 %else
 BuildRequires: javapackages-filesystem
@@ -144,7 +147,7 @@ Summary: Amazon Corretto headless development environment
 Group:   Development/Tools
 AutoReqProv: no
 
-%if "%{dist}" == ".amzn2"
+%if "%{dist}" == ".amzn2" || "%{dist}" == ".amzn2int"
 Requires: jpackage-utils
 %else
 Requires: javapackages-filesystem
@@ -208,14 +211,21 @@ Amazon Corretto's packaging of the OpenJDK ${java_spec_version} jmods.
 %setup -q -n src -c
 
 %build
+
+%if "%{dist}" == ".amzn2" || "%{dist}" == ".amzn2int"
 # AmazonLinux ships with GifLib 4.x which does not define GIFLIB_MAJOR. This must be defined
 # because -Werror=undef is enabled.
+%define GIFLIB_DEFINE "-DGIFLIB_MAJOR=4"
+%endif
+
 bash ./configure \\
 %ifarch aarch64
-        --with-extra-cflags="-moutline-atomics -DGIFLIB_MAJOR=4" \\
+        --with-extra-cflags="-moutline-atomics %{GIFLIB_DEFINE}" \\
         --with-extra-cxxflags="-moutline-atomics" \\
 %else
-        --with-extra-cflags="-DGIFLIB_MAJOR=4" \\
+%if "%{?GIFLIB_DEFINE:1}" == "1"
+        --with-extra-cflags="%{GIFLIB_DEFINE}" \\
+%endif
 %endif
         --with-jvm-features="zgc shenandoahgc" \\
         --with-version-feature="${java_spec_version}" \\
@@ -255,6 +265,9 @@ popd
 if [ \$1 -eq 1 ] ; then
   alternatives --install %{_bindir}/java java %{java_home}/bin/java %{alternatives_priority} \\
                --slave %{_jvmdir}/jre jre %{java_home} \\
+               --slave %{_jvmdir}/jre-openjdk jre-openjdk %{java_home} \\
+               --slave %{_jvmdir}/jre-%{java_major_version} jre-%{java_major_version} %{java_home} \\
+               --slave %{_jvmdir}/jre-%{java_major_version}-openjdk jre-%{java_major_version}-openjdk %{java_home} \\
                --slave %{_bindir}/keytool keytool %{java_home}/bin/keytool \\
                --slave %{_bindir}/rmiregistry rmiregistry %{java_home}/bin/rmiregistry \\
                --slave %{_mandir}/man1/java.1 java.1 %{java_home}/man/man1/java.1 \\
@@ -265,6 +278,10 @@ fi
 %post devel
 if [ \$1 -eq 1 ] ; then
   alternatives --install %{_bindir}/javac javac %{java_home}/bin/javac %{alternatives_priority} \\
+               --slave %{_jvmdir}/%{name} %{name} %{java_home} \\
+               --slave %{_jvmdir}/java java %{java_home} \\
+               --slave %{_jvmdir}/java-%{java_major_version} java-%{java_major_version} %{java_home} \\
+               --slave %{_jvmdir}/java-%{java_major_version}-openjdk java-%{java_major_version}-openjdk %{java_home} \\
                --slave %{_bindir}/jar jar %{java_home}/bin/jar \\
                --slave %{_bindir}/jarsigner jarsigner %{java_home}/bin/jarsigner \\
                --slave %{_bindir}/javadoc javadoc %{java_home}/bin/javadoc \\
@@ -289,9 +306,6 @@ if [ \$1 -eq 1 ] ; then
                --slave %{_bindir}/jstat jstat %{java_home}/bin/jstat \\
                --slave %{_bindir}/jstatd jstatd %{java_home}/bin/jstatd \\
                --slave %{_bindir}/serialver serialver %{java_home}/bin/serialver \\
-               --slave %{_jvmdir}/jre-openjdk jre-openjdk %{java_home} \\
-               --slave %{_jvmdir}/jre-${java_spec_version} jre-${java_spec_version} %{java_home} \\
-               --slave %{_jvmdir}/jre-${java_spec_version}-openjdk jre-${java_spec_version}-openjdk %{java_home} \\
                --slave %{_mandir}/man1/jar.1 jar.1 %{java_home}/man/man1/jar.1 \\
                --slave %{_mandir}/man1/jarsigner.1 jarsigner.1 %{java_home}/man/man1/jarsigner.1 \\
                --slave %{_mandir}/man1/javac.1 javac.1 %{java_home}/man/man1/javac.1 \\
@@ -426,12 +440,18 @@ fi
 %license %{java_imgdir}/docs/legal
 
 %changelog
+* Thu Jun 30 2022 Dan Lutker <lutkerd@amazon.com>
+- Fixup java/jre symlinks
+
 * Fri Feb 18 2022 Dan Lutker <lutkerd@amazon.com>
 - Fix alternatives for devel package
-* Tue Dec 16 2021 Clive Verghese <verghese@amazon.com> 
+
+* Tue Dec 16 2021 Clive Verghese <verghese@amazon.com>
 - Add requires for log4j CVE-2021-44228 static mitigation
+
 * Fri Oct 29 2021 Dan Lutker <lutkerd@amazon.com>
 - Update packaging model to include devel and jmods
 - Fixes for alternatives priority
+
 * Mon Sep 27 2021 Dan Lutker <lutkerd@amazon.com> - 17.0.0+35
 - Initial release of Corretto 17 for AL2
