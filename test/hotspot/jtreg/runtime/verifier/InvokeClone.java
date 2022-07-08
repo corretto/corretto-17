@@ -1,13 +1,10 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,16 +21,26 @@
  * questions.
  */
 
-#import "CommonComponentAccessibility.h"
+/*
+ * @test Verifier handling of invoking java/lang/Object::clone() on object arrays.
+ * @bug 8286277
+ * @build InvokeCloneValid InvokeCloneInvalid
+ * @run main/othervm -Xverify InvokeClone
+ */
 
-@interface TableAccessibility : CommonComponentAccessibility <NSAccessibilityTable>
-{
-    NSMutableDictionary<NSNumber*, id> *rowCache;
-    BOOL cacheValid;
+public class InvokeClone {
+    public static void main(String[] args) throws ClassNotFoundException {
+        try {
+            Class.forName("InvokeCloneValid");
+        }  catch (VerifyError e) {
+            throw new RuntimeException("Unexpected VerifyError", e);
+        }
+
+        try {
+            Class.forName("InvokeCloneInvalid");
+            throw new RuntimeException("VerifyError expected but not thrown");
+        } catch (VerifyError e) {
+            System.out.println("Expected: " + e);
+        }
+    }
 }
-
-- (BOOL)isAccessibleChildSelectedFromIndex:(int)index;
-- (int) accessibleRowAtIndex:(int)index;
-- (int) accessibleColumnAtIndex:(int)index;
-
-@end
