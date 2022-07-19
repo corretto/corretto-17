@@ -2,6 +2,43 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.4.8.1
+Release Date: July 19, 2022
+
+**Target Platforms**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Alpine-based Linux, x86_64
++ Windows 7 or later, x86_64
++ macos 10.15 and later, x86_64
++ macos 11.0 and later, aarch64
+
+The following issues are addressed in 17.0.4.8.1
+
+| Issue Name                                       | Platform    | Description                                                                          | Link                                                                          |
+|--------------------------------------------------|-------------|--------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| Import jdk-17.0.4+8                              | All         | Updates Corretto baseline to OpenJDK 17.0.4+8                                        | [jdk-17.0.4+8](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.4%2B8) |
+| Fix src.rpm name that some tools depend on       | Linux       | Updates src.rpm name                                                                 | [#67](https://github.com/corretto/corretto-17/pull/67) [#72](https://github.com/corretto/corretto-17/pull/72) |
+| Migrate pkg builds to productbuild from packages | macOS       | Updates to macos packaging                                                           | [#68](https://github.com/corretto/corretto-17/pull/68) |
+| Only require log4j-cve-mitigations on AL2        | AL2         | Updates log4j-cve-mitigations to AL2 only                                            | [#71](https://github.com/corretto/corretto-17/pull/71) |
+| The documentation update                         | All         | Updates to code of conduct and contributing documentation                            | [#73](https://github.com/corretto/corretto-17/pull/73) |
+| AL2022 updates                                   | AL2, AL2022 | Updates to support Corretto in Amazon Linux 2022                                     | [#75](https://github.com/corretto/corretto-17/pull/75) [#79](https://github.com/corretto/corretto-17/pull/79) [#80](https://github.com/corretto/corretto-17/pull/80) [#81](https://github.com/corretto/corretto-17/pull/81) [#82](https://github.com/corretto/corretto-17/pull/82) |
+| Enable bundled zlib library via Gradle           | macOS       | Updates to use bundled (not the system) version of the zlib library on macOS aarch64 | [#76](https://github.com/corretto/corretto-17/pull/76) [#78](https://github.com/corretto/corretto-17/pull/78) |
+| Update amazon cacerts                            | All         | Update amazon cacerts file from amazonlinux                                          | [#77](https://github.com/corretto/corretto-17/pull/77) |
+
+
+ The following CVEs are addressed in 17.0.4.8.1
+
+| CVE            | CVSS | Component           |
+|----------------|------|---------------------|
+| CVE-2022-34169 | 7.5  | xml/jaxp            |
+| CVE-2022-21541 | 5.9  | hotspot/runtime     |
+| CVE-2022-21549 | 5.3  | core-libs/java.util |
+| CVE-2022-21540 | 5.3  | hotspot/compiler    |
+
 ## Corretto version: 17.0.3.6.1
 
  Release Date: April 17, 2022
