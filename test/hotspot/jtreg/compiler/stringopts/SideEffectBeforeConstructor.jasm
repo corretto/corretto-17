@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,25 +19,40 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#include "precompiled.hpp"
-#include "runtime/stackFrameStream.inline.hpp"
-#include "utilities/debug.hpp"
+super public class compiler/stringopts/SideEffectBeforeConstructor
+	version 51:0
+{
+  public static Field result:I;
 
-StackFrameStream::StackFrameStream(JavaThread *thread, bool update, bool process_frames, bool allow_missing_reg)
-  : _reg_map(thread,
-             update ? RegisterMap::UpdateMap::include : RegisterMap::UpdateMap::skip,
-             process_frames ? RegisterMap::ProcessFrames::include : RegisterMap::ProcessFrames::skip,
-             RegisterMap::WalkContinuation::skip) {
-  assert(thread->has_last_Java_frame(), "sanity check");
-  _fr = thread->last_frame();
-  _is_done = false;
-#ifndef PRODUCT
-  if (allow_missing_reg) {
-    _reg_map.set_skip_missing(true);
+  static Method "<clinit>":"()V"
+	stack 2 locals 0
+  {
+		iconst_0;
+		putstatic	Field result:"I";
+		return;
   }
-#endif
-}
+  public Method "<init>":"()V"
+	stack 1 locals 1
+  {
+		aload_0;
+		invokespecial	Method java/lang/Object."<init>":"()V";
+		return;
+  }
 
+  public static Method test:"(Ljava/lang/String;)V"
+	stack 4 locals 1
+  {
+		new	class java/lang/StringBuffer;
+		dup;
+		getstatic	Field result:"I";
+		iconst_1;
+		iadd;
+		putstatic	Field result:"I";
+		aload_0;
+		invokespecial	Method java/lang/StringBuffer."<init>":"(Ljava/lang/String;)V";
+		invokevirtual	Method java/lang/StringBuffer.toString:"()Ljava/lang/String;";
+		return;
+  }
+}

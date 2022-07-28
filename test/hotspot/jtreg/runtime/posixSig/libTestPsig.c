@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,25 +19,36 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#include "precompiled.hpp"
-#include "runtime/stackFrameStream.inline.hpp"
-#include "utilities/debug.hpp"
+#include <stdio.h>
+#include <jni.h>
+#include <signal.h>
+#include <sys/ucontext.h>
+#include <errno.h>
+#include <string.h>
 
-StackFrameStream::StackFrameStream(JavaThread *thread, bool update, bool process_frames, bool allow_missing_reg)
-  : _reg_map(thread,
-             update ? RegisterMap::UpdateMap::include : RegisterMap::UpdateMap::skip,
-             process_frames ? RegisterMap::ProcessFrames::include : RegisterMap::ProcessFrames::skip,
-             RegisterMap::WalkContinuation::skip) {
-  assert(thread->has_last_Java_frame(), "sanity check");
-  _fr = thread->last_frame();
-  _is_done = false;
-#ifndef PRODUCT
-  if (allow_missing_reg) {
-    _reg_map.set_skip_missing(true);
-  }
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+void sig_handler(int sig, siginfo_t *info, ucontext_t *context) {
+
+    printf( " HANDLER (1) " );
 }
+
+JNIEXPORT void JNICALL Java_TestPosixSig_changeSigActionFor(JNIEnv *env, jclass klass, jint val) {
+    struct sigaction act;
+    act.sa_handler = (void (*)())sig_handler;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = 0;
+    int retval = sigaction(val, &act, 0);
+    if (retval != 0) {
+        printf("ERROR: failed to set %d signal handler error=%s\n", val, strerror(errno));
+    }
+}
+
+#ifdef __cplusplus
+}
+#endif
 
