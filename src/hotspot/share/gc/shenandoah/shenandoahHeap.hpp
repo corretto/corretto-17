@@ -52,6 +52,7 @@ class ShenandoahGCSession;
 class ShenandoahGCStateResetter;
 class ShenandoahGeneration;
 class ShenandoahYoungGeneration;
+class ShenandoahOldGeneration;
 class ShenandoahHeuristics;
 class ShenandoahOldHeuristics;
 class ShenandoahMarkingContext;
@@ -152,7 +153,8 @@ private:
   ShenandoahHeapLock _lock;
   ShenandoahGeneration* _gc_generation;
 
-  bool _prep_for_mixed_evac_in_progress; // true iff we are concurrently coalescing and filling old-gen HeapRegions
+  // true iff we are concurrently coalescing and filling old-gen HeapRegions
+  bool _prepare_for_old_mark;
 
 public:
   ShenandoahHeapLock* lock() {
@@ -171,7 +173,7 @@ public:
   ShenandoahOldHeuristics* old_heuristics();
 
   bool doing_mixed_evacuations();
-
+  bool is_old_bitmap_stable() const;
   bool is_gc_generation_young() const;
 
 // ---------- Initialization, termination, identification, printing routines
@@ -398,7 +400,7 @@ public:
   void set_has_forwarded_objects(bool cond);
   void set_concurrent_strong_root_in_progress(bool cond);
   void set_concurrent_weak_root_in_progress(bool cond);
-  void set_concurrent_prep_for_mixed_evacuation_in_progress(bool cond);
+  void set_prepare_for_old_mark_in_progress(bool cond);
   void set_aging_cycle(bool cond);
 
   inline bool is_stable() const;
@@ -416,7 +418,7 @@ public:
   inline bool is_stw_gc_in_progress() const;
   inline bool is_concurrent_strong_root_in_progress() const;
   inline bool is_concurrent_weak_root_in_progress() const;
-  bool is_concurrent_prep_for_mixed_evacuation_in_progress();
+  inline bool is_prepare_for_old_mark_in_progress() const;
   inline bool is_aging_cycle() const;
   inline bool upgraded_to_full() { return _upgraded_to_full; }
   inline void start_conc_gc() { _upgraded_to_full = false; }
@@ -520,7 +522,7 @@ public:
 private:
   ShenandoahYoungGeneration* _young_generation;
   ShenandoahGeneration*      _global_generation;
-  ShenandoahGeneration*      _old_generation;
+  ShenandoahOldGeneration*   _old_generation;
 
   ShenandoahControlThread*   _control_thread;
   ShenandoahRegulatorThread* _regulator_thread;
@@ -538,7 +540,7 @@ private:
 public:
   ShenandoahYoungGeneration* young_generation()  const { return _young_generation;  }
   ShenandoahGeneration*      global_generation() const { return _global_generation; }
-  ShenandoahGeneration*      old_generation()    const { return _old_generation;    }
+  ShenandoahOldGeneration*   old_generation()    const { return _old_generation;    }
   ShenandoahGeneration*      generation_for(ShenandoahRegionAffiliation affiliation) const;
 
   ShenandoahCollectorPolicy* shenandoah_policy() const { return _shenandoah_policy; }
@@ -569,7 +571,7 @@ private:
   // For exporting to SA
   int                          _log_min_obj_alignment_in_bytes;
 public:
-  ShenandoahMonitoringSupport* monitoring_support()     { return _monitoring_support;       }
+  ShenandoahMonitoringSupport* monitoring_support() const { return _monitoring_support;       }
   GCMemoryManager* cycle_memory_manager()               { return &_cycle_memory_manager;    }
   GCMemoryManager* stw_memory_manager()                 { return &_stw_memory_manager;      }
   ShenandoahMemoryManager* memory_manager()             { return _memory_manager;           }
