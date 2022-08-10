@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -19,33 +21,28 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
+package com.sun.hotspot.igv.util;
 
-#ifndef CPU_X86_CONTINUATIONENTRY_X86_INLINE_HPP
-#define CPU_X86_CONTINUATIONENTRY_X86_INLINE_HPP
+import com.sun.hotspot.igv.data.Properties;
+import com.sun.hotspot.igv.data.Property;
+import com.sun.hotspot.igv.util.StringUtils;
 
-#include "runtime/continuationEntry.hpp"
-
-#include "oops/method.inline.hpp"
-#include "runtime/frame.inline.hpp"
-#include "runtime/registerMap.hpp"
-#include "utilities/macros.hpp"
-
-inline frame ContinuationEntry::to_frame() const {
-  static CodeBlob* cb = CodeCache::find_blob_fast(entry_pc());
-  assert(cb != nullptr, "");
-  assert(cb->as_compiled_method()->method()->is_continuation_enter_intrinsic(), "");
-  return frame(entry_sp(), entry_sp(), entry_fp(), entry_pc(), cb);
+/**
+ *
+ * @author ksakata
+ */
+public class PropertiesConverter {
+    public static String convertToHTML(final Properties properties) {
+        StringBuilder sb = new StringBuilder("<html><body><table cellpadding=\"0\" cellspacing=\"0\">");
+        for (Property p : properties) {
+            sb.append("<tr><td>")
+              .append(StringUtils.escapeHTML(p.getName()))
+              .append("</td><td width=\"10\"></td><td>")
+              .append(StringUtils.escapeHTML(p.getValue()))
+              .append("</td></tr>");
+        }
+        sb.append("</table></body></html>");
+        return sb.toString();
+    }
 }
-
-inline intptr_t* ContinuationEntry::entry_fp() const {
-  return (intptr_t*)((address)this + size());
-}
-
-inline void ContinuationEntry::update_register_map(RegisterMap* map) const {
-  intptr_t** fp = (intptr_t**)(bottom_sender_sp() - frame::sender_sp_offset);
-  frame::update_map_with_saved_link(map, fp);
-}
-
-#endif // CPU_X86_CONTINUATIONENTRY_X86_INLINE_HPP
