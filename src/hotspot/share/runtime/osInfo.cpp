@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,9 @@
  *
  */
 
-#ifndef CPU_X86_VMREG_X86_INLINE_HPP
-#define CPU_X86_VMREG_X86_INLINE_HPP
+#include "precompiled.hpp"
+#include "runtime/osInfo.hpp"
 
-inline VMReg Register::RegisterImpl::as_VMReg() const {
-  return VMRegImpl::as_VMReg(encoding() LP64_ONLY( << 1 ));
-}
+int OSInfo::_vm_page_size = -1;
+int OSInfo::_vm_allocation_granularity = -1;
 
-inline VMReg FloatRegister::FloatRegisterImpl::as_VMReg() const {
-  return VMRegImpl::as_VMReg((encoding() << 1) + ConcreteRegisterImpl::max_gpr);
-}
-
-inline VMReg XMMRegister::XMMRegisterImpl::as_VMReg() const {
-  return VMRegImpl::as_VMReg((encoding() << 4) + ConcreteRegisterImpl::max_fpr);
-}
-
-inline VMReg KRegister::KRegisterImpl::as_VMReg() const {
-  return VMRegImpl::as_VMReg((encoding() << 1) + ConcreteRegisterImpl::max_xmm);
-}
-
-#endif // CPU_X86_VMREG_X86_INLINE_HPP
