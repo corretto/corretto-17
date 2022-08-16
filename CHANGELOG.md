@@ -2,6 +2,22 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.4.8.2
+Release Date: July 25, 2022
+
+**Target Platforms**
+
++ Amazon Linux 2022, x86_64
++ Amazon Linux 2022, aarch64
+
+The following issues are addressed in 17.0.4.8.2
+
+| Issue Name                                       | Platform    | Description                                                     | Link |
+|--------------------------------------------------|-------------|-----------------------------------------------------------------|------|
+| Add provides java-devel                          | AL2/AL2022  | Adding provides java-devel as required by 3p packages           |      |
+
+
+
 ## Corretto version: 17.0.4.8.1
 Release Date: July 19, 2022
 
