@@ -2,6 +2,29 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.4.9.1
+Release Date: August 15, 2022
+
+
+**Target Platforms**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Alpine-based Linux, x86_64
++ Windows 7 or later, x86_64
++ macos 10.15 and later, x86_64
++ macos 11.0 and later, aarch64
+
+The following issues are addressed in 17.0.4.9.1
+
+| Issue Name                                       | Platform    | Description                                                                          | Link                                                                          |
+|--------------------------------------------------|-------------|--------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| Import jdk-17.0.4.1+0                              | All         | Updates Corretto baseline to OpenJDK 17.0.4.1+0                                        | [jdk-17.0.4.1+0](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.4.1%2B0) |
+| Resolve C2 compiler crash                              | All         | [JDK-8279219](https://bugs.openjdk.org/browse/JDK-8279219) caused regressions in the OpenJDK 11.0.16 and OpenJDK 17.0.4 releases and we are backing it out. See [JDK-8291665](https://bugs.openjdk.org/browse/JDK-8291665).                                       | [JDK-8292260](https://bugs.openjdk.org/browse/JDK-8292260) |
+
+
 ## Corretto version: 17.0.4.8.2
 Release Date: July 25, 2022
 
