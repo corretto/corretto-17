@@ -50,6 +50,7 @@ task inflateRpmSpec {
                     build_id            : buildId,
                     release_id          : releaseId,
                     version_opt         : versionOpt,
+                    debug_level         : correttoDebugLevel,
                     boot_jdk_major_version : version.major.toInteger() - 1
                 ])
         outputs.files.singleFile.text = renderedTemplate
