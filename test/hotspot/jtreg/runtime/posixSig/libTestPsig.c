@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,31 +21,24 @@
  * questions.
  */
 
-package compiler.vectorapi.reshape;
+#include <stdio.h>
+#include <jni.h>
+#include <signal.h>
+#include <sys/ucontext.h>
+#include <errno.h>
+#include <string.h>
 
-import compiler.vectorapi.reshape.tests.TestVectorCast;
-import compiler.vectorapi.reshape.utils.TestCastMethods;
-import compiler.vectorapi.reshape.utils.VectorReshapeHelper;
-
-/*
- * @test
- * @bug 8259610
- * @enablePreview
- * @key randomness
- * @modules jdk.incubator.vector
- * @modules java.base/jdk.internal.misc
- * @summary Test that vector cast intrinsics work as intended on neon.
- * @requires vm.cpu.features ~= ".*asimd.*"
- * @library /test/lib /
- * @run main compiler.vectorapi.reshape.TestVectorCastNeon
- */
-public class TestVectorCastNeon {
-    public static void main(String[] args) {
-        VectorReshapeHelper.runMainHelper(
-                TestVectorCast.class,
-                TestCastMethods.NEON_CAST_TESTS.stream(),
-                "-XX:UseSVE=0");
-    }
+static void sig_handler(int sig, siginfo_t *info, ucontext_t *context) {
+    printf( " HANDLER (1) " );
 }
 
-
+JNIEXPORT void JNICALL Java_TestPosixSig_changeSigActionFor(JNIEnv *env, jclass klass, jint val) {
+    struct sigaction act;
+    act.sa_handler = (void (*)())sig_handler;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = 0;
+    int retval = sigaction(val, &act, 0);
+    if (retval != 0) {
+        printf("ERROR: failed to set %d signal handler error=%s\n", val, strerror(errno));
+    }
+}
