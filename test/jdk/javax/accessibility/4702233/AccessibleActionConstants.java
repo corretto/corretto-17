@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,25 +21,24 @@
  * questions.
  */
 
-import java.awt.Toolkit;
-
-import javax.sound.midi.MidiSystem;
-import javax.sound.midi.MidiUnavailableException;
-
-/**
- * @test
- * @key sound
- * @bug 8068412
+/*
+ * @summary Constant for testing public fields in AccessibleAction.
  */
-public final class InitializationHang {
 
-    public static void main(final String[] argv) {
-        try {
-            MidiSystem.getReceiver();
-            Toolkit.getDefaultToolkit();
-        } catch (final MidiUnavailableException ignored) {
-            // the test is not applicable
-        }
-    }
+public interface AccessibleActionConstants {
+
+    String CLASS_NAME = "javax.accessibility.AccessibleAction";
+
+    /**
+     * Public fields values in AccessibleAction class.
+     */
+    String[][] FIELDS =
+        new String[][] { { "CLICK", "click" }, { "DECREMENT", "decrement" },
+        { "INCREMENT", "increment" }, { "TOGGLE_EXPAND", "toggleexpand" },
+        { "TOGGLE_POPUP", "toggle popup" } };
+        /**
+         * Old(removed) fields in AccessibleAction class.
+         */
+        String[] OLD_FIELDS = new String[] {};
 }
 
