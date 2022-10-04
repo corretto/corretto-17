@@ -30,6 +30,7 @@
 #include "asm/assembler.hpp"
 #include "code/vmreg.hpp"
 #include "metaprogramming/enableIf.hpp"
+#include "nativeInst_riscv.hpp"
 #include "oops/compressedOops.hpp"
 #include "utilities/powerOfTwo.hpp"
 
@@ -49,6 +50,9 @@ class MacroAssembler: public Assembler {
 
   // Alignment
   int align(int modulus, int extra_offset = 0);
+  static inline void assert_alignment(address pc, int alignment = NativeInstruction::instruction_size) {
+    assert(is_aligned(pc, alignment), "bad alignment");
+  }
 
   // Stack frame creation/removal
   // Note that SP must be updated to the right place before saving/restoring RA and FP
@@ -523,12 +527,18 @@ public:
   }
 
   // mv
-  void mv(Register Rd, address addr)          { li(Rd, (int64_t)addr); }
+  void mv(Register Rd, address addr)                  { li(Rd, (int64_t)addr); }
+  void mv(Register Rd, address addr, int32_t &offset) {
+    // Split address into a lower 12-bit sign-extended offset and the remainder,
+    // so that the offset could be encoded in jalr or load/store instruction.
+    offset = ((int32_t)(int64_t)addr << 20) >> 20;
+    li(Rd, (int64_t)addr - offset);
+  }
 
   template<typename T, ENABLE_IF(std::is_integral<T>::value)>
-  inline void mv(Register Rd, T o)            { li(Rd, (int64_t)o); }
+  inline void mv(Register Rd, T o)                    { li(Rd, (int64_t)o); }
 
-  inline void mvw(Register Rd, int32_t imm32) { mv(Rd, imm32); }
+  inline void mvw(Register Rd, int32_t imm32)         { mv(Rd, imm32); }
 
   void mv(Register Rd, Address dest);
   void mv(Register Rd, RegisterOrConstant src);
@@ -679,7 +689,7 @@ public:
   //     code is patched, and the new destination may not be reachable by a simple JAL
   //     instruction.
   //
-  //   - indirect call: movptr_with_offset + jalr
+  //   - indirect call: movptr + jalr
   //     This too can reach anywhere in the address space, but it cannot be
   //     patched while code is running, so it must only be modified at a safepoint.
   //     This form of call is most suitable for targets at fixed addresses, which
@@ -885,6 +895,18 @@ public:
                    int* receiver_offset);
 
   void rt_call(address dest, Register tmp = t0);
+
+  void call(const address dest, Register temp = t0) {
+    assert_cond(dest != NULL);
+    assert(temp != noreg, "temp must not be empty register!");
+    int32_t offset = 0;
+    mv(temp, dest, offset);
+    jalr(x1, temp, offset);
+  }
+
+  void ret() {
+    jalr(x0, x1, 0);
+  }
 
 private:
 
