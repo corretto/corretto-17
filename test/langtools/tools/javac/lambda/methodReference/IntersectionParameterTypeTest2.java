@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,10 +21,34 @@
  * questions.
  */
 
-/* @test
- * @bug 4170614
- * @summary Test internal hashCode() and equals() functions
- * @library patch-src
- * @build java.base/java.text.Bug4170614Test
- * @run main java.base/java.text.Bug4170614Test
+/**
+ * @test
+ * @bug 8269983
+ * @summary BootstrapMethodError with method reference and intersection type
+ * @run main IntersectionParameterTypeTest2
  */
+
+public class IntersectionParameterTypeTest2 {
+
+    public static void main(String[] args) {
+        f();
+    }
+
+    static <T extends Comparable<T> & G> C<T> f() {
+        return new C<>(Q::g);
+    }
+
+    public interface G {}
+
+    private interface E<T> {
+        void g(Q g, T value);
+    }
+
+    static class C<T extends Comparable<?>> {
+        C(E<T> g) {}
+    }
+
+    static class Q {
+        void g(G g) {}
+    }
+}
