@@ -55,7 +55,7 @@
 %global abs2rel %{__perl} -e %{script}
 
 # Filter out private libraries so RPM does not list them as provided/required
-%global _privatelibs libjli[.]so.*
+%global _privatelibs libjli[.]so.*|libattach[.]so.*|libawt_headless[.]so.*|libdt_socket[.]so.*|libextnet[.]so.*|libfontmanager[.]so.*|libinstrument[.]so.*|libj2gss[.]so.*|libj2pcsc[.]so.*|libj2pkcs11[.]so.*|libjaas[.]so.*|libjavajpeg[.]so.*|libjdwp[.]so.*|libjimage[.]so.*|libjsound[.]so.*|libjsvml[.]so.*|liblcms[.]so.*|libmanagement[.]so.*|libmanagement_agent[.]so.*|libmanagement_ext[.]so.*|libmlib_image[.]so.*|libnet[.]so.*|libnio[.]so.*|libprefs[.]so.*|librmi[.]so.*|libsaproc[.]so.*|libsctp[.]so.*|libsyslookup[.]so.*|libzip[.]so.*|libsplashscreen[.]so.*|libawt_xawt[.]so.*
 %global __provides_exclude ^(%{_privatelibs})\$
 %global __requires_exclude ^(%{_privatelibs})\$
 
@@ -73,7 +73,8 @@ Release: %{release_id}%{?dist}%{?release_ext:.%{release_ext}}
 
 Epoch: 1
 Group: Development/Languages
-AutoReqProv: no
+AutoProv: 1
+AutoReq: 0
 License: ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ISC and FTL and RSA.
 Vendor: Amazon
 Url: https://github.com/corretto/corretto-${java_spec_version}
@@ -140,7 +141,8 @@ OpenJDK ${java_spec_version} code.
 %package headless
 Summary: Amazon Corretto headless development environment
 Group:   Development/Tools
-AutoReqProv: no
+AutoProv: 1
+AutoReq: 0
 
 %if "%{dist}" == ".amzn2" || "%{dist}" == ".amzn2int"
 Requires: jpackage-utils
@@ -186,7 +188,8 @@ Amazon Corretto's packaging of the OpenJDK ${java_spec_version} API documentatio
 %package devel
 Summary: Amazon Corretto ${java_spec_version} development tools
 Group: Development
-AutoReqProv: no
+AutoProv: 1
+AutoReq: 0
 
 Provides: java-devel = %{epoch}:%{java_version}
 Provides: java-${java_spec_version}-devel = %{epoch}:%{java_version}
@@ -254,6 +257,12 @@ rm -rf %{buildroot}
 install -d -m 755 %{buildroot}%{java_home}
 cp -a %{java_imgdir}/jdk/* %{buildroot}%{java_home}
 rm -rf %{buildroot}%{java_home}/demo
+
+# Properly set permissions for executables and libs to enable auto-provides scanning
+find %{buildroot}%{java_home}/ -name "*.so" -exec chmod 755 \\{\\} \\; ;
+find %{buildroot}%{java_home} -type d -exec chmod 755 \\{\\} \\; ;
+# Set legal to read-only.
+find %{buildroot}%{java_home}/legal -type f -exec chmod 644 \\{\\} \\; ;
 
 # Make a *relative* symlink pointing to the cacerts file from ca-certificates.
 rm -f %{buildroot}%{java_home}/lib/security/cacerts
@@ -447,6 +456,9 @@ fi
 %license %{java_imgdir}/docs/legal
 
 %changelog
+* Mon Oct 10 2022 Dan Lutker <lutkerd@amazon.com>
+- Fix provides to include public shared libs
+
 * Mon Aug 29 2022 Dan Lutker <lutkerd@amazon.com>
 - Move requires for jpeg, alsa and fonts to headless package
 
