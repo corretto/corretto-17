@@ -907,7 +907,6 @@ public:
     Register t2,                       // temp register
     Label&   slow_case                 // continuation point if fast allocation fails
   );
-  void zero_memory(Register addr, Register len, Register t1);
   void verify_tlab();
 
   // interface method calling
@@ -1263,7 +1262,7 @@ public:
                      int elem_size);
 
   void fill_words(Register base, Register cnt, Register value);
-  void zero_words(Register base, uint64_t cnt);
+  address zero_words(Register base, uint64_t cnt);
   address zero_words(Register ptr, Register cnt);
   void zero_dcache_blocks(Register base, Register cnt);
 
