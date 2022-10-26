@@ -2,6 +2,43 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.5.8.1
+Release Date: October 18, 2022
+
+**Target Platforms <sup>1</sup>**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Alpine-based Linux, x86_64
++ Windows 7 or later, x86_64
++ macos 10.15 and later, x86_64
++ macos 11.0 and later, aarch64
+
+**1.** This is the platform targeted by the build. See [Using Amazon Corretto](https://aws.amazon.com/corretto/faqs/#Using_Amazon_Corretto)
+in the Amazon Corretto FAQ for supported platforms
+
+The following issues are addressed in 17.0.5.8.1:
+
+| Issue Name                                       | Platform    | Description                                                                          | Link                                                                          |
+|--------------------------------------------------|-------------|--------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| Import jdk-17.0.5+8                              | All         | Updates Corretto baseline to OpenJDK 17.0.5+8                                        | [jdk-17.0.5+8](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.5%2B8) |
+| Update Timezone Data to 2022e                    | All         | All tzdata updates up to 2022e                                                       | [#97](https://github.com/corretto/corretto-17/pull/97) [#99](https://github.com/corretto/corretto-17/pull/99) |
+| Add jpeg, alsa and fonts as headless dependencies| Amazon Linux| Add libraries that could be used in headless mode to RPM dependecies                 | [#94](https://github.com/corretto/corretto-17/pull/94) |
+| Update amazon cacerts                            | All         | Update amazon cacerts file from amazonlinux                                          | |
+
+The following CVEs are addressed in 17.0.5.8.1:
+
+| CVE            | CVSS | Component                   |
+|----------------|------|-----------------------------|
+| CVE-2022-21618 | 5.3  | security-libs/org.ietf.jgss |
+| CVE-2022-21628 | 5.3  | core-libs/java.net          |
+| CVE-2022-39399 | 3.7  | core-libs/java.net          |
+| CVE-2022-21619 | 3.7  | security-libs/java.security |
+| CVE-2022-21624 | 3.7  | core-libs/javax.naming      |
+
+
 ## Corretto version: 17.0.4.9.1
 Release Date: August 15, 2022
 
