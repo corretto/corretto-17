@@ -34,6 +34,6 @@ For build instructions, please see either of these files:
   * doc/building.html   (html version)
   * doc/building.md     (markdown version)
 
-See <https://openjdk.org/> for more information about
-the OpenJDK Community and the JDK.
-```
+See <https://openjdk.org/> for more information about the OpenJDK
+Community and the JDK and see <https://bugs.openjdk.org> for JDK issue
+tracking.
