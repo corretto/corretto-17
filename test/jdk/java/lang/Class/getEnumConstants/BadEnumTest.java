@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,30 +21,27 @@
  * questions.
  */
 
-package jdk.internal.event;
-
-
 /**
- * Event recording details of X.509 Certificate.
+ * @test
+ * @bug 8296196
+ * @summary Test getEnumConstants on bad Enums
+ * @build BadEnum1 BadEnum2
+ * @run junit BadEnumTest
  */
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
-public final class X509CertificateEvent extends Event {
-    private static final X509CertificateEvent EVENT = new X509CertificateEvent();
+public class BadEnumTest {
 
-    /**
-     * Returns {@code true} if event is enabled, {@code false} otherwise.
-     */
-    public static boolean isTurnedOn() {
-        return EVENT.isEnabled();
+    @Test
+    void testBadEnum1() {
+        assertNull(BadEnum1.class.getEnumConstants(), "Expected BadEnum1.class.getEnumConstants() to return null");
     }
 
-    public String algorithm;
-    public String serialNumber;
-    public String subject;
-    public String issuer;
-    public String keyType;
-    public int keyLength;
-    public long certificateId;
-    public long validFrom;
-    public long validUntil;
+    @Test
+    void testBadEnum2() {
+        assertNull(BadEnum2.class.getEnumConstants(), "Expected BadEnum2.class.getEnumConstants() to return null");
+    }
 }
