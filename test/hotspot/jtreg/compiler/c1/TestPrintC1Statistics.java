@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,25 +19,33 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#ifndef SHARE_GC_SHENANDOAH_SHENANDOAHPADDING_HPP
-#define SHARE_GC_SHENANDOAH_SHENANDOAHPADDING_HPP
+/*
+ * @test
+ * @summary Checks that -XX:+PrintC1Statistics works
+ * @bug 8296969
+ * @requires vm.debug == true & vm.compiler1.enabled
+ * @library /test/lib
+ * @run main/othervm -XX:+Verbose compiler.c1.TestPrintC1Statistics
+ */
 
-#include "memory/padded.hpp"
+package compiler.c1;
 
-// 64 bytes is enough to cover all existing architectures. If we have some
-// other platforms, we would need to provide the architecture-specific
-// versions here. Shared code provides DEFAULT_CACHE_LINE_SIZE, which is
-// inconveniently large by default.
+import java.util.ArrayList;
+import java.util.List;
 
-#define SHENANDOAH_CACHE_LINE_SIZE 64
+import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.process.ProcessTools;
 
-#define shenandoah_padding(id) \
-  DEFINE_PAD_MINUS_SIZE(id, SHENANDOAH_CACHE_LINE_SIZE, 0)
+public class TestPrintC1Statistics {
+    public static void main(String[] args) throws Exception {
+        List<String> options = new ArrayList<String>();
+        options.add("-XX:+PrintC1Statistics");
+        options.add("--version");
 
-#define shenandoah_padding_minus_size(id, size) \
-  DEFINE_PAD_MINUS_SIZE(id, SHENANDOAH_CACHE_LINE_SIZE, size)
+        OutputAnalyzer oa = ProcessTools.executeTestJvm(options);
 
-#endif // SHARE_GC_SHENANDOAH_SHENANDOAHPADDING_HPP
+        oa.shouldHaveExitValue(0).shouldContain("C1 Runtime statistics");
+    }
+ }

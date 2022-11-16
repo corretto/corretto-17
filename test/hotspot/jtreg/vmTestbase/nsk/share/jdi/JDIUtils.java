@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,25 +19,26 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#ifndef SHARE_GC_SHENANDOAH_SHENANDOAHPADDING_HPP
-#define SHARE_GC_SHENANDOAH_SHENANDOAHPADDING_HPP
+package nsk.share.jdi;
 
-#include "memory/padded.hpp"
+public class JDIUtils {
 
-// 64 bytes is enough to cover all existing architectures. If we have some
-// other platforms, we would need to provide the architecture-specific
-// versions here. Shared code provides DEFAULT_CACHE_LINE_SIZE, which is
-// inconveniently large by default.
-
-#define SHENANDOAH_CACHE_LINE_SIZE 64
-
-#define shenandoah_padding(id) \
-  DEFINE_PAD_MINUS_SIZE(id, SHENANDOAH_CACHE_LINE_SIZE, 0)
-
-#define shenandoah_padding_minus_size(id, size) \
-  DEFINE_PAD_MINUS_SIZE(id, SHENANDOAH_CACHE_LINE_SIZE, size)
-
-#endif // SHARE_GC_SHENANDOAH_SHENANDOAHPADDING_HPP
+    /*
+     * Wait until thread is no longer alive, but only wait
+     * for a short period of time since it shouldn't take long.
+     */
+    public static boolean waitForCompletion(Thread thread) {
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            if (!thread.isAlive()) {
+                return true;
+            }
+            try {
+                Thread.sleep(attempt * 1000);
+            } catch (InterruptedException ie) {
+            }
+        }
+        return false;
+    }
+}
