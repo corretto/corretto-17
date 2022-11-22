@@ -17,3 +17,5 @@ NashornProfile.txt
 **/JTwork/**
 /src/utils/LogCompilation/target/
 /.gradle/
+/.project/
+/.settings/
