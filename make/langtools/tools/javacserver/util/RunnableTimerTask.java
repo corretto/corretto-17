@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2022, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,26 +23,22 @@
  * questions.
  */
 
-/*
- * @test
- * @bug 8297556
- * @summary Parse::check_interpreter_type fails with assert "must constrain OSR typestate"
- *
- * @run main/othervm -Xbatch -XX:-TieredCompilation -XX:CompileOnly=TestExactArrayOfBasicType::test TestExactArrayOfBasicType
- *
+package javacserver.util;
+
+import java.util.TimerTask;
+
+/**
+ * Wrapper class since TimerTask is not up to modern standards
  */
+public class RunnableTimerTask extends TimerTask {
+    private final Runnable task;
 
-
-public class TestExactArrayOfBasicType {
-    public static void test() {
-        int[][][][][] array = new int[1][2][3][4][5];
-
-        for (int i = 0; i < 50_000; ++i) {
-            array[0] = new int[0][1][2][3];
-        }
+    public RunnableTimerTask(Runnable task) {
+        this.task = task;
     }
 
-    public static void main(String args[]) {
-        test();
+    @Override
+    public void run() {
+        task.run();
     }
 }

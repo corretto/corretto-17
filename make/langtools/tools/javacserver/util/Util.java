@@ -23,14 +23,18 @@
  * questions.
  */
 
-package javacserver.server;
+package javacserver.util;
 
-/**
- *  <p><b>This is NOT part of any supported API.
- *  If you write code that depends on this, you do so at your own risk.
- *  This code and its internal interfaces are subject to change or
- *  deletion without notice.</b>
- */
-public interface Terminable {
-    void shutdown(String quitMsg);
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
+
+public class Util {
+    /**
+     * Return a stream of strings, where the input string is split at line separators.
+     */
+    public static Stream<String> getLines(String str) {
+        return str.isEmpty()
+                ? Stream.empty()
+                : Stream.of(str.split(Pattern.quote(System.lineSeparator())));
+    }
 }

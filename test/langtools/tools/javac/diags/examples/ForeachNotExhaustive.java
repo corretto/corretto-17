@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,15 +21,20 @@
  * questions.
  */
 
-package javacserver.client;
+// key: compiler.misc.feature.deconstruction.patterns
+// key: compiler.misc.feature.pattern.switch
+// key: compiler.warn.preview.feature.use.plural
+// key: compiler.err.foreach.not.exhaustive.on.type
+// options: --enable-preview -source ${jdk.version} -Xlint:preview
 
-import java.io.IOException;
+import java.util.List;
 
-public class PortFileInaccessibleException extends IOException {
-
-    private static final long serialVersionUID = -4755261881545398973L;
-
-    public PortFileInaccessibleException(Throwable cause) {
-        super(cause);
+class ForeachNotExhaustive {
+    void m(List<Object> points) {
+        for (Point(var x, var y): points) {
+            System.out.println();
+        }
     }
+
+    record Point(Integer x, Integer y) { }
 }
