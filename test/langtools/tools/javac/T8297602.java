@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2000, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,24 +21,32 @@
  * questions.
  */
 
-package sun.nio.ch;
+/*
+ * @test
+ * @bug 8297602
+ * @summary Compiler crash with type annotation and generic record during pattern matching
+ * @enablePreview
+ * @compile --enable-preview -source ${jdk.version} -XDrawDiagnostics T8297602.java
+ */
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
 
-import jdk.internal.ref.Cleaner;
+public class T8297602
+{
+    void meth(Foo<Integer> p) {
+        switch(p) {
+            case Foo<@Annot(field = "") Integer>(): {}
+        };
 
+        if (p instanceof Foo<@Annot(field = "") Integer>()) {
 
-public interface DirectBuffer {
+        }
+    }
 
-    // Use of the returned address must be guarded if this DirectBuffer
-    // is backed by a memory session that is explicitly closeable.
-    //
-    // Failure to do this means the outcome is undefined including
-    // silent unrelated memory mutation and JVM crashes.
-    //
-    // See JavaNioAccess for methods to safely acquire/release resources.
-    public long address();
+    @Target({ElementType.TYPE_USE})
+    @interface Annot {
+        String field();
+    }
 
-    public Object attachment();
-
-    public Cleaner cleaner();
-
+    record Foo<T>() { }
 }
