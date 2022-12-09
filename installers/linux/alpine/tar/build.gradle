@@ -66,7 +66,7 @@ task copySource(type: Exec) {
             "${project.rootDir}/", buildRoot
 }
 
-/** 
+/**
  * Scan the patches folder for any .patch that needs
  * to be applied before start building.
  */
@@ -144,6 +144,7 @@ task packageBuildResults(type: Tar) {
         include 'ASSEMBLY_EXCEPTION'
         include 'LICENSE'
         include 'README.md'
+        include 'commitId.txt'
         include 'version.txt'
     }
     from(jdkResultingImage) {
@@ -156,7 +157,7 @@ task packageBuildResults(type: Tar) {
         include 'release'
         exclude '**/*.diz'
     }
-    
+
     // Copy legal directory specifically to set permission correctly.
     // See https://github.com/corretto/corretto-11/issues/129
     from(jdkResultingImage) {
