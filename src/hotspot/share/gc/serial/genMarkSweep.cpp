@@ -271,6 +271,8 @@ void GenMarkSweep::mark_sweep_phase3() {
   // Need new claim bits for the pointer adjustment tracing.
   ClassLoaderDataGraph::clear_claimed_marks();
 
+  AdjustPointerClosure adjust_pointer_closure(gch->forwarding());
+  CLDToOopClosure adjust_cld_closure(&adjust_pointer_closure, ClassLoaderData::_claim_strong);
   {
     StrongRootsScope srs(0);
 

@@ -174,3 +174,11 @@ vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manySame_b/TestDescription.java 
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
 
 #############################################################################
+
+# Lilliput:
+
+# Disabled because Lilliput forces +UseCompressedClassPointers
+gc/arguments/TestCompressedClassFlags.java 1234567 generic-all
+
+# Dispabled because Lilliput forces -UseBiasedLocking
+runtime/logging/BiasedLockingTest.java 1234567 generic-all

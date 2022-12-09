@@ -58,6 +58,7 @@
 #include "runtime/init.hpp"
 #include "runtime/java.hpp"
 #include "runtime/javaCalls.hpp"
+#include "runtime/safepoint.hpp"
 #include "runtime/safepointVerifiers.hpp"
 #include "utilities/bitMap.inline.hpp"
 #include "utilities/copy.hpp"
@@ -275,7 +276,14 @@ oop HeapShared::archive_heap_object(oop obj) {
     // identity_hash for all shared objects, so they are less likely to be written
     // into during run time, increasing the potential of memory sharing.
     int hash_original = obj->identity_hash();
-    archived_oop->set_mark(markWord::prototype().copy_set_hash(hash_original));
+
+    assert(SafepointSynchronize::is_at_safepoint(), "resolving displaced headers only at safepoint");
+    markWord mark = obj->mark();
+    if (mark.has_displaced_mark_helper()) {
+      mark = mark.displaced_mark_helper();
+    }
+    narrowKlass nklass = mark.narrow_klass();
+    archived_oop->set_mark(markWord::prototype().copy_set_hash(hash_original) LP64_ONLY(.set_narrow_klass(nklass)));
     assert(archived_oop->mark().is_unlocked(), "sanity");
 
     DEBUG_ONLY(int hash_archived = archived_oop->identity_hash());
@@ -416,12 +424,10 @@ void HeapShared::copy_roots() {
   memset(mem, 0, size * BytesPerWord);
   {
     // This is copied from MemAllocator::finish
-    if (UseBiasedLocking) {
-      oopDesc::set_mark(mem, k->prototype_header());
-    } else {
-      oopDesc::set_mark(mem, markWord::prototype());
-    }
+    oopDesc::set_mark(mem, k->prototype_header());
+#ifndef _LP64
     oopDesc::release_set_klass(mem, k);
+#endif
   }
   {
     // This is copied from ObjArrayAllocator::initialize

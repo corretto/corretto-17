@@ -87,6 +87,7 @@ class G1ConcurrentMarkThread;
 class G1ConcurrentRefine;
 class GenerationCounters;
 class STWGCTimer;
+class SlidingForwarding;
 class G1NewTracer;
 class EvacuationFailedInfo;
 class nmethod;
@@ -237,6 +238,8 @@ private:
   // Helper for monitoring and management support.
   G1MonitoringSupport* _g1mm;
 
+  SlidingForwarding* _forwarding;
+
   // Records whether the region at the given index is (still) a
   // candidate for eager reclaim.  Only valid for humongous start
   // regions; other regions have unspecified values.  Humongous start
@@ -265,6 +268,10 @@ public:
   bool has_humongous_reclaim_candidates() const { return _num_humongous_reclaim_candidates > 0; }
 
   bool should_do_eager_reclaim() const;
+
+  SlidingForwarding* forwarding() const {
+    return _forwarding;
+  }
 
 private:
 

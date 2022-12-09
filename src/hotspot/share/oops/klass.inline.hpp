@@ -52,7 +52,6 @@ inline bool Klass::is_loader_alive() const {
 }
 
 inline void Klass::set_prototype_header(markWord header) {
-  assert(!header.has_bias_pattern() || is_instance_klass(), "biased locking currently only supported for Java instances");
   _prototype_header = header;
 }
 

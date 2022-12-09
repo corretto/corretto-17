@@ -339,8 +339,12 @@ class MacroAssembler: public Assembler {
   void load_method_holder(Register holder, Register method);
 
   // oop manipulations
-  void load_klass(Register dst, Register src, Register tmp);
-  void store_klass(Register dst, Register src, Register tmp);
+  void load_klass(Register dst, Register src, Register tmp, bool null_check_src = false);
+#ifdef _LP64
+  void load_nklass(Register dst, Register src);
+#else
+  void store_klass(Register dst, Register src);
+#endif
 
   void access_load_at(BasicType type, DecoratorSet decorators, Register dst, Address src,
                       Register tmp1, Register thread_tmp);
@@ -361,8 +365,6 @@ class MacroAssembler: public Assembler {
   void load_prototype_header(Register dst, Register src, Register tmp);
 
 #ifdef _LP64
-  void store_klass_gap(Register dst, Register src);
-
   // This dummy is to prevent a call to store_heap_oop from
   // converting a zero (like NULL) into a Register by giving
   // the compiler two choices it can't resolve
@@ -1723,7 +1725,7 @@ public:
 
  public:
   // C2 compiled method's prolog code.
-  void verified_entry(int framesize, int stack_bang_size, bool fp_mode_24b, bool is_stub);
+  void verified_entry(int framesize, int stack_bang_size, bool fp_mode_24b, bool is_stub, int max_monitors);
 
   // clear memory of size 'cnt' qwords, starting at 'base';
   // if 'is_large' is set, do not try to produce short loop
@@ -1910,6 +1912,9 @@ public:
 #endif // _LP64
 
   void vallones(XMMRegister dst, int vector_len);
+
+  void fast_lock_impl(Register obj, Register hdr, Register thread, Register tmp, Label& slow, bool rt_check_stack = true);
+  void fast_unlock_impl(Register obj, Register hdr, Register tmp, Label& slow);
 };
 
 /**

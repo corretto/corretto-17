@@ -3657,9 +3657,8 @@ void TemplateTable::invokevirtual_helper(Register index,
   __ bind(notFinal);
 
   // get receiver klass
-  __ null_check(recv, oopDesc::klass_offset_in_bytes());
   Register tmp_load_klass = LP64_ONLY(rscratch1) NOT_LP64(noreg);
-  __ load_klass(rax, recv, tmp_load_klass);
+  __ load_klass(rax, recv, tmp_load_klass, true);
 
   // profile this call
   __ profile_virtual_call(rax, rlocals, rdx);
@@ -3750,9 +3749,8 @@ void TemplateTable::invokeinterface(int byte_no) {
   __ jcc(Assembler::zero, notVFinal);
 
   // Get receiver klass into rlocals - also a null check
-  __ null_check(rcx, oopDesc::klass_offset_in_bytes());
   Register tmp_load_klass = LP64_ONLY(rscratch1) NOT_LP64(noreg);
-  __ load_klass(rlocals, rcx, tmp_load_klass);
+  __ load_klass(rlocals, rcx, tmp_load_klass, true);
 
   Label subtype;
   __ check_klass_subtype(rlocals, rax, rbcp, subtype);
@@ -3774,8 +3772,7 @@ void TemplateTable::invokeinterface(int byte_no) {
 
   // Get receiver klass into rdx - also a null check
   __ restore_locals();  // restore r14
-  __ null_check(rcx, oopDesc::klass_offset_in_bytes());
-  __ load_klass(rdx, rcx, tmp_load_klass);
+  __ load_klass(rdx, rcx, tmp_load_klass, true);
 
   Label no_such_method;
 
@@ -4023,21 +4020,13 @@ void TemplateTable::_new() {
 
     // initialize object header only.
     __ bind(initialize_header);
-    if (UseBiasedLocking) {
-      __ pop(rcx);   // get saved klass back in the register.
-      __ movptr(rbx, Address(rcx, Klass::prototype_header_offset()));
-      __ movptr(Address(rax, oopDesc::mark_offset_in_bytes ()), rbx);
-    } else {
-      __ movptr(Address(rax, oopDesc::mark_offset_in_bytes ()),
-                (intptr_t)markWord::prototype().value()); // header
-      __ pop(rcx);   // get saved klass back in the register.
-    }
-#ifdef _LP64
-    __ xorl(rsi, rsi); // use zero reg to clear memory (shorter code)
-    __ store_klass_gap(rax, rsi);  // zero klass gap for compressed oops
-#endif
+    __ pop(rcx);   // get saved klass back in the register.
+    __ movptr(rbx, Address(rcx, Klass::prototype_header_offset()));
+    __ movptr(Address(rax, oopDesc::mark_offset_in_bytes ()), rbx);
+#ifndef _LP64
     Register tmp_store_klass = LP64_ONLY(rscratch1) NOT_LP64(noreg);
     __ store_klass(rax, rcx, tmp_store_klass);  // klass
+#endif
 
     {
       SkipIfEqual skip_if(_masm, &DTraceAllocProbes, 0);

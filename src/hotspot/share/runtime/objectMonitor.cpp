@@ -334,7 +334,7 @@ bool ObjectMonitor::enter(JavaThread* current) {
     return true;
   }
 
-  if (current->is_lock_owned((address)cur)) {
+  if (!UseFastLocking && current->is_lock_owned((address)cur)) {
     assert(_recursions == 0, "internal state error");
     _recursions = 1;
     set_owner_from_BasicLock(cur, current);  // Convert from BasicLock* to Thread*.
@@ -598,6 +598,22 @@ bool ObjectMonitor::deflate_monitor() {
   // We leave owner == DEFLATER_MARKER and contentions < 0
   // to force any racing threads to retry.
   return true;  // Success, ObjectMonitor has been deflated.
+}
+
+// We might access the dead object headers for parsable heap walk, make sure
+// headers are in correct shape, e.g. monitors deflated.
+void ObjectMonitor::maybe_deflate_dead(oop* p) {
+  oop obj = *p;
+  assert(obj != NULL, "must not yet been cleared");
+  markWord mark = obj->mark();
+  if (mark.has_monitor()) {
+    ObjectMonitor* monitor = mark.monitor();
+    if (p == monitor->_object.ptr_raw()) {
+      assert(monitor->object_peek() == obj, "lock object must match");
+      markWord dmw = monitor->header();
+      obj->set_mark(dmw);
+    }
+  }
 }
 
 // Install the displaced mark word (dmw) of a deflating ObjectMonitor
@@ -1135,7 +1151,7 @@ void ObjectMonitor::UnlinkAfterAcquire(JavaThread* current, ObjectWaiter* curren
 void ObjectMonitor::exit(JavaThread* current, bool not_suspended) {
   void* cur = owner_raw();
   if (current != cur) {
-    if (current->is_lock_owned((address)cur)) {
+    if (!UseFastLocking && current->is_lock_owned((address)cur)) {
       assert(_recursions == 0, "invariant");
       set_owner_from_BasicLock(cur, current);  // Convert from BasicLock* to Thread*.
       _recursions = 0;
@@ -1355,7 +1371,7 @@ intx ObjectMonitor::complete_exit(JavaThread* current) {
 
   void* cur = owner_raw();
   if (current != cur) {
-    if (current->is_lock_owned((address)cur)) {
+    if (!UseFastLocking && current->is_lock_owned((address)cur)) {
       assert(_recursions == 0, "internal state error");
       set_owner_from_BasicLock(cur, current);  // Convert from BasicLock* to Thread*.
       _recursions = 0;
@@ -1404,10 +1420,11 @@ bool ObjectMonitor::reenter(intx recursions, JavaThread* current) {
 bool ObjectMonitor::check_owner(TRAPS) {
   JavaThread* current = THREAD;
   void* cur = owner_raw();
+  assert(cur != ANONYMOUS_OWNER, "no anon owner here");
   if (cur == current) {
     return true;
   }
-  if (current->is_lock_owned((address)cur)) {
+  if (!UseFastLocking && current->is_lock_owned((address)cur)) {
     set_owner_from_BasicLock(cur, current);  // Convert from BasicLock* to Thread*.
     _recursions = 0;
     return true;

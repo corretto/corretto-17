@@ -32,6 +32,7 @@
 #include "gc/g1/g1ConcurrentMarkBitMap.inline.hpp"
 #include "gc/g1/g1FullGCMarker.inline.hpp"
 #include "gc/g1/heapRegionRemSet.hpp"
+#include "gc/shared/slidingForwarding.inline.hpp"
 #include "memory/iterator.inline.hpp"
 #include "memory/universe.hpp"
 #include "oops/access.inline.hpp"
@@ -77,18 +78,20 @@ template <class T> inline void G1AdjustClosure::adjust_pointer(T* p) {
     return;
   }
 
-  oop forwardee = obj->forwardee();
-  if (forwardee == NULL) {
+  if (!obj->is_forwarded()) {
     // Not forwarded, return current reference.
+    /*
     assert(obj->mark() == markWord::prototype_for_klass(obj->klass()) || // Correct mark
            obj->mark_must_be_preserved() || // Will be restored by PreservedMarksSet
            (UseBiasedLocking && obj->has_bias_pattern()), // Will be restored by BiasedLocking
            "Must have correct prototype or be preserved, obj: " PTR_FORMAT ", mark: " PTR_FORMAT ", prototype: " PTR_FORMAT,
            p2i(obj), obj->mark().value(), markWord::prototype_for_klass(obj->klass()).value());
+    */
     return;
   }
 
   // Forwarded, just update.
+  oop forwardee = _forwarding->forwardee(obj);
   assert(G1CollectedHeap::heap()->is_in_reserved(forwardee), "should be in object space");
   RawAccess<IS_NOT_NULL>::oop_store(p, forwardee);
 }

@@ -1823,41 +1823,47 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     // Load the oop from the handle
     __ movptr(obj_reg, Address(oop_handle_reg, 0));
 
-    if (UseBiasedLocking) {
-      // Note that oop_handle_reg is trashed during this call
-      __ biased_locking_enter(lock_reg, obj_reg, swap_reg, oop_handle_reg, noreg, false, lock_done, &slow_path_lock);
+    if (UseFastLocking) {
+     // Load object header
+     __ movptr(swap_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
+     __ fast_lock_impl(obj_reg, swap_reg, thread, lock_reg, slow_path_lock);
+    } else {
+      if (UseBiasedLocking) {
+        // Note that oop_handle_reg is trashed during this call
+        __ biased_locking_enter(lock_reg, obj_reg, swap_reg, oop_handle_reg, noreg, false, lock_done, &slow_path_lock);
+      }
+
+      // Load immediate 1 into swap_reg %rax,
+      __ movptr(swap_reg, 1);
+
+      // Load (object->mark() | 1) into swap_reg %rax,
+      __ orptr(swap_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
+
+      // Save (object->mark() | 1) into BasicLock's displaced header
+      __ movptr(Address(lock_reg, mark_word_offset), swap_reg);
+
+      // src -> dest iff dest == rax, else rax, <- dest
+      // *obj_reg = lock_reg iff *obj_reg == rax, else rax, = *(obj_reg)
+      __ lock();
+      __ cmpxchgptr(lock_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
+      __ jcc(Assembler::equal, lock_done);
+
+      // Test if the oopMark is an obvious stack pointer, i.e.,
+      //  1) (mark & 3) == 0, and
+      //  2) rsp <= mark < mark + os::pagesize()
+      // These 3 tests can be done by evaluating the following
+      // expression: ((mark - rsp) & (3 - os::vm_page_size())),
+      // assuming both stack pointer and pagesize have their
+      // least significant 2 bits clear.
+      // NOTE: the oopMark is in swap_reg %rax, as the result of cmpxchg
+
+      __ subptr(swap_reg, rsp);
+      __ andptr(swap_reg, 3 - os::vm_page_size());
+
+      // Save the test result, for recursive case, the result is zero
+      __ movptr(Address(lock_reg, mark_word_offset), swap_reg);
+      __ jcc(Assembler::notEqual, slow_path_lock);
     }
-
-    // Load immediate 1 into swap_reg %rax,
-    __ movptr(swap_reg, 1);
-
-    // Load (object->mark() | 1) into swap_reg %rax,
-    __ orptr(swap_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
-
-    // Save (object->mark() | 1) into BasicLock's displaced header
-    __ movptr(Address(lock_reg, mark_word_offset), swap_reg);
-
-    // src -> dest iff dest == rax, else rax, <- dest
-    // *obj_reg = lock_reg iff *obj_reg == rax, else rax, = *(obj_reg)
-    __ lock();
-    __ cmpxchgptr(lock_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
-    __ jcc(Assembler::equal, lock_done);
-
-    // Test if the oopMark is an obvious stack pointer, i.e.,
-    //  1) (mark & 3) == 0, and
-    //  2) rsp <= mark < mark + os::pagesize()
-    // These 3 tests can be done by evaluating the following
-    // expression: ((mark - rsp) & (3 - os::vm_page_size())),
-    // assuming both stack pointer and pagesize have their
-    // least significant 2 bits clear.
-    // NOTE: the oopMark is in swap_reg %rax, as the result of cmpxchg
-
-    __ subptr(swap_reg, rsp);
-    __ andptr(swap_reg, 3 - os::vm_page_size());
-
-    // Save the test result, for recursive case, the result is zero
-    __ movptr(Address(lock_reg, mark_word_offset), swap_reg);
-    __ jcc(Assembler::notEqual, slow_path_lock);
     // Slow path will re-enter here
     __ bind(lock_done);
 
@@ -1997,28 +2003,36 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
       __ biased_locking_exit(obj_reg, rbx, done);
     }
 
-    // Simple recursive lock?
+    if (!UseFastLocking) {
+      // Simple recursive lock?
 
-    __ cmpptr(Address(rbp, lock_slot_rbp_offset), (int32_t)NULL_WORD);
-    __ jcc(Assembler::equal, done);
+      __ cmpptr(Address(rbp, lock_slot_rbp_offset), (int32_t)NULL_WORD);
+      __ jcc(Assembler::equal, done);
+    }
 
     // Must save rax, if if it is live now because cmpxchg must use it
     if (ret_type != T_FLOAT && ret_type != T_DOUBLE && ret_type != T_VOID) {
       save_native_result(masm, ret_type, stack_slots);
     }
 
-    //  get old displaced header
-    __ movptr(rbx, Address(rbp, lock_slot_rbp_offset));
+    if (UseFastLocking) {
+      __ movptr(swap_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
+      __ andptr(swap_reg, ~(int32_t)markWord::lock_mask_in_place);
+      __ fast_unlock_impl(obj_reg, swap_reg, lock_reg, slow_path_unlock);
+    } else {
+      //  get old displaced header
+      __ movptr(rbx, Address(rbp, lock_slot_rbp_offset));
 
-    // get address of the stack lock
-    __ lea(rax, Address(rbp, lock_slot_rbp_offset));
+      // get address of the stack lock
+      __ lea(rax, Address(rbp, lock_slot_rbp_offset));
 
-    // Atomic swap old header if oop still contains the stack lock
-    // src -> dest iff dest == rax, else rax, <- dest
-    // *obj_reg = rbx, iff *obj_reg == rax, else rax, = *(obj_reg)
-    __ lock();
-    __ cmpxchgptr(rbx, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
-    __ jcc(Assembler::notEqual, slow_path_unlock);
+      // Atomic swap old header if oop still contains the stack lock
+      // src -> dest iff dest == rax, else rax, <- dest
+      // *obj_reg = rbx, iff *obj_reg == rax, else rax, = *(obj_reg)
+      __ lock();
+      __ cmpxchgptr(rbx, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
+      __ jcc(Assembler::notEqual, slow_path_unlock);
+    }
 
     // slow path re-enters here
     __ bind(unlock_done);

@@ -423,7 +423,11 @@ Parse::Parse(JVMState* caller, ciMethod* parse_method, float expected_uses)
     C->set_has_reserved_stack_access(true);
   }
 
-  _tf = TypeFunc::make(method());
+  if (parse_method->is_synchronized()) {
+    C->push_monitor();
+  }
+
+   _tf = TypeFunc::make(method());
   _iter.reset_to_method(method());
   _flow = method()->get_flow_analysis();
   if (_flow->failing()) {

@@ -52,21 +52,24 @@ class oopDesc {
   friend class JVMCIVMStructs;
  private:
   volatile markWord _mark;
-  union _metadata {
-    Klass*      _klass;
-    narrowKlass _compressed_klass;
-  } _metadata;
+#ifndef _LP64
+  Klass*            _klass;
+#endif
 
  public:
   inline markWord  mark()          const;
+  inline markWord  mark_acquire()  const;
   inline markWord* mark_addr() const;
 
   inline void set_mark(markWord m);
   static inline void set_mark(HeapWord* mem, markWord m);
 
   inline void release_set_mark(markWord m);
+  static inline void release_set_mark(HeapWord* mem, markWord m);
   inline markWord cas_set_mark(markWord new_mark, markWord old_mark);
   inline markWord cas_set_mark(markWord new_mark, markWord old_mark, atomic_memory_order order);
+
+  inline markWord resolve_mark() const;
 
   // Used only to re-initialize the mark word (e.g., of promoted
   // objects during a GC) -- requires a valid klass pointer
@@ -76,14 +79,10 @@ class oopDesc {
   inline Klass* klass_or_null() const;
   inline Klass* klass_or_null_acquire() const;
 
-  void set_narrow_klass(narrowKlass nk) NOT_CDS_JAVA_HEAP_RETURN;
+#ifndef _LP64
   inline void set_klass(Klass* k);
   static inline void release_set_klass(HeapWord* mem, Klass* k);
-
-  // For klass field compression
-  inline int klass_gap() const;
-  inline void set_klass_gap(int z);
-  static inline void set_klass_gap(HeapWord* mem, int z);
+#endif
 
   // size of object header, aligned to platform wordSize
   static int header_size() { return sizeof(oopDesc)/HeapWordSize; }
@@ -249,14 +248,17 @@ class oopDesc {
 
   inline void forward_to(oop p);
   inline bool cas_forward_to(oop p, markWord compare, atomic_memory_order order = memory_order_conservative);
+  inline void forward_to_self();
 
   // Like "forward_to", but inserts the forwarding pointer atomically.
   // Exactly one thread succeeds in inserting the forwarding pointer, and
   // this call returns "NULL" for that thread; any other thread has the
   // value of the forwarding pointer returned and does not modify "this".
   inline oop forward_to_atomic(oop p, markWord compare, atomic_memory_order order = memory_order_conservative);
+  inline oop forward_to_self_atomic(markWord compare, atomic_memory_order order = memory_order_conservative);
 
   inline oop forwardee() const;
+  inline oop forwardee(markWord header) const;
 
   // Age of object during scavenge
   inline uint age() const;
@@ -298,14 +300,15 @@ class oopDesc {
   inline bool mark_must_be_preserved(markWord m) const;
   inline bool mark_must_be_preserved_for_promotion_failure(markWord m) const;
 
-  static bool has_klass_gap();
-
   // for code generation
   static int mark_offset_in_bytes()      { return offset_of(oopDesc, _mark); }
-  static int klass_offset_in_bytes()     { return offset_of(oopDesc, _metadata._klass); }
-  static int klass_gap_offset_in_bytes() {
-    assert(has_klass_gap(), "only applicable to compressed klass pointers");
-    return klass_offset_in_bytes() + sizeof(narrowKlass);
+  static int klass_offset_in_bytes()     {
+#ifdef _LP64
+    STATIC_ASSERT(markWord::klass_shift % 8 == 0);
+    return mark_offset_in_bytes() + markWord::klass_shift / 8;
+#else
+    return offset_of(oopDesc, _klass);
+#endif
   }
 
   // for error reporting

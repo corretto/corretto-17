@@ -228,9 +228,8 @@ Klass* TypeArrayKlass::array_klass_or_null() {
 }
 
 int TypeArrayKlass::oop_size(oop obj) const {
-  assert(obj->is_typeArray(),"must be a type array");
   typeArrayOop t = typeArrayOop(obj);
-  return t->object_size();
+  return t->object_size(this);
 }
 
 void TypeArrayKlass::initialize(TRAPS) {

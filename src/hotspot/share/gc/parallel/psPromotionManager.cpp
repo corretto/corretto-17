@@ -314,7 +314,6 @@ void PSPromotionManager::process_array_chunk(PartialArrayScanTask task) {
   assert(PSChunkLargeArrays, "invariant");
 
   oop old = task.to_source_array();
-  assert(old->is_objArray(), "invariant");
   assert(old->is_forwarded(), "invariant");
 
   TASKQUEUE_STATS_ONLY(++_array_chunks_processed);
@@ -352,7 +351,7 @@ oop PSPromotionManager::oop_promotion_failed(oop obj, markWord obj_mark) {
   // this started.  If it is the same (i.e., no forwarding
   // pointer has been installed), then this thread owns
   // it.
-  if (obj->cas_forward_to(obj, obj_mark)) {
+  if (obj->forward_to_self_atomic(obj_mark) == NULL) {
     // We won any races, we "own" this object.
     assert(obj == obj->forwardee(), "Sanity");
 

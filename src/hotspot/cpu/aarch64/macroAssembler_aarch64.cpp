@@ -50,6 +50,7 @@
 #include "runtime/icache.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/jniHandles.inline.hpp"
+#include "runtime/objectMonitor.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "runtime/thread.hpp"
@@ -3805,13 +3806,29 @@ void MacroAssembler::load_method_holder(Register holder, Register method) {
   ldr(holder, Address(holder, ConstantPool::pool_holder_offset_in_bytes())); // InstanceKlass*
 }
 
+// Loads the obj's Klass* into dst.
+// src and dst must be distinct registers
+// Preserves all registers (incl src, rscratch1 and rscratch2), but clobbers condition flags
+void MacroAssembler::load_nklass(Register dst, Register src) {
+  assert(UseCompressedClassPointers, "expects UseCompressedClassPointers");
+
+  Label fast;
+
+  // Check if we can take the (common) fast path, if obj is unlocked.
+  ldr(dst, Address(src, oopDesc::mark_offset_in_bytes()));
+  tbz(dst, exact_log2(markWord::monitor_value), fast);
+
+  // Fetch displaced header
+  ldr(dst, Address(dst, OM_OFFSET_NO_MONITOR_VALUE_TAG(header)));
+
+  // Fast-path: shift and decode Klass*.
+  bind(fast);
+  lsr(dst, dst, markWord::klass_shift);
+}
+
 void MacroAssembler::load_klass(Register dst, Register src) {
-  if (UseCompressedClassPointers) {
-    ldrw(dst, Address(src, oopDesc::klass_offset_in_bytes()));
-    decode_klass_not_null(dst);
-  } else {
-    ldr(dst, Address(src, oopDesc::klass_offset_in_bytes()));
-  }
+  load_nklass(dst, src);
+  decode_klass_not_null(dst);
 }
 
 // ((OopHandle)result).resolve();
@@ -3846,45 +3863,24 @@ void MacroAssembler::load_mirror(Register dst, Register method, Register tmp) {
 }
 
 void MacroAssembler::cmp_klass(Register oop, Register trial_klass, Register tmp) {
-  if (UseCompressedClassPointers) {
-    ldrw(tmp, Address(oop, oopDesc::klass_offset_in_bytes()));
-    if (CompressedKlassPointers::base() == NULL) {
-      cmp(trial_klass, tmp, LSL, CompressedKlassPointers::shift());
-      return;
-    } else if (((uint64_t)CompressedKlassPointers::base() & 0xffffffff) == 0
-               && CompressedKlassPointers::shift() == 0) {
-      // Only the bottom 32 bits matter
-      cmpw(trial_klass, tmp);
-      return;
-    }
-    decode_klass_not_null(tmp);
-  } else {
-    ldr(tmp, Address(oop, oopDesc::klass_offset_in_bytes()));
+  assert(UseCompressedClassPointers, "Lilliput");
+  load_nklass(tmp, oop);
+  if (CompressedKlassPointers::base() == NULL) {
+    cmp(trial_klass, tmp, LSL, CompressedKlassPointers::shift());
+    return;
+  } else if (((uint64_t)CompressedKlassPointers::base() & 0xffffffff) == 0
+             && CompressedKlassPointers::shift() == 0) {
+    // Only the bottom 32 bits matter
+    cmpw(trial_klass, tmp);
+    return;
   }
+  decode_klass_not_null(tmp);
   cmp(trial_klass, tmp);
 }
 
 void MacroAssembler::load_prototype_header(Register dst, Register src) {
   load_klass(dst, src);
   ldr(dst, Address(dst, Klass::prototype_header_offset()));
-}
-
-void MacroAssembler::store_klass(Register dst, Register src) {
-  // FIXME: Should this be a store release?  concurrent gcs assumes
-  // klass length is valid if klass field is not null.
-  if (UseCompressedClassPointers) {
-    encode_klass_not_null(src);
-    strw(src, Address(dst, oopDesc::klass_offset_in_bytes()));
-  } else {
-    str(src, Address(dst, oopDesc::klass_offset_in_bytes()));
-  }
-}
-
-void MacroAssembler::store_klass_gap(Register dst, Register src) {
-  if (UseCompressedClassPointers) {
-    // Store to klass gap in destination
-    strw(src, Address(dst, oopDesc::klass_gap_offset_in_bytes()));
-  }
 }
 
 // Algorithm must match CompressedOops::encode.
@@ -5365,4 +5361,59 @@ void MacroAssembler::spin_wait() {
         ShouldNotReachHere();
     }
   }
+}
+
+// Attempt to fast-lock an object. Fall-through on success, branch to slow label
+// on failure.
+// Registers:
+//  - obj: the object to be locked
+//  - hdr: the header, already loaded from obj, will be destroyed
+//  - t1, t2, t3: temporary registers, will be destroyed
+void MacroAssembler::fast_lock(Register obj, Register hdr, Register t1, Register t2, Label& slow, bool rt_check_stack) {
+  assert(UseFastLocking, "only used with fast-locking");
+  assert_different_registers(obj, hdr, t1, t2);
+
+  if (rt_check_stack) {
+    // Check if we would have space on lock-stack for the object.
+    ldr(t1, Address(rthread, JavaThread::lock_stack_current_offset()));
+    ldr(t2, Address(rthread, JavaThread::lock_stack_limit_offset()));
+    cmp(t1, t2);
+    br(Assembler::GE, slow);
+  }
+
+  // Load (object->mark() | 1) into hdr
+  orr(hdr, hdr, markWord::unlocked_value);
+  // Clear lock-bits, into t2
+  eor(t2, hdr, markWord::unlocked_value);
+  // Try to swing header from unlocked to locked
+  cmpxchg(/*addr*/ obj, /*expected*/ hdr, /*new*/ t2, Assembler::xword,
+          /*acquire*/ true, /*release*/ true, /*weak*/ false, t1);
+  br(Assembler::NE, slow);
+
+  // After successful lock, push object on lock-stack
+  ldr(t1, Address(rthread, JavaThread::lock_stack_current_offset()));
+  str(obj, Address(t1, 0));
+  add(t1, t1, oopSize);
+  str(t1, Address(rthread, JavaThread::lock_stack_current_offset()));
+}
+
+void MacroAssembler::fast_unlock(Register obj, Register hdr, Register t1, Register t2, Label& slow) {
+  assert(UseFastLocking, "only used with fast-locking");
+  assert_different_registers(obj, hdr, t1, t2);
+
+  // Load the expected old header (lock-bits cleared to indicate 'locked') into hdr
+  andr(hdr, hdr, ~markWord::lock_mask_in_place);
+
+  // Load the new header (unlocked) into t1
+  orr(t1, hdr, markWord::unlocked_value);
+
+  // Try to swing header from locked to unlocked
+  cmpxchg(obj, hdr, t1, Assembler::xword,
+          /*acquire*/ true, /*release*/ true, /*weak*/ false, t2);
+  br(Assembler::NE, slow);
+
+  // After successful unlock, pop object from lock-stack
+  ldr(t1, Address(rthread, JavaThread::lock_stack_current_offset()));
+  sub(t1, t1, oopSize);
+  str(t1, Address(rthread, JavaThread::lock_stack_current_offset()));
 }

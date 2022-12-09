@@ -108,7 +108,7 @@ bool oopDesc::is_oop(oop obj, bool ignore_mark_word) {
   // at a safepoint, it must not be zero.
   // Outside of a safepoint, the header could be changing (for example,
   // another thread could be inflating a lock on this object).
-  if (ignore_mark_word) {
+  if (ignore_mark_word || UseFastLocking) {
     return true;
   }
   if (obj->mark().value() != 0) {
@@ -138,27 +138,15 @@ bool oopDesc::is_array_noinline()             const { return is_array();        
 bool oopDesc::is_objArray_noinline()          const { return is_objArray();            }
 bool oopDesc::is_typeArray_noinline()         const { return is_typeArray();           }
 
-bool oopDesc::has_klass_gap() {
-  // Only has a klass gap when compressed class pointers are used.
-  return UseCompressedClassPointers;
-}
-
-#if INCLUDE_CDS_JAVA_HEAP
-void oopDesc::set_narrow_klass(narrowKlass nk) {
-  assert(DumpSharedSpaces, "Used by CDS only. Do not abuse!");
-  assert(UseCompressedClassPointers, "must be");
-  _metadata._compressed_klass = nk;
-}
-#endif
-
 void* oopDesc::load_klass_raw(oop obj) {
-  if (UseCompressedClassPointers) {
-    narrowKlass narrow_klass = obj->_metadata._compressed_klass;
-    if (narrow_klass == 0) return NULL;
-    return (void*)CompressedKlassPointers::decode_raw(narrow_klass);
-  } else {
-    return obj->_metadata._klass;
-  }
+  // TODO: Remove method altogether and replace with calls to obj->klass() ?
+  // OTOH, we may eventually get rid of locking in header, and then no
+  // longer have to deal with that anymore.
+#ifdef _LP64
+  return obj->klass();
+#else
+  return obj->_klass;
+#endif
 }
 
 void* oopDesc::load_oop_raw(oop obj, int offset) {

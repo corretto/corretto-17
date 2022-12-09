@@ -39,6 +39,9 @@
 #include "oops/accessDecorators.hpp"
 #include "oops/compressedOops.inline.hpp"
 #include "oops/klass.inline.hpp"
+#include "opto/c2_CodeStubs.hpp"
+#include "opto/compile.hpp"
+#include "opto/output.hpp"
 #include "prims/methodHandles.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/flags/flagSetting.hpp"
@@ -3771,11 +3774,24 @@ void MacroAssembler::eden_allocate(Register thread, Register obj,
 // Preserves the contents of address, destroys the contents length_in_bytes and temp.
 void MacroAssembler::zero_memory(Register address, Register length_in_bytes, int offset_in_bytes, Register temp) {
   assert(address != length_in_bytes && address != temp && temp != length_in_bytes, "registers must be different");
-  assert((offset_in_bytes & (BytesPerWord - 1)) == 0, "offset must be a multiple of BytesPerWord");
+  assert((offset_in_bytes & (BytesPerInt - 1)) == 0, "offset must be a multiple of BytesPerInt");
   Label done;
 
   testptr(length_in_bytes, length_in_bytes);
   jcc(Assembler::zero, done);
+
+  // Emit single 32bit store to clear leading bytes, if necessary.
+  xorptr(temp, temp);    // use _zero reg to clear memory (shorter code)
+#ifdef _LP64
+  if (!is_aligned(offset_in_bytes, BytesPerWord)) {
+    movl(Address(address, offset_in_bytes), temp);
+    offset_in_bytes += BytesPerInt;
+    decrement(length_in_bytes, BytesPerInt);
+  }
+  assert((offset_in_bytes & (BytesPerWord - 1)) == 0, "offset must be a multiple of BytesPerWord");
+  testptr(length_in_bytes, length_in_bytes);
+  jcc(Assembler::zero, done);
+#endif
 
   // initialize topmost word, divide index by 2, check if odd and test if zero
   // note: for the remaining code to work, index must be a multiple of BytesPerWord
@@ -3789,7 +3805,6 @@ void MacroAssembler::zero_memory(Register address, Register length_in_bytes, int
   }
 #endif
   Register index = length_in_bytes;
-  xorptr(temp, temp);    // use _zero reg to clear memory (shorter code)
   if (UseIncDec) {
     shrptr(index, 3);  // divide by 8/16 and set carry flag if bit 2 was set
   } else {
@@ -4733,16 +4748,39 @@ void MacroAssembler::load_method_holder(Register holder, Register method) {
   movptr(holder, Address(holder, ConstantPool::pool_holder_offset_in_bytes())); // InstanceKlass*
 }
 
-void MacroAssembler::load_klass(Register dst, Register src, Register tmp) {
+#ifdef _LP64
+void MacroAssembler::load_nklass(Register dst, Register src) {
+  assert(UseCompressedClassPointers, "expect compressed class pointers");
+
+  Label fast;
+  movq(dst, Address(src, oopDesc::mark_offset_in_bytes()));
+  testb(dst, markWord::monitor_value);
+  jccb(Assembler::zero, fast);
+
+  // Fetch displaced header
+  movq(dst, Address(dst, OM_OFFSET_NO_MONITOR_VALUE_TAG(header)));
+
+  bind(fast);
+  shrq(dst, markWord::klass_shift);
+}
+#endif
+
+void MacroAssembler::load_klass(Register dst, Register src, Register tmp, bool null_check_src) {
   assert_different_registers(src, tmp);
   assert_different_registers(dst, tmp);
 #ifdef _LP64
-  if (UseCompressedClassPointers) {
-    movl(dst, Address(src, oopDesc::klass_offset_in_bytes()));
-    decode_klass_not_null(dst, tmp);
-  } else
+  assert(UseCompressedClassPointers, "expect compressed class pointers");
+  if (null_check_src) {
+    null_check(src, oopDesc::mark_offset_in_bytes());
+  }
+  load_nklass(dst, src);
+  decode_klass_not_null(dst, tmp);
+#else
+  if (null_check_src) {
+    null_check(src, oopDesc::klass_offset_in_bytes());
+  }
+  movptr(dst, Address(src, oopDesc::klass_offset_in_bytes()));
 #endif
-    movptr(dst, Address(src, oopDesc::klass_offset_in_bytes()));
 }
 
 void MacroAssembler::load_prototype_header(Register dst, Register src, Register tmp) {
@@ -4750,17 +4788,11 @@ void MacroAssembler::load_prototype_header(Register dst, Register src, Register 
   movptr(dst, Address(dst, Klass::prototype_header_offset()));
 }
 
-void MacroAssembler::store_klass(Register dst, Register src, Register tmp) {
-  assert_different_registers(src, tmp);
-  assert_different_registers(dst, tmp);
-#ifdef _LP64
-  if (UseCompressedClassPointers) {
-    encode_klass_not_null(src, tmp);
-    movl(Address(dst, oopDesc::klass_offset_in_bytes()), src);
-  } else
-#endif
-    movptr(Address(dst, oopDesc::klass_offset_in_bytes()), src);
+#ifndef _LP64
+void MacroAssembler::store_klass(Register dst, Register src) {
+  movptr(Address(dst, oopDesc::klass_offset_in_bytes()), src);
 }
+#endif
 
 void MacroAssembler::access_load_at(BasicType type, DecoratorSet decorators, Register dst, Address src,
                                     Register tmp1, Register thread_tmp) {
@@ -4808,13 +4840,6 @@ void MacroAssembler::store_heap_oop_null(Address dst) {
 }
 
 #ifdef _LP64
-void MacroAssembler::store_klass_gap(Register dst, Register src) {
-  if (UseCompressedClassPointers) {
-    // Store to klass gap in destination
-    movl(Address(dst, oopDesc::klass_gap_offset_in_bytes()), src);
-  }
-}
-
 #ifdef ASSERT
 void MacroAssembler::verify_heapbase(const char* msg) {
   assert (UseCompressedOops, "should be compressed");
@@ -5119,7 +5144,7 @@ void MacroAssembler::reinit_heapbase() {
 #endif // _LP64
 
 // C2 compiled method's prolog code.
-void MacroAssembler::verified_entry(int framesize, int stack_bang_size, bool fp_mode_24b, bool is_stub) {
+void MacroAssembler::verified_entry(int framesize, int stack_bang_size, bool fp_mode_24b, bool is_stub, int max_monitors) {
 
   // WARNING: Initial instruction MUST be 5 bytes or longer so that
   // NativeJump::patch_verified_entry will be able to patch out the entry
@@ -5198,6 +5223,20 @@ void MacroAssembler::verified_entry(int framesize, int stack_bang_size, bool fp_
     jcc(Assembler::equal, L);
     STOP("Stack is not properly aligned!");
     bind(L);
+  }
+#endif
+
+#ifdef _LP64
+  if (UseFastLocking && max_monitors > 0) {
+    C2CheckLockStackStub* stub = new (Compile::current()->comp_arena()) C2CheckLockStackStub();
+    Compile::current()->output()->add_stub(stub);
+    assert(!is_stub, "only methods have monitors");
+    Register thread = r15_thread;
+    movptr(rax, Address(thread, JavaThread::lock_stack_current_offset()));
+    addptr(rax, max_monitors * wordSize);
+    cmpptr(rax, Address(thread, JavaThread::lock_stack_limit_offset()));
+    jcc(Assembler::greaterEqual, stub->entry());
+    bind(stub->continuation());
   }
 #endif
 
@@ -8683,3 +8722,61 @@ void MacroAssembler::get_thread(Register thread) {
 }
 
 #endif // !WIN32 || _LP64
+
+void MacroAssembler::fast_lock_impl(Register obj, Register hdr, Register thread, Register tmp, Label& slow, bool rt_check_stack) {
+  assert(hdr == rax, "header must be in rax for cmpxchg");
+  assert_different_registers(obj, hdr, thread, tmp);
+
+  // First we need to check if the lock-stack has room for pushing the object reference.
+  if (rt_check_stack) {
+    movptr(tmp, Address(thread, JavaThread::lock_stack_current_offset()));
+    cmpptr(tmp, Address(thread, JavaThread::lock_stack_limit_offset()));
+    jcc(Assembler::greaterEqual, slow);
+  }
+#ifdef ASSERT
+  else {
+    Label ok;
+    movptr(tmp, Address(thread, JavaThread::lock_stack_current_offset()));
+    cmpptr(tmp, Address(thread, JavaThread::lock_stack_limit_offset()));
+    jcc(Assembler::less, ok);
+    stop("Not enough room in lock stack; should have been checked in the method prologue");
+    bind(ok);
+  }
+#endif
+
+  // Now we attempt to take the fast-lock.
+  // Clear lowest two header bits (locked state).
+  andptr(hdr, ~(int32_t )markWord::lock_mask_in_place);
+  movptr(tmp, hdr);
+  // Set lowest bit (unlocked state).
+  orptr(hdr, markWord::unlocked_value);
+  lock();
+  cmpxchgptr(tmp, Address(obj, oopDesc::mark_offset_in_bytes()));
+  jcc(Assembler::notEqual, slow);
+
+  // If successful, push object to lock-stack.
+  movptr(tmp, Address(thread, JavaThread::lock_stack_current_offset()));
+  movptr(Address(tmp, 0), obj);
+  addptr(tmp, oopSize);
+  movptr(Address(thread, JavaThread::lock_stack_current_offset()), tmp);
+}
+
+void MacroAssembler::fast_unlock_impl(Register obj, Register hdr, Register tmp, Label& slow) {
+  assert(hdr == rax, "header must be in rax for cmpxchg");
+  assert_different_registers(obj, hdr, tmp);
+
+  // Mark-word must be 00 now, try to swing it back to 01 (unlocked)
+  movptr(tmp, hdr); // The expected old value
+  orptr(tmp, markWord::unlocked_value);
+  lock();
+  cmpxchgptr(tmp, Address(obj, oopDesc::mark_offset_in_bytes()));
+  jcc(Assembler::notEqual, slow);
+  // Pop the lock object from the lock-stack.
+#ifdef _LP64
+  const Register thread = r15_thread;
+#else
+  const Register thread = rax;
+  get_thread(rax);
+#endif
+  subptr(Address(thread, JavaThread::lock_stack_current_offset()), oopSize);
+}

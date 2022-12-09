@@ -197,7 +197,7 @@ void G1ParScanThreadState::do_oop_evac(T* p) {
 
   markWord m = obj->mark();
   if (m.is_marked()) {
-    obj = cast_to_oop(m.decode_pointer());
+    obj = obj->forwardee(m);
   } else {
     obj = do_copy_to_survivor_space(region_attr, obj, m);
   }
@@ -218,7 +218,6 @@ void G1ParScanThreadState::do_partial_array(PartialArrayScanTask task) {
   oop from_obj = task.to_source_array();
 
   assert(_g1h->is_in_reserved(from_obj), "must be in heap.");
-  assert(from_obj->is_objArray(), "must be obj array");
   assert(from_obj->is_forwarded(), "must be forwarded");
 
   oop to_obj = from_obj->forwardee();
@@ -248,7 +247,6 @@ MAYBE_INLINE_EVACUATION
 void G1ParScanThreadState::start_partial_objarray(G1HeapRegionAttr dest_attr,
                                                   oop from_obj,
                                                   oop to_obj) {
-  assert(from_obj->is_objArray(), "precondition");
   assert(from_obj->is_forwarded(), "precondition");
   assert(from_obj->forwardee() == to_obj, "precondition");
   assert(from_obj != to_obj, "should not be scanning self-forwarded objects");
@@ -367,15 +365,15 @@ G1HeapRegionAttr G1ParScanThreadState::next_region_attr(G1HeapRegionAttr const r
 }
 
 void G1ParScanThreadState::report_promotion_event(G1HeapRegionAttr const dest_attr,
-                                                  oop const old, size_t word_sz, uint age,
+                                                  oop const old, Klass* klass, size_t word_sz, uint age,
                                                   HeapWord * const obj_ptr, uint node_index) const {
   PLAB* alloc_buf = _plab_allocator->alloc_buffer(dest_attr, node_index);
   if (alloc_buf->contains(obj_ptr)) {
-    _g1h->_gc_tracer_stw->report_promotion_in_new_plab_event(old->klass(), word_sz * HeapWordSize, age,
+    _g1h->_gc_tracer_stw->report_promotion_in_new_plab_event(klass, word_sz * HeapWordSize, age,
                                                              dest_attr.type() == G1HeapRegionAttr::Old,
                                                              alloc_buf->word_sz() * HeapWordSize);
   } else {
-    _g1h->_gc_tracer_stw->report_promotion_outside_plab_event(old->klass(), word_sz * HeapWordSize, age,
+    _g1h->_gc_tracer_stw->report_promotion_outside_plab_event(klass, word_sz * HeapWordSize, age,
                                                               dest_attr.type() == G1HeapRegionAttr::Old);
   }
 }
@@ -383,6 +381,7 @@ void G1ParScanThreadState::report_promotion_event(G1HeapRegionAttr const dest_at
 NOINLINE
 HeapWord* G1ParScanThreadState::allocate_copy_slow(G1HeapRegionAttr* dest_attr,
                                                    oop old,
+                                                   Klass* klass,
                                                    size_t word_sz,
                                                    uint age,
                                                    uint node_index) {
@@ -405,7 +404,7 @@ HeapWord* G1ParScanThreadState::allocate_copy_slow(G1HeapRegionAttr* dest_attr,
     update_numa_stats(node_index);
     if (_g1h->_gc_tracer_stw->should_report_promotion_events()) {
       // The events are checked individually as part of the actual commit
-      report_promotion_event(*dest_attr, old, word_sz, age, obj_ptr, node_index);
+      report_promotion_event(*dest_attr, old, klass, word_sz, age, obj_ptr, node_index);
     }
   }
   return obj_ptr;
@@ -428,9 +427,17 @@ oop G1ParScanThreadState::do_copy_to_survivor_space(G1HeapRegionAttr const regio
   assert(region_attr.is_in_cset(),
          "Unexpected region attr type: %s", region_attr.get_type_str());
 
+  if (old_mark.is_marked()) {
+    // Already forwarded by somebody else, return forwardee.
+    return old->forwardee(old_mark);
+  }
   // Get the klass once.  We'll need it again later, and this avoids
   // re-decoding when it's compressed.
+#ifdef _LP64
+  Klass* klass = old_mark.safe_klass();
+#else
   Klass* klass = old->klass();
+#endif
   const size_t word_sz = old->size_given_klass(klass);
 
   uint age = 0;
@@ -443,7 +450,7 @@ oop G1ParScanThreadState::do_copy_to_survivor_space(G1HeapRegionAttr const regio
   // PLAB allocations should succeed most of the time, so we'll
   // normally check against NULL once and that's it.
   if (obj_ptr == NULL) {
-    obj_ptr = allocate_copy_slow(&dest_attr, old, word_sz, age, node_index);
+    obj_ptr = allocate_copy_slow(&dest_attr, old, klass, word_sz, age, node_index);
     if (obj_ptr == NULL) {
       // This will either forward-to-self, or detect that someone else has
       // installed a forwarding pointer.
@@ -600,7 +607,7 @@ NOINLINE
 oop G1ParScanThreadState::handle_evacuation_failure_par(oop old, markWord m) {
   assert(_g1h->is_in_cset(old), "Object " PTR_FORMAT " should be in the CSet", p2i(old));
 
-  oop forward_ptr = old->forward_to_atomic(old, m, memory_order_relaxed);
+  oop forward_ptr = old->forward_to_self_atomic(m, memory_order_relaxed);
   if (forward_ptr == NULL) {
     // Forward-to-self succeeded. We are the "owner" of the object.
     HeapRegion* r = _g1h->heap_region_containing(old);

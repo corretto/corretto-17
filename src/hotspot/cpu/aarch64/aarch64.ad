@@ -1912,6 +1912,18 @@ void MachPrologNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
 
   __ build_frame(framesize);
 
+  int max_monitors = C->method() != NULL ? C->max_monitors() : 0;
+  if (UseFastLocking && max_monitors > 0) {
+    C2CheckLockStackStub* stub = new (C->comp_arena()) C2CheckLockStackStub();
+    C->output()->add_stub(stub);
+    __ ldr(r9, Address(rthread, JavaThread::lock_stack_current_offset()));
+    __ add(r9, r9, max_monitors * oopSize);
+    __ ldr(r10, Address(rthread, JavaThread::lock_stack_limit_offset()));
+    __ cmp(r9, r10);
+    __ br(Assembler::GE, stub->entry());
+    __ bind(stub->continuation());
+  }
+
   if (C->stub_function() == NULL) {
     BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
     bs->nmethod_entry_barrier(&_masm);
@@ -1986,7 +1998,9 @@ void MachEpilogNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
     Label dummy_label;
     Label* code_stub = &dummy_label;
     if (!C->output()->in_scratch_emit_size()) {
-      code_stub = &C->output()->safepoint_poll_table()->add_safepoint(__ offset());
+      C2SafepointPollStub* stub = new (C->comp_arena()) C2SafepointPollStub(__ offset());
+      C->output()->add_stub(stub);
+      code_stub = &stub->entry();
     }
     __ relocate(relocInfo::poll_return_type);
     __ safepoint_poll(*code_stub, true /* at_return */, false /* acquire */, true /* in_nmethod */);
@@ -3827,37 +3841,42 @@ encode %{
     // Check for existing monitor
     __ tbnz(disp_hdr, exact_log2(markWord::monitor_value), object_has_monitor);
 
-    // Set tmp to be (markWord of object | UNLOCK_VALUE).
-    __ orr(tmp, disp_hdr, markWord::unlocked_value);
+    if (UseFastLocking) {
+      __ fast_lock(oop, disp_hdr, tmp, rscratch1, cont, false);
+      // Indicate success at cont.
+      __ cmp(oop, oop);
+    } else {
+      // Set tmp to be (markWord of object | UNLOCK_VALUE).
+      __ orr(tmp, disp_hdr, markWord::unlocked_value);
 
-    // Initialize the box. (Must happen before we update the object mark!)
-    __ str(tmp, Address(box, BasicLock::displaced_header_offset_in_bytes()));
+      // Initialize the box. (Must happen before we update the object mark!)
+      __ str(tmp, Address(box, BasicLock::displaced_header_offset_in_bytes()));
 
-    // Compare object markWord with an unlocked value (tmp) and if
-    // equal exchange the stack address of our box with object markWord.
-    // On failure disp_hdr contains the possibly locked markWord.
-    __ cmpxchg(oop, tmp, box, Assembler::xword, /*acquire*/ true,
-               /*release*/ true, /*weak*/ false, disp_hdr);
-    __ br(Assembler::EQ, cont);
+      // Compare object markWord with an unlocked value (tmp) and if
+      // equal exchange the stack address of our box with object markWord.
+      // On failure disp_hdr contains the possibly locked markWord.
+      __ cmpxchg(oop, tmp, box, Assembler::xword, /*acquire*/ true,
+                 /*release*/ true, /*weak*/ false, disp_hdr);
+      __ br(Assembler::EQ, cont);
 
-    assert(oopDesc::mark_offset_in_bytes() == 0, "offset of _mark is not 0");
+      assert(oopDesc::mark_offset_in_bytes() == 0, "offset of _mark is not 0");
 
-    // If the compare-and-exchange succeeded, then we found an unlocked
-    // object, will have now locked it will continue at label cont
+      // If the compare-and-exchange succeeded, then we found an unlocked
+      // object, will have now locked it will continue at label cont
 
-    __ bind(cas_failed);
-    // We did not see an unlocked object so try the fast recursive case.
+      __ bind(cas_failed);
+      // We did not see an unlocked object so try the fast recursive case.
 
-    // Check if the owner is self by comparing the value in the
-    // markWord of object (disp_hdr) with the stack pointer.
-    __ mov(rscratch1, sp);
-    __ sub(disp_hdr, disp_hdr, rscratch1);
-    __ mov(tmp, (address) (~(os::vm_page_size()-1) | markWord::lock_mask_in_place));
-    // If condition is true we are cont and hence we can store 0 as the
-    // displaced header in the box, which indicates that it is a recursive lock.
-    __ ands(tmp/*==0?*/, disp_hdr, tmp);   // Sets flags for result
-    __ str(tmp/*==0, perhaps*/, Address(box, BasicLock::displaced_header_offset_in_bytes()));
-
+      // Check if the owner is self by comparing the value in the
+      // markWord of object (disp_hdr) with the stack pointer.
+      __ mov(rscratch1, sp);
+      __ sub(disp_hdr, disp_hdr, rscratch1);
+      __ mov(tmp, (address) (~(os::vm_page_size()-1) | markWord::lock_mask_in_place));
+      // If condition is true we are cont and hence we can store 0 as the
+      // displaced header in the box, which indicates that it is a recursive lock.
+      __ ands(tmp/*==0?*/, disp_hdr, tmp);   // Sets flags for result
+      __ str(tmp/*==0, perhaps*/, Address(box, BasicLock::displaced_header_offset_in_bytes()));
+    }
     __ b(cont);
 
     // Handle existing monitor.
@@ -3871,13 +3890,14 @@ encode %{
     __ cmpxchg(tmp, zr, rthread, Assembler::xword, /*acquire*/ true,
                /*release*/ true, /*weak*/ false, rscratch1); // Sets flags for result
 
-    // Store a non-null value into the box to avoid looking like a re-entrant
-    // lock. The fast-path monitor unlock code checks for
-    // markWord::monitor_value so use markWord::unused_mark which has the
-    // relevant bit set, and also matches ObjectSynchronizer::enter.
-    __ mov(tmp, (address)markWord::unused_mark().value());
-    __ str(tmp, Address(box, BasicLock::displaced_header_offset_in_bytes()));
-
+    if (!UseFastLocking) {
+      // Store a non-null value into the box to avoid looking like a re-entrant
+      // lock. The fast-path monitor unlock code checks for
+      // markWord::monitor_value so use markWord::unused_mark which has the
+      // relevant bit set, and also matches ObjectSynchronizer::enter.
+      __ mov(tmp, (address)markWord::unused_mark().value());
+      __ str(tmp, Address(box, BasicLock::displaced_header_offset_in_bytes()));
+    }
     __ br(Assembler::EQ, cont); // CAS success means locking succeeded
 
     __ cmp(rscratch1, rthread);
@@ -3907,31 +3927,51 @@ encode %{
       __ biased_locking_exit(oop, tmp, cont);
     }
 
-    // Find the lock address and load the displaced header from the stack.
-    __ ldr(disp_hdr, Address(box, BasicLock::displaced_header_offset_in_bytes()));
+    if (!UseFastLocking) {
+      // Find the lock address and load the displaced header from the stack.
+      __ ldr(disp_hdr, Address(box, BasicLock::displaced_header_offset_in_bytes()));
 
-    // If the displaced header is 0, we have a recursive unlock.
-    __ cmp(disp_hdr, zr);
-    __ br(Assembler::EQ, cont);
+      // If the displaced header is 0, we have a recursive unlock.
+      __ cmp(disp_hdr, zr);
+      __ br(Assembler::EQ, cont);
+    }
 
     // Handle existing monitor.
     __ ldr(tmp, Address(oop, oopDesc::mark_offset_in_bytes()));
-    __ tbnz(disp_hdr, exact_log2(markWord::monitor_value), object_has_monitor);
+    __ tbnz(tmp, exact_log2(markWord::monitor_value), object_has_monitor);
 
-    // Check if it is still a light weight lock, this is is true if we
-    // see the stack address of the basicLock in the markWord of the
-    // object.
 
-    __ cmpxchg(oop, box, disp_hdr, Assembler::xword, /*acquire*/ false,
-               /*release*/ true, /*weak*/ false, tmp);
+    if (UseFastLocking) {
+      __ fast_unlock(oop, tmp, box, disp_hdr, cont);
+      // Indicate success at cont.
+      __ cmp(oop, oop);
+    } else {
+      // Check if it is still a light weight lock, this is is true if we
+      // see the stack address of the basicLock in the markWord of the
+      // object.
+
+      __ cmpxchg(oop, box, disp_hdr, Assembler::xword, /*acquire*/ false,
+                 /*release*/ true, /*weak*/ false, tmp);
+    }
     __ b(cont);
-
     assert(oopDesc::mark_offset_in_bytes() == 0, "offset of _mark is not 0");
 
     // Handle existing monitor.
     __ bind(object_has_monitor);
     STATIC_ASSERT(markWord::monitor_value <= INT_MAX);
     __ add(tmp, tmp, -(int)markWord::monitor_value); // monitor
+
+    if (UseFastLocking) {
+      // If the owner is anonymous, we need to fix it -- in the slow-path.
+      Label L;
+      __ ldr(disp_hdr, Address(tmp, ObjectMonitor::owner_offset_in_bytes()));
+      __ cmp(disp_hdr, (unsigned char)(intptr_t) ANONYMOUS_OWNER);
+      __ br(Assembler::NE, L);
+      __ tst(oop, oop); // Indicate failure at cont -- dive into slow-path.
+      __ b(cont);
+      __ bind(L);
+    }
+
     __ ldr(disp_hdr, Address(tmp, ObjectMonitor::recursions_offset_in_bytes()));
 
     Label notRecursive;
@@ -7435,17 +7475,30 @@ instruct loadKlass(iRegPNoSp dst, memory8 mem)
 %}
 
 // Load Narrow Klass Pointer
-instruct loadNKlass(iRegNNoSp dst, memory4 mem)
+instruct loadNKlass(iRegNNoSp dst, memory4 mem, rFlagsReg cr)
 %{
   match(Set dst (LoadNKlass mem));
+  effect(TEMP_DEF dst, KILL cr);
   predicate(!needs_acquiring_load(n));
 
   ins_cost(4 * INSN_COST);
   format %{ "ldrw  $dst, $mem\t# compressed class ptr" %}
-
-  ins_encode(aarch64_enc_ldrw(dst, mem));
-
-  ins_pipe(iload_reg_mem);
+  ins_encode %{
+    assert($mem$$disp == oopDesc::klass_offset_in_bytes(), "expect correct offset");
+    assert($mem$$index$$Register == noreg, "expect no index");
+    Register dst = $dst$$Register;
+    Register obj = $mem$$base$$Register;
+    C2LoadNKlassStub* stub = new (Compile::current()->comp_arena()) C2LoadNKlassStub(dst);
+    Compile::current()->output()->add_stub(stub);
+    __ ldr(dst, Address(obj, oopDesc::mark_offset_in_bytes()));
+    // NOTE: We can't use tbnz here, because the target is sometimes too far away
+    // and cannot be encoded.
+    __ tst(dst, markWord::monitor_value);
+    __ br(Assembler::NE, stub->entry());
+    __ bind(stub->continuation());
+    __ lsr(dst, dst, markWord::klass_shift);
+  %}
+  ins_pipe(pipe_slow);
 %}
 
 // Load Float

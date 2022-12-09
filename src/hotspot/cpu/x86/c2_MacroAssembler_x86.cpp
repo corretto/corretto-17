@@ -446,7 +446,7 @@ void C2_MacroAssembler::rtm_inflated_locking(Register objReg, Register boxReg, R
 // rax,: tmp -- KILLED
 // scr: tmp -- KILLED
 void C2_MacroAssembler::fast_lock(Register objReg, Register boxReg, Register tmpReg,
-                                 Register scrReg, Register cx1Reg, Register cx2Reg,
+                                 Register scrReg, Register cx1Reg, Register cx2Reg, Register thread,
                                  BiasedLockingCounters* counters,
                                  RTMLockingCounters* rtm_counters,
                                  RTMLockingCounters* stack_rtm_counters,
@@ -515,27 +515,45 @@ void C2_MacroAssembler::fast_lock(Register objReg, Register boxReg, Register tmp
   testptr(tmpReg, markWord::monitor_value); // inflated vs stack-locked|neutral|biased
   jccb(Assembler::notZero, IsInflated);
 
-  // Attempt stack-locking ...
-  orptr (tmpReg, markWord::unlocked_value);
-  movptr(Address(boxReg, 0), tmpReg);          // Anticipate successful CAS
-  lock();
-  cmpxchgptr(boxReg, Address(objReg, oopDesc::mark_offset_in_bytes()));      // Updates tmpReg
-  if (counters != NULL) {
-    cond_inc32(Assembler::equal,
-               ExternalAddress((address)counters->fast_path_entry_count_addr()));
-  }
-  jcc(Assembler::equal, DONE_LABEL);           // Success
+  if (UseFastLocking) {
+#ifdef _LP64
+    fast_lock_impl(objReg, tmpReg, thread, scrReg, DONE_LABEL, false);
+    xorl(tmpReg, tmpReg); // Set ZF=1 to indicate success
+#else
+    // We can not emit the lock-stack-check in verified_entry() because we don't have enough
+    // registers (for thread ptr). Therefor we have to emit the lock-stack-check in
+    // fast_lock_impl(). However, that check can take a slow-path with ZF=1, therefore
+    // we need to handle it specially and force ZF=0 before taking the actual slow-path.
+    Label slow;
+    fast_lock_impl(objReg, tmpReg, thread, scrReg, slow);
+    xorl(tmpReg, tmpReg);
+    jmp(DONE_LABEL);
+    bind(slow);
+    testptr(objReg, objReg); // ZF=0 to indicate failure
+#endif
+  } else {
+    // Attempt stack-locking ...
+    orptr (tmpReg, markWord::unlocked_value);
+    movptr(Address(boxReg, 0), tmpReg);          // Anticipate successful CAS
+    lock();
+    cmpxchgptr(boxReg, Address(objReg, oopDesc::mark_offset_in_bytes()));      // Updates tmpReg
+    if (counters != NULL) {
+      cond_inc32(Assembler::equal,
+                 ExternalAddress((address)counters->fast_path_entry_count_addr()));
+    }
+    jcc(Assembler::equal, DONE_LABEL);           // Success
 
-  // Recursive locking.
-  // The object is stack-locked: markword contains stack pointer to BasicLock.
-  // Locked by current thread if difference with current SP is less than one page.
-  subptr(tmpReg, rsp);
-  // Next instruction set ZFlag == 1 (Success) if difference is less then one page.
-  andptr(tmpReg, (int32_t) (NOT_LP64(0xFFFFF003) LP64_ONLY(7 - os::vm_page_size())) );
-  movptr(Address(boxReg, 0), tmpReg);
-  if (counters != NULL) {
-    cond_inc32(Assembler::equal,
-               ExternalAddress((address)counters->fast_path_entry_count_addr()));
+    // Recursive locking.
+    // The object is stack-locked: markword contains stack pointer to BasicLock.
+    // Locked by current thread if difference with current SP is less than one page.
+    subptr(tmpReg, rsp);
+    // Next instruction set ZFlag == 1 (Success) if difference is less then one page.
+    andptr(tmpReg, (int32_t) (NOT_LP64(0xFFFFF003) LP64_ONLY(7 - os::vm_page_size())) );
+    movptr(Address(boxReg, 0), tmpReg);
+    if (counters != NULL) {
+      cond_inc32(Assembler::equal,
+                 ExternalAddress((address)counters->fast_path_entry_count_addr()));
+    }
   }
   jmp(DONE_LABEL);
 
@@ -684,11 +702,23 @@ void C2_MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register t
   }
 #endif
 
-  cmpptr(Address(boxReg, 0), (int32_t)NULL_WORD);                   // Examine the displaced header
-  jcc   (Assembler::zero, DONE_LABEL);                              // 0 indicates recursive stack-lock
+  if (!UseFastLocking) {
+    cmpptr(Address(boxReg, 0), (int32_t)NULL_WORD);                   // Examine the displaced header
+    jcc   (Assembler::zero, DONE_LABEL);                              // 0 indicates recursive stack-lock
+  }
   movptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes())); // Examine the object's markword
   testptr(tmpReg, markWord::monitor_value);                         // Inflated?
-  jccb  (Assembler::zero, Stacked);
+  jcc(Assembler::zero, Stacked);
+
+  if (UseFastLocking) {
+    // If the owner is ANONYMOUS, we need to fix it - in the slow-path.
+    Label L;
+    cmpptr(Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)), (int32_t) (intptr_t) ANONYMOUS_OWNER);
+    jccb(Assembler::notEqual, L);
+    testptr(objReg, objReg); // Clear ZF to indicate failure at DONE_LABEL.
+    jmp(DONE_LABEL);
+    bind(L);
+  }
 
   // It's inflated.
 #if INCLUDE_RTM_OPT
@@ -831,9 +861,16 @@ void C2_MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register t
   jmpb  (DONE_LABEL);
 
   bind  (Stacked);
-  movptr(tmpReg, Address (boxReg, 0));      // re-fetch
-  lock();
-  cmpxchgptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes())); // Uses RAX which is box
+
+  if (UseFastLocking) {
+    mov(boxReg, tmpReg);
+    fast_unlock_impl(objReg, boxReg, tmpReg, DONE_LABEL);
+    xorl(tmpReg, tmpReg);
+  } else {
+    movptr(tmpReg, Address (boxReg, 0));      // re-fetch
+    lock();
+    cmpxchgptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes())); // Uses RAX which is box
+  }
 
 #endif
   bind(DONE_LABEL);

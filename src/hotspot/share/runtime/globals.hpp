@@ -125,7 +125,7 @@ const size_t minimumSymbolTableSize = 1024;
           "Use 32-bit object references in 64-bit VM. "                     \
           "lp64_product means flag is always constant in 32 bit VM")        \
                                                                             \
-  product(bool, UseCompressedClassPointers, false,                          \
+  product(bool, UseCompressedClassPointers, true,                           \
           "Use 32-bit class pointers in 64-bit VM. "                        \
           "lp64_product means flag is always constant in 32 bit VM")        \
                                                                             \
@@ -2084,6 +2084,15 @@ const intx ObjectAlignmentInBytes = 8;
           false AARCH64_ONLY(DEBUG_ONLY(||true)),                           \
              "Mark all threads after a safepoint, and clear on a modify "   \
              "fence. Add cleanliness checks.")                              \
+                                                                            \
+  product(bool, HeapObjectStats, false, DIAGNOSTIC,                         \
+             "Enable gathering of heap object statistics")                  \
+                                                                            \
+  product(size_t, HeapObjectStatsSamplingInterval, 500, DIAGNOSTIC,         \
+             "Heap object statistics sampling interval (ms)")               \
+                                                                            \
+  product(bool, UseFastLocking, false, EXPERIMENTAL,                        \
+                "Use fast-locking instead of stack-locking")                \
                                                                             \
   develop(bool, TraceOptimizedUpcallStubs, false,                              \
                 "Trace optimized upcall stub generation")                      \

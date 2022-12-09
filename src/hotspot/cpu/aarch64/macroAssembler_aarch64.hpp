@@ -823,8 +823,8 @@ public:
   void load_method_holder(Register holder, Register method);
 
   // oop manipulations
+  void load_nklass(Register dst, Register src);
   void load_klass(Register dst, Register src);
-  void store_klass(Register dst, Register src);
   void cmp_klass(Register oop, Register trial_klass, Register tmp);
 
   void resolve_weak_handle(Register result, Register tmp);
@@ -851,8 +851,6 @@ public:
   void store_heap_oop_null(Address dst);
 
   void load_prototype_header(Register dst, Register src);
-
-  void store_klass_gap(Register dst, Register src);
 
   // This dummy is to prevent a call to store_heap_oop from
   // converting a zero (like NULL) into a Register by giving
@@ -1419,6 +1417,9 @@ public:
 
   // Code for java.lang.Thread::onSpinWait() intrinsic.
   void spin_wait();
+
+  void fast_lock(Register obj, Register hdr, Register t1, Register t2, Label& slow, bool rt_check_stack = true);
+  void fast_unlock(Register obj, Register hdr, Register t1, Register t2, Label& slow);
 
 private:
   // Check the current thread doesn't need a cross modify fence.

@@ -900,7 +900,8 @@ void MachPrologNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
     __ bind(L_skip_barrier);
   }
 
-  __ verified_entry(framesize, C->output()->need_stack_bang(bangsize)?bangsize:0, false, C->stub_function() != NULL);
+  int max_monitors = C->method() != NULL ? C->max_monitors() : 0;
+  __ verified_entry(framesize, C->output()->need_stack_bang(bangsize)?bangsize:0, false, C->stub_function() != NULL, max_monitors);
 
   C->output()->set_frame_complete(cbuf.insts_size());
 
@@ -998,7 +999,9 @@ void MachEpilogNode::emit(CodeBuffer& cbuf, PhaseRegAlloc* ra_) const
     Label dummy_label;
     Label* code_stub = &dummy_label;
     if (!C->output()->in_scratch_emit_size()) {
-      code_stub = &C->output()->safepoint_poll_table()->add_safepoint(__ offset());
+      C2SafepointPollStub* stub = new (C->comp_arena()) C2SafepointPollStub(__ offset());
+      C->output()->add_stub(stub);
+      code_stub = &stub->entry();
     }
     __ relocate(relocInfo::poll_return_type);
     __ safepoint_poll(*code_stub, r15_thread, true /* at_return */, true /* in_nmethod */);
@@ -5188,16 +5191,26 @@ instruct loadKlass(rRegP dst, memory mem)
 %}
 
 // Load narrow Klass Pointer
-instruct loadNKlass(rRegN dst, memory mem)
+instruct loadNKlass(rRegN dst, indOffset8 mem, rFlagsReg cr)
 %{
   match(Set dst (LoadNKlass mem));
-
+  effect(TEMP_DEF dst, KILL cr);
   ins_cost(125); // XXX
   format %{ "movl    $dst, $mem\t# compressed klass ptr" %}
   ins_encode %{
-    __ movl($dst$$Register, $mem$$Address);
+    assert($mem$$disp == oopDesc::klass_offset_in_bytes(), "expect correct offset 4, but got: %d", $mem$$disp);
+    assert($mem$$index == 4, "expect no index register: %d", $mem$$index);
+    Register dst = $dst$$Register;
+    Register obj = $mem$$base$$Register;
+    C2LoadNKlassStub* stub = new (Compile::current()->comp_arena()) C2LoadNKlassStub(dst);
+    Compile::current()->output()->add_stub(stub);
+    __ movq(dst, Address(obj, oopDesc::mark_offset_in_bytes()));
+    __ testb(dst, markWord::monitor_value);
+    __ jcc(Assembler::notZero, stub->entry());
+    __ bind(stub->continuation());
+    __ shrq(dst, markWord::klass_shift);
   %}
-  ins_pipe(ialu_reg_mem); // XXX
+  ins_pipe(pipe_slow); // XXX
 %}
 
 // Load Float
@@ -12222,8 +12235,12 @@ instruct compN_rReg_imm_klass(rFlagsRegU cr, rRegN op1, immNKlass op2) %{
   ins_pipe(ialu_cr_reg_imm);
 %}
 
+// Disabled because the compressed Klass* in header cannot be safely
+// accessed. TODO: Re-enable it as soon as synchronization does not
+// overload the upper header bits anymore.
 instruct compN_mem_imm_klass(rFlagsRegU cr, memory mem, immNKlass src)
 %{
+  predicate(false);
   match(Set cr (CmpN src (LoadNKlass mem)));
 
   format %{ "cmpl    $mem, $src\t# compressed klass ptr" %}
@@ -12922,7 +12939,7 @@ instruct cmpFastLockRTM(rFlagsReg cr, rRegP object, rbx_RegP box, rax_RegI tmp, 
   format %{ "fastlock $object,$box\t! kills $box,$tmp,$scr,$cx1,$cx2" %}
   ins_encode %{
     __ fast_lock($object$$Register, $box$$Register, $tmp$$Register,
-                 $scr$$Register, $cx1$$Register, $cx2$$Register,
+                 $scr$$Register, $cx1$$Register, $cx2$$Register, r15_thread,
                  _counters, _rtm_counters, _stack_rtm_counters,
                  ((Method*)(ra_->C->method()->constant_encoding()))->method_data(),
                  true, ra_->C->profile_rtm());
@@ -12938,7 +12955,7 @@ instruct cmpFastLock(rFlagsReg cr, rRegP object, rbx_RegP box, rax_RegI tmp, rRe
   format %{ "fastlock $object,$box\t! kills $box,$tmp,$scr" %}
   ins_encode %{
     __ fast_lock($object$$Register, $box$$Register, $tmp$$Register,
-                 $scr$$Register, $cx1$$Register, noreg, _counters, NULL, NULL, NULL, false, false);
+                 $scr$$Register, $cx1$$Register, noreg, r15_thread, NULL, NULL, NULL, NULL, false, false);
   %}
   ins_pipe(pipe_slow);
 %}

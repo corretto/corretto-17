@@ -183,7 +183,11 @@ inline size_t HeapRegion::block_size(const HeapWord *addr) const {
   }
 
   if (block_is_obj(addr)) {
-    return cast_to_oop(addr)->size();
+    oop obj = cast_to_oop(addr);
+    if (obj->is_forwarded() && CompressedKlassPointers::is_null(obj->mark().narrow_klass())) {
+      obj = obj->forwardee();
+    }
+    return obj->size();
   }
 
   return block_size_using_bitmap(addr, G1CollectedHeap::heap()->concurrent_mark()->prev_mark_bitmap());

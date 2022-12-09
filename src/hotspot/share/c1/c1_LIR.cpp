@@ -880,6 +880,20 @@ void LIR_OpVisitState::visit(LIR_Op* op) {
       break;
     }
 
+// LIR_OpLoadKlass
+    case lir_load_klass:
+    {
+      LIR_OpLoadKlass* opLoadKlass = op->as_OpLoadKlass();
+      assert(opLoadKlass != NULL, "must be");
+
+      do_input(opLoadKlass->_obj);
+      do_output(opLoadKlass->_result);
+      do_stub(opLoadKlass->_stub);
+      if (opLoadKlass->_info) do_info(opLoadKlass->_info);
+      break;
+    }
+
+
 // LIR_OpProfileCall:
     case lir_profile_call: {
       assert(op->as_OpProfileCall() != NULL, "must be");
@@ -1047,6 +1061,11 @@ void LIR_OpLock::emit_code(LIR_Assembler* masm) {
   if (stub()) {
     masm->append_code_stub(stub());
   }
+}
+
+void LIR_OpLoadKlass::emit_code(LIR_Assembler* masm) {
+  masm->emit_load_klass(this);
+  masm->append_code_stub(stub());
 }
 
 #ifdef ASSERT
@@ -1970,6 +1989,12 @@ void LIR_OpLock::print_instr(outputStream* out) const {
   if (_scratch->is_valid()) {
     _scratch->print(out);  out->print(" ");
   }
+  out->print("[lbl:" INTPTR_FORMAT "]", p2i(stub()->entry()));
+}
+
+void LIR_OpLoadKlass::print_instr(outputStream* out) const {
+  obj()->print(out);        out->print(" ");
+  result_opr()->print(out); out->print(" ");
   out->print("[lbl:" INTPTR_FORMAT "]", p2i(stub()->entry()));
 }
 

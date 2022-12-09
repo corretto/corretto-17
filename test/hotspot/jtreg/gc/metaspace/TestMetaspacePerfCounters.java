@@ -174,7 +174,7 @@ public class TestMetaspacePerfCounters {
     }
 
     private static boolean isUsingCompressedClassPointers() {
-        return Platform.is64bit() && InputArguments.contains("-XX:+UseCompressedClassPointers");
+        return Platform.is64bit();
     }
 
     private static long getMinCapacity(String ns) throws Exception {

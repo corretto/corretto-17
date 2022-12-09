@@ -30,12 +30,21 @@
 #include "logging/log.hpp"
 #include "oops/access.inline.hpp"
 #include "runtime/atomic.hpp"
+#include "runtime/lockStack.inline.hpp"
 #include "runtime/synchronizer.hpp"
 
 inline intptr_t ObjectMonitor::is_entered(JavaThread* current) const {
-  void* owner = owner_raw();
-  if (current == owner || current->is_lock_owned((address)owner)) {
-    return 1;
+  if (UseFastLocking) {
+    if (is_owner_anonymous()) {
+      return current->lock_stack().contains(object()) ? 1 : 0;
+    } else {
+      return current == owner_raw() ? 1 : 0;
+    }
+  } else {
+    void* owner = owner_raw();
+    if (current == owner || current->is_lock_owned((address)owner)) {
+      return 1;
+    }
   }
   return 0;
 }
@@ -54,6 +63,11 @@ inline void ObjectMonitor::set_header(markWord hdr) {
 
 inline jint ObjectMonitor::waiters() const {
   return _waiters;
+}
+
+inline bool ObjectMonitor::has_owner() const {
+  void* owner = owner_raw();
+  return owner != NULL && owner != DEFLATER_MARKER;
 }
 
 // Returns NULL if DEFLATER_MARKER is observed.

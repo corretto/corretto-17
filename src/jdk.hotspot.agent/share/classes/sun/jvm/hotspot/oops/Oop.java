@@ -48,8 +48,6 @@ public class Oop {
   private static synchronized void initialize(TypeDataBase db) throws WrongTypeException {
     Type type  = db.lookupType("oopDesc");
     mark       = new CIntField(type.getCIntegerField("_mark"), 0);
-    klass      = new MetadataField(type.getAddressField("_metadata._klass"), 0);
-    compressedKlass  = new NarrowKlassField(type.getAddressField("_metadata._compressed_klass"), 0);
     headerSize = type.getSize();
   }
 
@@ -72,17 +70,21 @@ public class Oop {
   public  static long getHeaderSize() { return headerSize; } // Header size in bytes.
 
   private static CIntField mark;
-  private static MetadataField  klass;
-  private static NarrowKlassField compressedKlass;
 
   // Accessors for declared fields
   public Mark  getMark()   { return new Mark(getHandle()); }
-  public Klass getKlass() {
-    if (VM.getVM().isCompressedKlassPointersEnabled()) {
-      return (Klass)compressedKlass.getValue(getHandle());
-    } else {
-      return (Klass)klass.getValue(getHandle());
+
+  private static Klass getKlass(Mark mark) {
+    if (mark.hasMonitor()) {
+      ObjectMonitor mon = mark.monitor();
+      mark = mon.header();
     }
+    return mark.getKlass();
+  }
+
+  public Klass getKlass() {
+    assert(VM.getVM().isCompressedKlassPointersEnabled());
+    return getKlass(getMark());
   }
 
   public boolean isA(Klass k) {
@@ -149,11 +151,6 @@ public class Oop {
   void iterateFields(OopVisitor visitor, boolean doVMFields) {
     if (doVMFields) {
       visitor.doCInt(mark, true);
-      if (VM.getVM().isCompressedKlassPointersEnabled()) {
-        visitor.doMetadata(compressedKlass, true);
-      } else {
-        visitor.doMetadata(klass, true);
-      }
     }
   }
 
@@ -208,10 +205,7 @@ public class Oop {
     if (handle == null) {
       return null;
     }
-    if (VM.getVM().isCompressedKlassPointersEnabled()) {
-      return (Klass)Metadata.instantiateWrapperFor(handle.getCompKlassAddressAt(compressedKlass.getOffset()));
-    } else {
-      return (Klass)Metadata.instantiateWrapperFor(handle.getAddressAt(klass.getOffset()));
-    }
+    Mark mark = new Mark(handle);
+    return getKlass(mark);
   }
 };

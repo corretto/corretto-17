@@ -30,6 +30,7 @@
 #include "oops/klass.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/globals.hpp"
+#include "runtime/safepoint.hpp"
 
 // Should this header be preserved during GC?
 inline bool markWord::must_be_preserved(const oopDesc* obj) const {
@@ -74,5 +75,40 @@ inline markWord markWord::prototype_for_klass(const Klass* klass) {
 
   return prototype_header;
 }
+
+#ifdef _LP64
+narrowKlass markWord::narrow_klass() const {
+  return narrowKlass(value() >> klass_shift);
+}
+
+Klass* markWord::klass() const {
+  assert(!CompressedKlassPointers::is_null(narrow_klass()), "narrow klass must not be null: " INTPTR_FORMAT, value());
+  return CompressedKlassPointers::decode_not_null(narrow_klass());
+}
+
+Klass* markWord::klass_or_null() const {
+  return CompressedKlassPointers::decode(narrow_klass());
+}
+
+markWord markWord::set_narrow_klass(const narrowKlass nklass) const {
+  return markWord((value() & ~klass_mask_in_place) | ((uintptr_t) nklass << klass_shift));
+}
+
+Klass* markWord::safe_klass() const {
+  assert(SafepointSynchronize::is_at_safepoint(), "only call at safepoint");
+  markWord m = *this;
+  if (m.has_displaced_mark_helper()) {
+    m = m.displaced_mark_helper();
+  }
+  return CompressedKlassPointers::decode_not_null(m.narrow_klass());
+}
+
+markWord markWord::set_klass(const Klass* klass) const {
+  assert(UseCompressedClassPointers, "expect compressed klass pointers");
+  // TODO: Don't cast to non-const, change CKP::encode() to accept const Klass* instead.
+  narrowKlass nklass = CompressedKlassPointers::encode(const_cast<Klass*>(klass));
+  return set_narrow_klass(nklass);
+}
+#endif
 
 #endif // SHARE_OOPS_MARKWORD_INLINE_HPP

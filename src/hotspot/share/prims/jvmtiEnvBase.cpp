@@ -970,41 +970,7 @@ JvmtiEnvBase::get_object_monitor_usage(JavaThread* calling_thread, jobject objec
   uint32_t debug_bits = 0;
   // first derive the object's owner and entry_count (if any)
   {
-    // Revoke any biases before querying the mark word
-    BiasedLocking::revoke_at_safepoint(hobj);
-
-    address owner = NULL;
-    {
-      markWord mark = hobj()->mark();
-
-      if (!mark.has_monitor()) {
-        // this object has a lightweight monitor
-
-        if (mark.has_locker()) {
-          owner = (address)mark.locker(); // save the address of the Lock word
-        }
-        // implied else: no owner
-      } else {
-        // this object has a heavyweight monitor
-        mon = mark.monitor();
-
-        // The owner field of a heavyweight monitor may be NULL for no
-        // owner, a JavaThread * or it may still be the address of the
-        // Lock word in a JavaThread's stack. A monitor can be inflated
-        // by a non-owning JavaThread, but only the owning JavaThread
-        // can change the owner field from the Lock word to the
-        // JavaThread * and it may not have done that yet.
-        owner = (address)mon->owner();
-      }
-    }
-
-    if (owner != NULL) {
-      // This monitor is owned so we have to find the owning JavaThread.
-      owning_thread = Threads::owning_thread_from_monitor_owner(tlh.list(), owner);
-      assert(owning_thread != NULL, "owning JavaThread must not be NULL");
-      Handle     th(current_thread, owning_thread->threadObj());
-      ret.owner = (jthread)jni_reference(calling_thread, th);
-    }
+    owning_thread = ObjectSynchronizer::get_lock_owner(tlh.list(), hobj);
 
     if (owning_thread != NULL) {  // monitor is owned
       // The recursions field of a monitor does not reflect recursions

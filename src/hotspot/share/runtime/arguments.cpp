@@ -3153,6 +3153,11 @@ jint Arguments::finalize_vm_init_args(bool patch_mod_javabase) {
   UNSUPPORTED_OPTION(ShowRegistersOnAssert);
 #endif // CAN_SHOW_REGISTERS_ON_ASSERT
 
+  // Lilliput requires fast-locking.
+  FLAG_SET_DEFAULT(UseFastLocking, true);
+  FLAG_SET_DEFAULT(UseBiasedLocking, false);
+  FLAG_SET_DEFAULT(UseCompressedClassPointers, true);
+
   return JNI_OK;
 }
 

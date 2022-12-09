@@ -1827,10 +1827,12 @@ run:
 
               // Initialize header
               assert(!UseBiasedLocking, "Not implemented");
+#ifdef _LP64
+              oopDesc::release_set_mark(result, ik->prototype_header());
+#else
               obj->set_mark(markWord::prototype());
-              obj->set_klass_gap(0);
               obj->set_klass(ik);
-
+#endif
               // Must prevent reordering of stores for object initialization
               // with stores that publish the new object.
               OrderAccess::storestore();

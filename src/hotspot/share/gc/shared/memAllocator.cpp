@@ -376,22 +376,20 @@ void MemAllocator::mem_clear(HeapWord* mem) const {
   assert(mem != NULL, "cannot initialize NULL object");
   const size_t hs = oopDesc::header_size();
   assert(_word_size >= hs, "unexpected object size");
-  oopDesc::set_klass_gap(mem, 0);
   Copy::fill_to_aligned_words(mem + hs, _word_size - hs);
 }
 
 oop MemAllocator::finish(HeapWord* mem) const {
   assert(mem != NULL, "NULL object pointer");
-  if (UseBiasedLocking) {
-    oopDesc::set_mark(mem, _klass->prototype_header());
-  } else {
-    // May be bootstrapping
-    oopDesc::set_mark(mem, markWord::prototype());
-  }
   // Need a release store to ensure array/class length, mark word, and
   // object zeroing are visible before setting the klass non-NULL, for
   // concurrent collectors.
+#ifdef _LP64
+  oopDesc::release_set_mark(mem, _klass->prototype_header());
+#else
+  oopDesc::set_mark(mem, _klass->prototype_header());
   oopDesc::release_set_klass(mem, _klass);
+#endif
   return cast_to_oop(mem);
 }
 
@@ -405,7 +403,7 @@ MemRegion ObjArrayAllocator::obj_memory_range(oop obj) const {
     return MemAllocator::obj_memory_range(obj);
   }
   ArrayKlass* array_klass = ArrayKlass::cast(_klass);
-  const size_t hs = arrayOopDesc::header_size(array_klass->element_type());
+  const size_t hs = align_up(arrayOopDesc::base_offset_in_bytes(array_klass->element_type()), HeapWordSize) / HeapWordSize;
   return MemRegion(cast_from_oop<HeapWord*>(obj) + hs, _word_size - hs);
 }
 

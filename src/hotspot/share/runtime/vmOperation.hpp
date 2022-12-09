@@ -81,6 +81,7 @@
   template(ChangeSingleStep)                      \
   template(HeapWalkOperation)                     \
   template(HeapIterateOperation)                  \
+  template(HeapObjectStatistics)                  \
   template(ReportJavaOutOfMemory)                 \
   template(JFRCheckpoint)                         \
   template(ShenandoahFullGC)                      \
@@ -90,6 +91,7 @@
   template(ShenandoahFinalUpdateRefs)             \
   template(ShenandoahFinalRoots)                  \
   template(ShenandoahDegeneratedGC)               \
+  template(RendezvousGCThreads)                   \
   template(Exit)                                  \
   template(LinuxDllLoad)                          \
   template(RotateGCLog)                           \

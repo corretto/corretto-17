@@ -382,6 +382,10 @@ int Compilation::compile_java_method() {
     BAILOUT_("mdo allocation failed", no_frame_size);
   }
 
+  if (method()->is_synchronized()) {
+    push_monitor();
+  }
+
   {
     PhaseTraceTime timeit(_t_buildIR);
     build_hir();
@@ -558,6 +562,7 @@ Compilation::Compilation(AbstractCompiler* compiler, ciEnv* env, ciMethod* metho
 , _would_profile(false)
 , _has_method_handle_invokes(false)
 , _has_reserved_stack_access(method->has_reserved_stack_access())
+, _max_monitors(0)
 , _install_code(install_code)
 , _bailout_msg(NULL)
 , _exception_info_list(NULL)
