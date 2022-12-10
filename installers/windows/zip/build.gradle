@@ -97,11 +97,12 @@ task packageBuildResults(type: Zip) {
         exclude '**/*.diz'
     }
     from(buildRoot) {
+        include 'ADDITIONAL_LICENSE_INFO'
         include 'ASSEMBLY_EXCEPTION'
         include 'LICENSE'
+        include 'README.md'
+        include 'commitId.txt'
         include 'version.txt'
-        include 'ADDITIONAL_LICENSE_INFO'
-        include 'README'
     }
 }
 
