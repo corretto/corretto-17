@@ -107,6 +107,11 @@ allprojects {
             correttoCommonFlags += ["--with-version-date=${versionDate}"]
         }
 
+        def gtest = project.findProperty("corretto.gtest")
+        if (gtest) {
+            correttoCommonFlags += ["--with-gtest=${gtest}"]
+        }
+
         // Valid value: null, release, debug, fastdebug, slowdebug
         correttoDebugLevel = "release" // Default: release
         switch(project.findProperty("corretto.debug_level")) {
