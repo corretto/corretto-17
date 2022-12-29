@@ -39,3 +39,8 @@ jobs:
               with:
                 upstream: 'develop'
                 merge-branch: 'generational-shenandoah'
+            - name: "Merge Corretto-17 develop to lilliput"
+              uses: ./.github/actions/merge-repo
+              with:
+                upstream: 'develop'
+                merge-branch: 'lilliput'
