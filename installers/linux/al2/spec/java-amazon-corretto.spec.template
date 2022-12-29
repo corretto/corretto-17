@@ -260,6 +260,7 @@ popd
 %post headless
 if [ \$1 -eq 1 ] ; then
   alternatives --install %{_bindir}/java java %{java_home}/bin/java %{alternatives_priority} \\
+               --slave %{_jvmdir}/%{name} %{name} %{java_home} \\
                --slave %{_jvmdir}/jre jre %{java_home} \\
                --slave %{_jvmdir}/jre-openjdk jre_openjdk %{java_home} \\
                --slave %{_bindir}/keytool keytool %{java_home}/bin/keytool \\
@@ -276,7 +277,6 @@ fi
 %post devel
 if [ \$1 -eq 1 ] ; then
   alternatives --install %{_bindir}/javac javac %{java_home}/bin/javac %{alternatives_priority} \\
-               --slave %{_jvmdir}/%{name} %{name} %{java_home} \\
                --slave %{_jvmdir}/java java_sdk %{java_home} \\
                --slave %{_bindir}/jar jar %{java_home}/bin/jar \\
                --slave %{_bindir}/jarsigner jarsigner %{java_home}/bin/jarsigner \\
