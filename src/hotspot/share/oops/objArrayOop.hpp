@@ -77,7 +77,7 @@ private:
     size_t size_words = align_up(base_offset_in_bytes() + asz, HeapWordSize) / HeapWordSize;
     size_t osz = align_object_size(size_words);
     assert(osz < max_jint, "no overflow");
-    return osz;
+    return checked_cast<int>(osz);
   }
 
   Klass* element_klass();
