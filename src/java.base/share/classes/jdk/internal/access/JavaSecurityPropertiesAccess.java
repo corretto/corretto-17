@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,14 +23,10 @@
  * questions.
  */
 
-import jdk.test.lib.apps.LingeredApp;
+package jdk.internal.access;
 
-import java.lang.ref.Reference;
+import java.util.Properties;
 
-public class LingeredAppWithLargeArray extends LingeredApp {
-    public static void main(String args[]) {
-        int[] hugeArray = new int[Integer.MAX_VALUE/2];
-        LingeredApp.main(args);
-        Reference.reachabilityFence(hugeArray);
-    }
- }
+public interface JavaSecurityPropertiesAccess {
+    Properties getInitialProperties();
+}

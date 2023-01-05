@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,14 +23,21 @@
  * questions.
  */
 
-import jdk.test.lib.apps.LingeredApp;
+package jdk.jfr.events;
 
-import java.lang.ref.Reference;
+import jdk.jfr.Category;
+import jdk.jfr.Description;
+import jdk.jfr.Label;
+import jdk.jfr.Name;
 
-public class LingeredAppWithLargeArray extends LingeredApp {
-    public static void main(String args[]) {
-        int[] hugeArray = new int[Integer.MAX_VALUE/2];
-        LingeredApp.main(args);
-        Reference.reachabilityFence(hugeArray);
-    }
- }
+@Category({"Java Development Kit", "Security"})
+@Label("Initial Security Property")
+@Name("jdk.InitialSecurityProperty")
+@Description("Initial Security Properties")
+public final class InitialSecurityPropertyEvent extends AbstractJDKEvent {
+    @Label("Key")
+    public String key;
+
+    @Label("Value")
+    public String value;
+}
