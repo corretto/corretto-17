@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 1998, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,28 +19,18 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
-#ifndef _AWT_MLIB_H_
-#define _AWT_MLIB_H_
 
-#include "awt_ImagingLib.h"
+// Intentionally no #include guard.  May be included multiple times for effect.
 
+// See vmassert_uninstall.hpp for usage.
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-typedef void (*mlib_start_timer)(int);
-typedef void (*mlib_stop_timer)(int, int);
+// Remove possible stdlib assert macro (or any others, for that matter).
+#undef assert
 
-JNIEXPORT mlib_status awt_getImagingLib(JNIEnv *env, mlibFnS_t *sMlibFns,
-                                        mlibSysFnS_t *sMlibSysFns);
-JNIEXPORT mlib_start_timer awt_setMlibStartTimer();
-JNIEXPORT mlib_stop_timer awt_setMlibStopTimer();
-
-#ifdef __cplusplus
-} /* end of extern "C" */
+// Reinstall HotSpot's assert macro, if previously defined.
+#ifdef vmassert
+#define assert(p, ...) vmassert(p, __VA_ARGS__)
 #endif
 
-
-
-#endif /* _AWT_MLIB_H */
