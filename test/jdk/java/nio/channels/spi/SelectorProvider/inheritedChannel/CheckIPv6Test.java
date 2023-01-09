@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,27 +19,38 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#include "precompiled.hpp"
-#include "memory/allocation.hpp"
-#include "metaprogramming/removePointer.hpp"
-#include "metaprogramming/isSame.hpp"
-#include "utilities/debug.hpp"
+import java.io.IOException;
 
-class RemovePointerTest {
-  class A: AllStatic {};
+/**
+ * This test verifies that a service launched with IPv4 inherited channel
+ * can use IPv6 networking; this used to be impossible, see JDK-6914801
+ */
+public class CheckIPv6Test {
 
-  typedef const volatile A cvA;
-  typedef const volatile A& cvAref;
-  typedef const volatile A* const volatile cvAptrcv;
+    private static int failures = 0;
 
-  typedef RemovePointer<cvAref>::type rp_cvAref;
-  static const bool rp_cvAref_is_cvAref = IsSame<rp_cvAref, cvAref>::value;
-  STATIC_ASSERT(rp_cvAref_is_cvAref);
+    private static final String SERVICE = "CheckIPv6Service";
 
-  typedef RemovePointer<cvAptrcv>::type rp_cvAptrcv;
-  static const bool rp_cvAptrcv_is_cvAptrcv = IsSame<rp_cvAptrcv, cvA>::value;
-  STATIC_ASSERT(rp_cvAptrcv_is_cvAptrcv);
-};
+    public static void main(String args[]) throws IOException {
+
+        if (!CheckIPv6Service.isIPv6Available()) {
+            System.out.println("IPv6 not available. Test skipped.");
+            return;
+        }
+
+        try {
+            EchoTest.TCPEchoTest(SERVICE);
+            System.out.println("IPv6 test passed.");
+        } catch (Exception x) {
+            System.err.println(x);
+            failures++;
+        }
+
+        if (failures > 0) {
+            throw new RuntimeException("Test failed - see log for details");
+        }
+    }
+
+}
