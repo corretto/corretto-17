@@ -1,0 +1,46 @@
+name: "Refresh jdk17 from Upstream"
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+    refresh-jdk17:
+        runs-on: ubuntu-latest
+        name: "Update Corretto-17"
+        if: github.repository_owner == 'corretto'
+        steps:
+            - name: "Checkout code"
+              uses: actions/checkout@v2
+              with:
+                fetch-depth: 0
+            - name: "Fetch Corretto-17"
+              uses: ./.github/actions/fetch-repo
+              with:
+                upstream: 'https://github.com/openjdk/jdk17u.git'
+                local-branch: 'upstream-jdk17u'
+            - name: "Merge Corretto-17"
+              uses: ./.github/actions/merge-repo
+              with:
+                upstream: 'upstream-jdk17u'
+                merge-branch: 'develop'
+            - name: "Update Corretto version"
+              uses: ./.github/actions/update-version
+              with:
+                upstream: 'upstream-jdk17u'
+                version-branch: 'develop'
+            - name: "Merge Corretto-17 develop to nightly"
+              uses: ./.github/actions/merge-repo
+              with:
+                upstream: 'develop'
+                merge-branch: 'nightly'
+            - name: "Merge Corretto-17 develop to generational-shenandoah"
+              uses: ./.github/actions/merge-repo
+              with:
+                upstream: 'develop'
+                merge-branch: 'generational-shenandoah'
+            - name: "Merge Corretto-17 develop to lilliput"
+              uses: ./.github/actions/merge-repo
+              with:
+                upstream: 'develop'
+                merge-branch: 'lilliput'

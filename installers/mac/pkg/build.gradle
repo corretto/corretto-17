@@ -1,0 +1,123 @@
+/*
+* Copyright (c) 2019, Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+*
+* This code is free software; you can redistribute it and/or modify it
+* under the terms of the GNU General Public License version 2 only, as
+* published by the Free Software Foundation. Amazon designates this
+* particular file as subject to the "Classpath" exception as provided
+* by Oracle in the LICENSE file that accompanied this code.
+*
+* This code is distributed in the hope that it will be useful, but WITHOUT
+* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+* version 2 for more details (a copy is included in the LICENSE file that
+* accompanied this code).
+*
+* You should have received a copy of the GNU General Public License version
+* 2 along with this work; if not, write to the Free Software Foundation,
+* Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+*/
+
+dependencies {
+    compile project(path: ':installers:mac:tar', configuration: 'buildTar')
+}
+
+// Copy task cannot be used here because Gradle does not preserve the symlink
+task retrieveArtifacts(type: Exec) {
+    // Set environment variable CORRETTO_ARTIFACTS_PATH to the path of "amazon-corretto-<version>.jdk" to be packaged
+    def artifactsPath = System.getenv("CORRETTO_ARTIFACTS_PATH")
+    workingDir buildRoot
+    if (artifactsPath == null) {
+        dependsOn project.configurations.compile
+        commandLine "tar", "xf", project.configurations.compile.singleFile
+    } else {
+        commandLine "cp", "-Rf", "${artifactsPath}", buildRoot
+    }
+}
+
+task copyResources(type: Copy) {
+    from "."
+    include 'resources/**'
+    into buildRoot
+}
+
+task inflatePkgTemplate {
+    dependsOn copyResources
+    doLast {
+        copy {
+            from('templates/distribution.xml.template') {
+                rename { file -> file.replace('.template', '') }
+                filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: ["full": project.version.full, "major": project.version.major, "macos-arch": (correttoArch == "aarch64" ? "arm64" : "x86_64")])
+            }
+            into "${buildRoot}/resources"
+        }
+
+        copy {
+            from('templates/introduction.html.template') {
+                rename { file -> file.replace('.template', '') }
+                filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: project.version)
+            }
+            into "${buildRoot}/resources"
+        }
+    }
+
+}
+
+task setupDirectories {
+    dependsOn retrieveArtifacts
+    doLast {
+        exec {
+            workingDir buildRoot
+            commandLine "mkdir", "-p", "pkgroot/"
+        }
+
+        exec {
+            workingDir buildRoot
+            commandLine "cp", "-Rf", "amazon-corretto-${project.version.major}.jdk", "pkgroot/"
+        }
+
+        exec {
+            workingDir buildRoot
+            commandLine "mkdir", "-p", "build/components"
+        }
+    }
+}
+
+task generateInstaller {
+    dependsOn retrieveArtifacts
+    dependsOn copyResources
+    dependsOn inflatePkgTemplate
+    dependsOn setupDirectories
+    outputs.dir distributionDir
+
+    doLast {
+        exec {
+            workingDir buildRoot
+            commandLine "pkgbuild",
+                "--root", "pkgroot",
+                "--identifier", "com.amazon.corretto.${project.version.major}",
+                "--version", project.version.full,
+                "--ownership", "recommended",
+                "--scripts", "resources",
+                "--install-location", "/Library/Java/JavaVirtualMachines/",
+                "build/components/amazon-corretto-${project.version.major}.jdk.pkg"
+        }
+
+        exec {
+            workingDir buildRoot
+            commandLine "productbuild",
+            "--distribution", "resources/distribution.xml",
+            "--resources", "resources",
+            "--package-path", "build/components",
+            "--version", project.version.full,
+            "${distributionDir}/amazon-corretto-${project.version.full}-macosx-${correttoArch}.pkg"
+        }
+    }
+}
+
+build.dependsOn generateInstaller
+
+artifacts {
+    archives file: generateInstaller.outputs.getFiles().getSingleFile(), builtBy: generateInstaller
+}

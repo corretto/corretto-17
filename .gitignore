@@ -16,5 +16,7 @@ NashornProfile.txt
 **/JTreport/**
 **/JTwork/**
 /src/utils/LogCompilation/target/
+/.gradle/
 /.project/
 /.settings/
+commitId.txt

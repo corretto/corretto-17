@@ -54,7 +54,7 @@ public class VerifyCACerts {
             + File.separator + "security" + File.separator + "cacerts";
 
     // The numbers of certs now.
-    private static final int COUNT = 89;
+    private static final int COUNT = 214;
 
     // SHA-256 of cacerts, can be generated with
     // shasum -a 256 cacerts | sed -e 's/../&:/g' | tr '[:lower:]' '[:upper:]' | cut -c1-95
@@ -234,6 +234,16 @@ public class VerifyCACerts {
                     "18:CE:6C:FE:7B:F1:4E:60:B2:E3:47:B8:DF:E8:68:CB:31:D0:2E:BB:3A:DA:27:15:69:F5:03:43:B4:6D:B3:A4");
             put("amazonrootca4 [jdk]",
                     "E3:5D:28:41:9E:D0:20:25:CF:A6:90:38:CD:62:39:62:45:8D:A5:C6:95:FB:DE:A3:C2:2B:0B:FB:25:89:70:92");
+            put("amazonrootca1",
+                    "8E:CD:E6:88:4F:3D:87:B1:12:5B:A3:1A:C3:FC:B1:3D:70:16:DE:7F:57:CC:90:4F:E1:CB:97:C6:AE:98:19:6E");
+            put("amazonrootca2",
+                    "1B:A5:B2:AA:8C:65:40:1A:82:96:01:18:F8:0B:EC:4F:62:30:4D:83:CE:C4:71:3A:19:C3:9C:01:1E:A4:6D:B4");
+            put("amazonrootca3",
+                    "18:CE:6C:FE:7B:F1:4E:60:B2:E3:47:B8:DF:E8:68:CB:31:D0:2E:BB:3A:DA:27:15:69:F5:03:43:B4:6D:B3:A4");
+            put("amazonrootca4",
+                    "E3:5D:28:41:9E:D0:20:25:CF:A6:90:38:CD:62:39:62:45:8D:A5:C6:95:FB:DE:A3:C2:2B:0B:FB:25:89:70:92");
+            put("entrustrootcertificationauthority-g4",
+                    "DB:35:17:D1:F6:73:2A:2D:5A:B9:7C:53:3E:C7:07:79:EE:32:70:A6:2F:B4:AC:42:38:37:24:60:E6:F0:1E:88");
             put("entrustrootcag4 [jdk]",
                     "DB:35:17:D1:F6:73:2A:2D:5A:B9:7C:53:3E:C7:07:79:EE:32:70:A6:2F:B4:AC:42:38:37:24:60:E6:F0:1E:88");
             put("sslrootrsaca [jdk]",
@@ -266,6 +276,9 @@ public class VerifyCACerts {
             add("quovadisrootca [jdk]");
             // Valid until: Sat May 21 04:00:00 GMT 2022
             add("geotrustglobalca [jdk]");
+            // Amazon Linux
+            add("globalsignrootca-r2");
+            add("cybertrustglobalroot");
         }
     };
 
@@ -281,12 +294,16 @@ public class VerifyCACerts {
         md = MessageDigest.getInstance("SHA-256");
 
         byte[] data = Files.readAllBytes(Path.of(CACERTS));
+        /* Ignore whole-file checksum as the checksum of the cacerts
+         * file changes with each build, due to the way we merge upstream
+         * OpenJDK certs and Amazon Linux certs at build time.
         String checksum = HEX.formatHex(md.digest(data));
         if (!checksum.equals(CHECKSUM)) {
             atLeastOneFailed = true;
             System.err.println("ERROR: wrong checksum\n" + checksum);
             System.err.println("Expected checksum\n" + CHECKSUM);
         }
+        */
 
         KeyStore ks = KeyStore.getInstance("JKS");
         ks.load(new ByteArrayInputStream(data), "changeit".toCharArray());
@@ -331,27 +348,26 @@ public class VerifyCACerts {
                         + e.getMessage());
             }
 
-            // Make sure cert is not expired or not yet valid
             try {
                 cert.checkValidity();
             } catch (CertificateExpiredException cee) {
-                if (!EXPIRY_EXC_ENTRIES.contains(alias)) {
-                    atLeastOneFailed = true;
-                    System.err.println("ERROR: cert is expired");
-                }
+                // Ignore - we have an 'is very expired' check later
             } catch (CertificateNotYetValidException cne) {
                 atLeastOneFailed = true;
                 System.err.println("ERROR: cert is not yet valid");
             }
 
-            // If cert is within 90 days of expiring, mark as failure so
-            // that cert can be scheduled to be removed/renewed.
+            // If cert is more than 90 days *past* expiry, mark as failure so
+            // we can alert either OpenJDK upstream or Amazon Linux.
+            // This is different to the upstream failure condition, which fails
+            // 90 days *before* expiry. Our condition is more relaxed because we
+            // rely on OpenJDK/Amazon Linux to manage the certs.
             Date notAfter = cert.getNotAfter();
-            if (notAfter.getTime() - System.currentTimeMillis() < NINETY_DAYS) {
+            if (System.currentTimeMillis() - notAfter.getTime() > NINETY_DAYS) {
                 if (!EXPIRY_EXC_ENTRIES.contains(alias)) {
                     atLeastOneFailed = true;
                     System.err.println("ERROR: cert \"" + alias + "\" expiry \""
-                            + notAfter.toString() + "\" will expire within 90 days");
+                            + notAfter.toString() + "\" has been expired for >90 days.");
                 }
             }
         }
