@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,10 +21,26 @@
  * questions.
  */
 
-// key: compiler.err.cant.apply.symbol.noargs
-// key: compiler.misc.explicit.param.do.not.conform.to.bounds
+/*
+ * @test
+ * @bug 8297556
+ * @summary Parse::check_interpreter_type fails with assert "must constrain OSR typestate"
+ *
+ * @run main/othervm -Xbatch -XX:-TieredCompilation -XX:CompileOnly=TestExactArrayOfBasicType::test TestExactArrayOfBasicType
+ *
+ */
 
-class ExplicitParamsDoNotConformToBounds {
-    <X extends Number> void m() {}
-    { this.<String>m(); }
+
+public class TestExactArrayOfBasicType {
+    public static void test() {
+        int[][][][][] array = new int[1][2][3][4][5];
+
+        for (int i = 0; i < 50_000; ++i) {
+            array[0] = new int[0][1][2][3];
+        }
+    }
+
+    public static void main(String args[]) {
+        test();
+    }
 }
