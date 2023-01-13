@@ -74,6 +74,7 @@ void C2CheckLockStackStub::emit(C2_MacroAssembler& masm) {
   __ jmp(continuation(), false /* maybe_short */);
 }
 
+#ifdef _LP64
 int C2LoadNKlassStub::max_size() const {
   return 10;
 }
@@ -84,5 +85,6 @@ void C2LoadNKlassStub::emit(C2_MacroAssembler& masm) {
   __ movq(d, Address(d, OM_OFFSET_NO_MONITOR_VALUE_TAG(header)));
   __ jmp(continuation());
 }
+#endif
 
 #undef __

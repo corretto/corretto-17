@@ -13723,7 +13723,7 @@ instruct cmpFastLock(eFlagsReg cr, eRegP object, eBXRegP box, eAXRegI tmp, eRegP
   ins_encode %{
     __ get_thread($thread$$Register);
     __ fast_lock($object$$Register, $box$$Register, $tmp$$Register,
-                 $scr$$Register, noreg, noreg, $thread$$Register, NULL, NULL, NULL, false, false);
+                 $scr$$Register, noreg, noreg, $thread$$Register, NULL, NULL, NULL, NULL, false, false);
   %}
   ins_pipe(pipe_slow);
 %}

@@ -3156,8 +3156,9 @@ jint Arguments::finalize_vm_init_args(bool patch_mod_javabase) {
   // Lilliput requires fast-locking.
   FLAG_SET_DEFAULT(UseFastLocking, true);
   FLAG_SET_DEFAULT(UseBiasedLocking, false);
+#ifdef _LP64
   FLAG_SET_DEFAULT(UseCompressedClassPointers, true);
-
+#endif
   return JNI_OK;
 }
 

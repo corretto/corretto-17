@@ -184,9 +184,11 @@ inline size_t HeapRegion::block_size(const HeapWord *addr) const {
 
   if (block_is_obj(addr)) {
     oop obj = cast_to_oop(addr);
+#ifdef _LP64
     if (obj->is_forwarded() && CompressedKlassPointers::is_null(obj->mark().narrow_klass())) {
       obj = obj->forwardee();
     }
+#endif
     return obj->size();
   }
 

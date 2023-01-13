@@ -486,9 +486,11 @@ void ContiguousSpace::object_iterate_from(HeapWord* mark, ObjectClosure* blk) {
   while (mark < top()) {
     blk->do_object(cast_to_oop(mark));
     oop obj = cast_to_oop(mark);
+#ifdef _LP64
     if (obj->is_forwarded() && CompressedKlassPointers::is_null(obj->mark().narrow_klass())) {
       obj = obj->forwardee();
     }
+#endif
     mark += obj->size();
   }
 }
@@ -612,7 +614,6 @@ void ContiguousSpace::allocate_temporary_filler(int factor) {
     obj->set_mark(vmClasses::Object_klass()->prototype_header());
 #else
     obj->set_mark(markWord::prototype());
-    obj->set_klass_gap(0);
     obj->set_klass(vmClasses::Object_klass());
 #endif
   }

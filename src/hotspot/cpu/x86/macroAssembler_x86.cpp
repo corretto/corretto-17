@@ -39,9 +39,6 @@
 #include "oops/accessDecorators.hpp"
 #include "oops/compressedOops.inline.hpp"
 #include "oops/klass.inline.hpp"
-#include "opto/c2_CodeStubs.hpp"
-#include "opto/compile.hpp"
-#include "opto/output.hpp"
 #include "prims/methodHandles.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/flags/flagSetting.hpp"
@@ -56,6 +53,12 @@
 #include "runtime/thread.hpp"
 #include "utilities/macros.hpp"
 #include "crc32c.h"
+
+#ifdef COMPILER2
+#include "opto/c2_CodeStubs.hpp"
+#include "opto/compile.hpp"
+#include "opto/output.hpp"
+#endif
 
 #ifdef PRODUCT
 #define BLOCK_COMMENT(str) /* nothing */
@@ -5226,7 +5229,7 @@ void MacroAssembler::verified_entry(int framesize, int stack_bang_size, bool fp_
   }
 #endif
 
-#ifdef _LP64
+#if defined(_LP64) && defined(COMPILER2)
   if (UseFastLocking && max_monitors > 0) {
     C2CheckLockStackStub* stub = new (Compile::current()->comp_arena()) C2CheckLockStackStub();
     Compile::current()->output()->add_stub(stub);

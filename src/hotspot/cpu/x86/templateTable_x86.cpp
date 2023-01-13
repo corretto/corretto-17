@@ -4024,8 +4024,7 @@ void TemplateTable::_new() {
     __ movptr(rbx, Address(rcx, Klass::prototype_header_offset()));
     __ movptr(Address(rax, oopDesc::mark_offset_in_bytes ()), rbx);
 #ifndef _LP64
-    Register tmp_store_klass = LP64_ONLY(rscratch1) NOT_LP64(noreg);
-    __ store_klass(rax, rcx, tmp_store_klass);  // klass
+    __ store_klass(rax, rcx);  // klass
 #endif
 
     {

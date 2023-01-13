@@ -48,6 +48,9 @@ public class Oop {
   private static synchronized void initialize(TypeDataBase db) throws WrongTypeException {
     Type type  = db.lookupType("oopDesc");
     mark       = new CIntField(type.getCIntegerField("_mark"), 0);
+    if (!VM.getVM().isLP64()) {
+      klass      = new MetadataField(type.getAddressField("_klass"), 0);
+    }
     headerSize = type.getSize();
   }
 
@@ -70,6 +73,7 @@ public class Oop {
   public  static long getHeaderSize() { return headerSize; } // Header size in bytes.
 
   private static CIntField mark;
+  private static MetadataField  klass;
 
   // Accessors for declared fields
   public Mark  getMark()   { return new Mark(getHandle()); }
@@ -83,8 +87,12 @@ public class Oop {
   }
 
   public Klass getKlass() {
-    assert(VM.getVM().isCompressedKlassPointersEnabled());
-    return getKlass(getMark());
+    if (VM.getVM().isLP64()) {
+      assert(VM.getVM().isCompressedKlassPointersEnabled());
+      return getKlass(getMark());
+    } else {
+      return (Klass)klass.getValue(getHandle());
+    }
   }
 
   public boolean isA(Klass k) {
@@ -205,7 +213,11 @@ public class Oop {
     if (handle == null) {
       return null;
     }
-    Mark mark = new Mark(handle);
-    return getKlass(mark);
+    if (VM.getVM().isLP64()) {
+      Mark mark = new Mark(handle);
+      return getKlass(mark);
+    } else {
+      return (Klass)Metadata.instantiateWrapperFor(handle.getAddressAt(klass.getOffset()));
+    }
   }
 };

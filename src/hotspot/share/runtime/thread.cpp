@@ -3759,16 +3759,30 @@ JavaThread* Threads::owning_thread_from_object(ThreadsList * t_list, oop obj) {
 
 JavaThread* Threads::owning_thread_from_monitor(ThreadsList* t_list, ObjectMonitor* monitor) {
   if (UseFastLocking) {
-    if (monitor->is_owner_anonymous()) {
+    void* raw_owner = monitor->owner_raw();
+    if (raw_owner == ANONYMOUS_OWNER) {
       return owning_thread_from_object(t_list, monitor->object());
+    } else if (raw_owner == DEFLATER_MARKER) {
+      return NULL;
     } else {
-      Thread* owner = reinterpret_cast<Thread*>(monitor->owner());
+      Thread* owner = reinterpret_cast<Thread*>(raw_owner);
+#ifdef ASSERT
+      if (owner != NULL) {
+        bool found = false;
+        DO_JAVA_THREADS(t_list, q) {
+          if (q == owner) {
+            found = true;;
+            break;
+          }
+        }
+        assert(found, "owner is not a thread: " PTR_FORMAT, p2i(owner));
+      }
+#endif
       assert(owner == NULL || owner->is_Java_thread(), "only JavaThreads own monitors");
       return reinterpret_cast<JavaThread*>(owner);
     }
   } else {
-    address owner = (address)monitor->owner();
-    return owning_thread_from_monitor_owner(t_list, owner);
+    return owning_thread_from_monitor_owner(t_list, (address)monitor->owner());
   }
 }
 

@@ -594,16 +594,8 @@ void C2_MacroAssembler::fast_lock(Register objReg, Register boxReg, Register tmp
   // (rsp or the address of the box) into  m->owner is harmless.
   // Invariant: tmpReg == 0.  tmpReg is EAX which is the implicit cmpxchg comparand.
   lock();
-  cmpxchgptr(scrReg, Address(boxReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)));
+  cmpxchgptr(thread, Address(boxReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)));
   movptr(Address(scrReg, 0), 3);          // box->_displaced_header = 3
-  // If we weren't able to swing _owner from NULL to the BasicLock
-  // then take the slow path.
-  jccb  (Assembler::notZero, DONE_LABEL);
-  // update _owner from BasicLock to thread
-  get_thread (scrReg);                    // beware: clobbers ICCs
-  movptr(Address(boxReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)), scrReg);
-  xorptr(boxReg, boxReg);                 // set icc.ZFlag = 1 to indicate success
-
   // If the CAS fails we can either retry or pass control to the slow path.
   // We use the latter tactic.
   // Pass the CAS result in the icc.ZFlag into DONE_LABEL
@@ -769,14 +761,20 @@ void C2_MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register t
   jmpb  (DONE_LABEL);
 
   bind (Stacked);
-  // It's not inflated and it's not recursively stack-locked and it's not biased.
-  // It must be stack-locked.
-  // Try to reset the header to displaced header.
-  // The "box" value on the stack is stable, so we can reload
-  // and be assured we observe the same value as above.
-  movptr(tmpReg, Address(boxReg, 0));
-  lock();
-  cmpxchgptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes())); // Uses RAX which is box
+  if (UseFastLocking) {
+    mov(boxReg, tmpReg);
+    fast_unlock_impl(objReg, boxReg, tmpReg, DONE_LABEL);
+    xorl(tmpReg, tmpReg);
+  } else {
+    // It's not inflated and it's not recursively stack-locked and it's not biased.
+    // It must be stack-locked.
+    // Try to reset the header to displaced header.
+    // The "box" value on the stack is stable, so we can reload
+    // and be assured we observe the same value as above.
+    movptr(tmpReg, Address(boxReg, 0));
+    lock();
+    cmpxchgptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes())); // Uses RAX which is box
+  }
   // Intention fall-thru into DONE_LABEL
 
   // DONE_LABEL is a hot target - we'd really like to place it at the
