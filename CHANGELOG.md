@@ -2,6 +2,44 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.6.10.1
+Release Date: January 17, 2023
+
+**Target Platforms <sup>1</sup>**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Alpine-based Linux, x86_64
++ Windows 10 or later, x86_64
++ macos 10.15 and later, x86_64
++ macos 11.0 and later, aarch64
+
+**1.** This is the platform targeted by the build. See [Using Amazon Corretto](https://aws.amazon.com/corretto/faqs/#Using_Amazon_Corretto)
+in the Amazon Corretto FAQ for supported platforms
+
+The following issues are addressed in 17.0.6.10.1:
+
+| Issue Name                          | Platform | Description                                                                          | Link                                                                          |
+|-------------------------------------|----------|--------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| Import jdk-17.0.6+10                | All      | Updates Corretto baseline to OpenJDK 17.0.6+10                                       | [jdk-17.0.6+10](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.6+10) |
+| Fix provides for public shared libs | AL       | All tzdata updates up to 2022e                                                       | [#108](https://github.com/corretto/corretto-17/pull/108)                      |
+| Fix java_home alternative           | Linux    | Alternative dir without architecture should be created on headless package           | [#106](https://github.com/corretto/corretto-17/pull/106)                      |                                                                                                                 |
+| Add "corretto.gtest" property       | All      | The new "corretto.gtest" property will be used to pass the path to the gtest library | [#104](https://github.com/corretto/corretto-17/pull/104)                      |                                                                                                                 |
+| Include commitId.txt in archives    | All      | Include commitId.txt in archives                                                     | [#103](https://github.com/corretto/corretto-17/pull/103)                      |
+| Update amazon cacerts               | All      | Update amazon cacerts file from amazonlinux                                          |                                                                               |
+| Relax VerifyCACerts                 | All      | Relax VerifyCACerts expiry condition                                                 | [#101](https://github.com/corretto/corretto-17/pull/101)                      |                                                                                                                 |
+
+The following CVEs are addressed in 17.0.6.10.1:
+
+| CVE            | CVSS    | Component |
+|----------------|---------|-----------|
+| CVE-2023-21835 | 8287411 | 5.3       |
+| CVE-2023-21830 | 8285021 | 5.3       |
+| CVE-2023-21843 | 8293742 | 3.7       |
+
+
 ## Corretto version: 17.0.5.8.1
 Release Date: October 18, 2022
 
