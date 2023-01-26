@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,21 +19,27 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#include <jni.h>
-#include <string.h>
-#include <stdint.h>
+package jdk.httpclient.test.lib.http2;
 
-JNIEXPORT jlong JNICALL
-Java_TestStringCriticalWithDedup_pin(JNIEnv *env, jclass unused, jstring s) {
-  const jchar* a = (*env)->GetStringCritical(env, s, NULL);
-  return (jlong)(uintptr_t)a;
-}
+import java.io.*;
+import static java.lang.System.out;
 
-JNIEXPORT void JNICALL
-Java_TestStringCriticalWithDedup_unpin(JNIEnv *env, jclass unused, jstring s, jlong v) {
-  jchar* a = (jchar*)(uintptr_t)v;
-  (*env)->ReleaseStringCritical(env, s, a);
+public class NoBodyHandler implements Http2Handler {
+
+    @Override
+    public void handle(Http2TestExchange t) throws IOException {
+        try {
+            out.println("NoBodyHandler received request to " + t.getRequestURI());
+            try (InputStream is = t.getRequestBody()) {
+                byte[] ba = is.readAllBytes();
+                out.println(Thread.currentThread().getName() + ": Read " + ba.length);
+            }
+            t.sendResponseHeaders(200, 0);
+        } catch (Throwable e) {
+            e.printStackTrace();
+            throw new IOException(e);
+        }
+    }
 }
