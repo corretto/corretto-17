@@ -551,6 +551,7 @@ java/nio/channels/AsynchronousSocketChannel/StressLoopback.java 8211851 aix-ppc6
 java/nio/channels/DatagramChannel/ManySourcesAndTargets.java    8264385 macosx-aarch64
 
 java/nio/channels/FileChannel/FileExtensionAndMap.java          8297292 generic-all
+jdk/nio/zipfs/TestLocOffsetFromZip64EF.java                     8301183 linux-all
 
 ############################################################################
 
@@ -587,8 +588,6 @@ sun/security/tools/keytool/ListKeychainStore.sh                 8156889 macosx-a
 
 javax/net/ssl/SSLEngine/EngineCloseOnAlert.java                 8298868 generic-all
 javax/net/ssl/SSLEngine/CheckStatus.java                        8298872 generic-all
-
-sun/security/provider/KeyStore/DKSTest.sh                       8180266 windows-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
 sun/security/smartcardio/TestConnect.java                       8039280 generic-all
