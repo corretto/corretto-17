@@ -860,12 +860,21 @@ HeapWord* HeapRegion::cross_threshold(HeapWord* start, HeapWord* end) {
   return _bot_part.threshold();
 }
 
-void HeapRegion::object_iterate(ObjectClosure* blk) {
+template<bool RESOLVE>
+void HeapRegion::object_iterate_impl(ObjectClosure* blk) {
   HeapWord* p = bottom();
   while (p < top()) {
     if (block_is_obj(p)) {
       blk->do_object(cast_to_oop(p));
     }
-    p += block_size(p);
+    p += block_size<RESOLVE>(p);
+  }
+}
+
+void HeapRegion::object_iterate(ObjectClosure* blk) {
+  if (G1CollectedHeap::heap()->collector_state()->in_full_gc()) {
+    object_iterate_impl<false>(blk);
+  } else {
+    object_iterate_impl<true>(blk);
   }
 }

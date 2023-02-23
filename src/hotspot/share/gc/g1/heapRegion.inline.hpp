@@ -177,6 +177,7 @@ inline bool HeapRegion::is_obj_dead(const oop obj, const G1CMBitMap* const prev_
          !is_closed_archive();
 }
 
+template <bool RESOLVE>
 inline size_t HeapRegion::block_size(const HeapWord *addr) const {
   if (addr == top()) {
     return pointer_delta(end(), addr);
@@ -185,7 +186,14 @@ inline size_t HeapRegion::block_size(const HeapWord *addr) const {
   if (block_is_obj(addr)) {
     oop obj = cast_to_oop(addr);
 #ifdef _LP64
-    if (obj->is_forwarded() && CompressedKlassPointers::is_null(obj->mark().narrow_klass())) {
+#ifdef ASSERT
+    if (RESOLVE) {
+      assert(!G1CollectedHeap::heap()->collector_state()->in_full_gc(), "Illegal/excessive resolve during full-GC");
+    } else {
+      assert(G1CollectedHeap::heap()->collector_state()->in_full_gc() || !obj->is_forwarded(), "Missing resolve when forwarded during normal GC");
+    }
+#endif
+    if (RESOLVE && obj->is_forwarded()) {
       obj = obj->forwardee();
     }
 #endif
