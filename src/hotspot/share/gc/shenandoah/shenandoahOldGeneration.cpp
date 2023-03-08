@@ -229,16 +229,17 @@ void ShenandoahOldGeneration::prepare_gc() {
 
   // Make the old generation regions parseable, so they can be safely
   // scanned when looking for objects in memory indicated by dirty cards.
-  entry_coalesce_and_fill();
-
-  // Now that we have made the old generation parseable, it is safe to reset the mark bitmap.
-  {
+  if (entry_coalesce_and_fill()) {
+    // Now that we have made the old generation parseable, it is safe to reset the mark bitmap.
     static const char* msg = "Concurrent reset (OLD)";
     uint workers_count = ShenandoahWorkerPolicy::calc_workers_for_conc_reset();
     ShenandoahConcurrentPhase gc_phase(msg, ShenandoahPhaseTimings::conc_reset_old, GenerationMode::OLD, workers_count);
     ShenandoahWorkerScope scope(ShenandoahHeap::heap()->workers(), workers_count, msg);
     ShenandoahGeneration::prepare_gc();
   }
+  // Else, coalesce-and-fill has been preempted and we'll finish that effort in the future.  Do not invoke
+  // ShenandoahGeneration::prepare_gc() until coalesce-and-fill is done because it resets the mark bitmap
+  // and invokes set_mark_incomplete().  Coalesce-and-fill depends on the mark bitmap.
 }
 
 bool ShenandoahOldGeneration::entry_coalesce_and_fill() {
