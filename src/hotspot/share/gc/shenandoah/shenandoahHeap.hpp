@@ -270,6 +270,7 @@ private:
   bool      _heap_region_special;
   size_t    _num_regions;
   ShenandoahHeapRegion** _regions;
+  uint8_t* _affiliations;       // Holds array of enum ShenandoahRegionAffiliation, including FREE status in non-generational mode
   ShenandoahRegionIterator _update_refs_iterator;
 
 public:
@@ -608,6 +609,9 @@ private:
   void stw_process_weak_roots(bool full_gc);
   void stw_weak_refs(bool full_gc);
 
+  inline void assert_lock_for_affiliation(ShenandoahRegionAffiliation orig_affiliation,
+                                          ShenandoahRegionAffiliation new_affiliation);
+
   // Heap iteration support
   void scan_roots_for_iteration(ShenandoahScanObjectStack* oop_stack, ObjectIterateScanRootClosure* oops);
   bool prepare_aux_bitmap_for_iteration();
@@ -622,12 +626,18 @@ public:
   AdaptiveSizePolicy* size_policy() shenandoah_not_implemented_return(NULL);
   bool is_maximal_no_gc() const shenandoah_not_implemented_return(false);
 
-  bool is_in(const void* p) const;
+  inline bool is_in(const void* p) const;
 
-  bool is_in_active_generation(oop obj) const;
-  bool is_in_young(const void* p) const;
-  bool is_in_old(const void* p) const;
+  inline bool is_in_active_generation(oop obj) const;
+  inline bool is_in_young(const void* p) const;
+  inline bool is_in_old(const void* p) const;
   inline bool is_old(oop pobj) const;
+
+  inline ShenandoahRegionAffiliation region_affiliation(const ShenandoahHeapRegion* r);
+  inline void set_affiliation(ShenandoahHeapRegion* r, ShenandoahRegionAffiliation new_affiliation);
+
+  inline ShenandoahRegionAffiliation region_affiliation(size_t index);
+  inline void set_affiliation(size_t index, ShenandoahRegionAffiliation new_affiliation);
 
   MemRegion reserved_region() const { return _reserved; }
   bool is_in_reserved(const void* addr) const { return _reserved.contains(addr); }
