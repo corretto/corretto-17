@@ -30,6 +30,7 @@
 #include "gc/shared/gc_globals.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahCodeRoots.hpp"
+#include "gc/shenandoah/shenandoahEvacTracker.hpp"
 #include "gc/shenandoah/shenandoahSATBMarkQueueSet.hpp"
 #include "runtime/thread.hpp"
 #include "utilities/debug.hpp"
@@ -44,13 +45,14 @@ private:
   // Evacuation OOM state
   uint8_t                 _oom_scope_nesting_level;
   bool                    _oom_during_evac;
-  bool                    _plab_allows_promotion; // If false, no more promotion by this thread during this evacuation phase.
+
   SATBMarkQueue           _satb_mark_queue;
 
   // Thread-local allocation buffer for object evacuations.
   // In generational mode, it is exclusive to the young generation.
   PLAB* _gclab;
   size_t _gclab_size;
+
 
   // Thread-local allocation buffer only used in generational mode.
   // Used both by mutator threads and by GC worker threads
@@ -66,7 +68,10 @@ private:
   size_t _plab_evacuated;
   size_t _plab_promoted;
   size_t _plab_preallocated_promoted;
+  bool   _plab_allows_promotion; // If false, no more promotion by this thread during this evacuation phase.
   bool   _plab_retries_enabled;
+
+  ShenandoahEvacuationStats* _evacuation_stats;
 
   ShenandoahThreadLocalData() :
     _gc_state(0),
@@ -83,7 +88,9 @@ private:
     _plab_evacuated(0),
     _plab_promoted(0),
     _plab_preallocated_promoted(0),
-    _plab_retries_enabled(true) {
+    _plab_allows_promotion(true),
+    _plab_retries_enabled(true),
+    _evacuation_stats(new ShenandoahEvacuationStats()) {
 
     // At least on x86_64, nmethod entry barrier encodes _disarmed_value offset
     // in instruction as disp8 immed
@@ -98,6 +105,10 @@ private:
       ShenandoahHeap::heap()->retire_plab(_plab);
       delete _plab;
     }
+
+    // TODO: Preserve these stats somewhere for mutator threads.
+    delete _evacuation_stats;
+    _evacuation_stats = nullptr;
   }
 
   static ShenandoahThreadLocalData* data(Thread* thread) {
@@ -159,6 +170,18 @@ public:
 
   static void set_gclab_size(Thread* thread, size_t v) {
     data(thread)->_gclab_size = v;
+  }
+
+  static void begin_evacuation(Thread* thread, size_t bytes) {
+    data(thread)->_evacuation_stats->begin_evacuation(bytes);
+  }
+
+  static void end_evacuation(Thread* thread, size_t bytes, uint age) {
+    data(thread)->_evacuation_stats->end_evacuation(bytes, age);
+  }
+
+  static ShenandoahEvacuationStats* evacuation_stats(Thread* thread) {
+    return data(thread)->_evacuation_stats;
   }
 
   static PLAB* plab(Thread* thread) {
