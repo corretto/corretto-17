@@ -34,6 +34,7 @@
 #include "gc/shenandoah/shenandoahLock.hpp"
 #include "gc/shenandoah/shenandoahEvacOOMHandler.hpp"
 #include "gc/shenandoah/shenandoahEvacTracker.hpp"
+#include "gc/shenandoah/shenandoahMmuTracker.hpp"
 #include "gc/shenandoah/shenandoahPadding.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
 #include "gc/shenandoah/shenandoahUnload.hpp"
@@ -536,6 +537,7 @@ private:
 
   ShenandoahPhaseTimings*       _phase_timings;
   ShenandoahEvacuationTracker*  _evac_tracker;
+  ShenandoahMmuTracker          _mmu_tracker;
 
   ShenandoahControlThread*   control_thread()          { return _control_thread;    }
   ShenandoahRegulatorThread* regulator_thread()        { return _regulator_thread;  }
@@ -553,6 +555,9 @@ public:
 
   ShenandoahPhaseTimings*      phase_timings()   const { return _phase_timings;     }
   ShenandoahEvacuationTracker* evac_tracker()    const { return  _evac_tracker;     }
+
+  void on_cycle_start(GCCause::Cause cause, ShenandoahGeneration* generation);
+  void on_cycle_end(ShenandoahGeneration* generation);
 
   ShenandoahVerifier*        verifier();
 
@@ -824,6 +829,7 @@ public:
   void cancel_old_gc();
   bool is_old_gc_active();
   void coalesce_and_fill_old_regions();
+  bool adjust_generation_sizes();
 
 // ---------- Helper functions
 //

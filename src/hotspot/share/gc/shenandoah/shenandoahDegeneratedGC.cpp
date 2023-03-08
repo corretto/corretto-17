@@ -311,6 +311,8 @@ void ShenandoahDegenGC::op_degenerated() {
     heap->set_old_evac_reserve(0);
     heap->reset_old_evac_expended();
     heap->set_promoted_reserve(0);
+
+    heap->adjust_generation_sizes();
   }
 
   if (ShenandoahVerify) {
