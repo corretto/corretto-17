@@ -333,6 +333,12 @@ void ShenandoahOldHeuristics::abandon_collection_candidates() {
 }
 
 void ShenandoahOldHeuristics::handle_promotion_failure() {
+  if (!_promotion_failed) {
+    if (ShenandoahHeap::heap()->generation_sizer()->transfer_capacity(_old_generation)) {
+      log_info(gc)("Increased size of old generation due to promotion failure.");
+    }
+    // TODO: Increase tenuring threshold to push back on promotions.
+  }
   _promotion_failed = true;
 }
 
@@ -389,6 +395,10 @@ void ShenandoahOldHeuristics::record_requested_gc() {
   _trigger_heuristic->record_requested_gc();
 }
 
+void ShenandoahOldHeuristics::reset_gc_learning() {
+  _trigger_heuristic->reset_gc_learning();
+}
+
 bool ShenandoahOldHeuristics::can_unload_classes() {
   return _trigger_heuristic->can_unload_classes();
 }
@@ -420,4 +430,5 @@ void ShenandoahOldHeuristics::choose_collection_set_from_regiondata(ShenandoahCo
                                                                     size_t data_size, size_t free) {
   ShouldNotReachHere();
 }
+
 
