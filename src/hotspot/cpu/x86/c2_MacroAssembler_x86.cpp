@@ -26,9 +26,11 @@
 #include "asm/assembler.hpp"
 #include "asm/assembler.inline.hpp"
 #include "oops/methodData.hpp"
+#include "opto/c2_CodeStubs.hpp"
 #include "opto/c2_MacroAssembler.hpp"
 #include "opto/intrinsicnode.hpp"
 #include "opto/opcodes.hpp"
+#include "opto/output.hpp"
 #include "opto/subnode.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/objectMonitor.hpp"
@@ -703,9 +705,18 @@ void C2_MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register t
   jcc(Assembler::zero, Stacked);
 
   if (UseFastLocking) {
-    // If the owner is ANONYMOUS, we need to fix it - in the slow-path.
+    // If the owner is ANONYMOUS, we need to fix it.
     testb(Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)), (int) (intptr_t) ANONYMOUS_OWNER);
+#ifdef _LP64
+    C2HandleAnonOMOwnerStub* stub = new (Compile::current()->comp_arena()) C2HandleAnonOMOwnerStub(tmpReg);
+    Compile::current()->output()->add_stub(stub);
+    jcc(Assembler::notEqual, stub->entry());
+    bind(stub->continuation());
+#else
+    // We can't easily implement this optimization on 32 bit because we don't have a thread register.
+    // Call the slow-path instead.
     jcc(Assembler::notEqual, DONE_LABEL);
+#endif
   }
 
   // It's inflated.
