@@ -3235,8 +3235,7 @@ void TemplateTable::invokevirtual_helper(Register index,
   __ bind(notFinal);
 
   // get receiver klass
-  __ null_check(recv, oopDesc::mark_offset_in_bytes());
-  __ load_klass(r0, recv);
+  __ load_klass(r0, recv, true);
 
   // profile this call
   __ profile_virtual_call(r0, rlocals, r3);
@@ -3325,8 +3324,7 @@ void TemplateTable::invokeinterface(int byte_no) {
   __ tbz(r3, ConstantPoolCacheEntry::is_vfinal_shift, notVFinal);
 
   // Get receiver klass into r3 - also a null check
-  __ null_check(r2, oopDesc::mark_offset_in_bytes());
-  __ load_klass(r3, r2);
+  __ load_klass(r3, r2, true);
 
   Label subtype;
   __ check_klass_subtype(r3, r0, r4, subtype);
@@ -3342,8 +3340,7 @@ void TemplateTable::invokeinterface(int byte_no) {
 
   // Get receiver klass into r3 - also a null check
   __ restore_locals();
-  __ null_check(r2, oopDesc::mark_offset_in_bytes());
-  __ load_klass(r3, r2);
+  __ load_klass(r3, r2, true);
 
   Label no_such_method;
 
@@ -3538,12 +3535,17 @@ void TemplateTable::_new() {
     // The object is initialized before the header.  If the object size is
     // zero, go directly to the header initialization.
     __ bind(initialize_object);
-    __ sub(r3, r3, sizeof(oopDesc));
+    __ sub(r3, r3, oopDesc::base_offset_in_bytes());
     __ cbz(r3, initialize_header);
 
     // Initialize object fields
     {
-      __ add(r2, r0, sizeof(oopDesc));
+      __ add(r2, r0, oopDesc::base_offset_in_bytes());
+      if (!is_aligned(oopDesc::base_offset_in_bytes(), BytesPerLong)) {
+        __ strw(zr, Address(__ post(r2, BytesPerInt)));
+        __ sub(r3, r3, BytesPerInt);
+        __ cbz(r3, initialize_header);
+      }
       Label loop;
       __ bind(loop);
       __ str(zr, Address(__ post(r2, BytesPerLong)));
@@ -3553,9 +3555,16 @@ void TemplateTable::_new() {
 
     // initialize object header only.
     __ bind(initialize_header);
-    __ ldr(rscratch1, Address(r4, Klass::prototype_header_offset()));
+    if (UseBiasedLocking || UseCompactObjectHeaders) {
+      __ ldr(rscratch1, Address(r4, Klass::prototype_header_offset()));
+    } else {
+      __ mov(rscratch1, (intptr_t)markWord::prototype().value());
+    }
     __ str(rscratch1, Address(r0, oopDesc::mark_offset_in_bytes()));
-
+    if (!UseCompactObjectHeaders) {
+      __ store_klass_gap(r0, zr);  // zero klass gap for compressed oops
+      __ store_klass(r0, r4);      // store klass last
+    }
     {
       SkipIfEqual skip(_masm, &DTraceAllocProbes, false);
       // Trigger dtrace event for fastpath

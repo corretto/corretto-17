@@ -138,6 +138,21 @@ bool oopDesc::is_array_noinline()             const { return is_array();        
 bool oopDesc::is_objArray_noinline()          const { return is_objArray();            }
 bool oopDesc::is_typeArray_noinline()         const { return is_typeArray();           }
 
+bool oopDesc::has_klass_gap() {
+  // Only has a klass gap when compressed class pointers are used, but
+  // only if not using compact headers..
+  return UseCompressedClassPointers && !UseCompactObjectHeaders;
+}
+
+#if INCLUDE_CDS_JAVA_HEAP
+void oopDesc::set_narrow_klass(narrowKlass nk) {
+  assert(DumpSharedSpaces, "Used by CDS only. Do not abuse!");
+  assert(UseCompressedClassPointers, "must be");
+  assert(!UseCompactObjectHeaders, "not with compact headers");
+  _metadata._compressed_klass = nk;
+}
+#endif
+
 void* oopDesc::load_klass_raw(oop obj) {
   // TODO: Remove method altogether and replace with calls to obj->klass() ?
   // OTOH, we may eventually get rid of locking in header, and then no
@@ -145,7 +160,7 @@ void* oopDesc::load_klass_raw(oop obj) {
 #ifdef _LP64
   return obj->klass();
 #else
-  return obj->_klass;
+  return obj->_metadata._klass;
 #endif
 }
 

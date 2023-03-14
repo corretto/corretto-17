@@ -204,7 +204,8 @@ typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
   /******************************************************************/                                                               \
                                                                                                                                      \
   volatile_nonstatic_field(oopDesc,            _mark,                                         markWord)                              \
-  NOT_LP64(volatile_nonstatic_field(oopDesc,   _klass,                                        Klass*))                               \
+  volatile_nonstatic_field(oopDesc,            _metadata._klass,                              Klass*)                                \
+  volatile_nonstatic_field(oopDesc,            _metadata._compressed_klass,                   narrowKlass)                           \
   static_field(BarrierSet,                     _barrier_set,                                  BarrierSet*)                           \
   nonstatic_field(ArrayKlass,                  _dimension,                                    int)                                   \
   volatile_nonstatic_field(ArrayKlass,         _higher_dimension,                             Klass*)                                \
@@ -2641,6 +2642,7 @@ typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
   declare_constant(markWord::biased_lock_shift)                           \
   declare_constant(markWord::age_shift)                                   \
   declare_constant(markWord::hash_shift)                                  \
+  LP64_ONLY(declare_constant(markWord::klass_shift))                      \
                                                                           \
   declare_constant(markWord::lock_mask)                                   \
   declare_constant(markWord::lock_mask_in_place)                          \

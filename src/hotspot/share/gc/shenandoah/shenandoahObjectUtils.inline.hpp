@@ -38,6 +38,7 @@
 // code is supposed to observe from-space objects.
 #ifdef _LP64
 markWord ShenandoahObjectUtils::stable_mark(oop obj) {
+  assert(UseCompactObjectHeaders, "only used with compact object headers");
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   assert(heap->is_in(obj), "object not in heap: " PTR_FORMAT, p2i(obj));
   markWord mark = obj->mark_acquire();
@@ -78,6 +79,9 @@ markWord ShenandoahObjectUtils::stable_mark(oop obj) {
 #endif
 
 Klass* ShenandoahObjectUtils::klass(oop obj) {
+  if (!UseCompactObjectHeaders) {
+    return obj->klass();
+  }
 #ifdef _LP64
   markWord header = stable_mark(obj);
   assert(header.narrow_klass() != 0, "klass must not be NULL: " INTPTR_FORMAT, header.value());
@@ -88,7 +92,10 @@ Klass* ShenandoahObjectUtils::klass(oop obj) {
 }
 
 size_t ShenandoahObjectUtils::size(oop obj) {
-  Klass* kls = klass(obj);
+  if (!UseCompactObjectHeaders) {
+    return obj->size();
+  }
+ Klass* kls = klass(obj);
   return obj->size_given_klass(kls);
 }
 

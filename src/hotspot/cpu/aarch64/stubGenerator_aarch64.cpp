@@ -584,18 +584,8 @@ class StubGenerator: public StubCodeGenerator {
     __ cbnz(c_rarg2, error);
 
     // make sure klass is 'reasonable', which is not zero.
-    // NOTE: We used to load the Klass* here, and compare that to zero.
-    // However, with current Lilliput implementation, that would require
-    // checking the locking bits and calling into the runtime, which
-    // clobbers the condition flags, which may be live around this call.
-    // OTOH, this is a simple NULL-check, and we can simply load the upper
-    // 32bit of the header as narrowKlass, and compare that to 0. The
-    // worst that can happen (rarely) is that the object is locked and
-    // we have lock pointer bits in the upper 32bits. We can't get a false
-    // negative.
-    assert(oopDesc::klass_offset_in_bytes() % 4 == 0, "must be 4 byte aligned");
-    __ ldrw(r0, Address(r0, oopDesc::klass_offset_in_bytes()));  // get klass
-    __ cbzw(r0, error);      // if klass is NULL it is broken
+    __ load_klass(r0, r0);  // get klass
+    __ cbz(r0, error);      // if klass is NULL it is broken
 
     // return if everything seems ok
     __ bind(exit);

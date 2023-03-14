@@ -652,7 +652,10 @@ protected:
   // Note: the prototype header is always set up to be at least the
   // prototype markWord. If biased locking is enabled it may further be
   // biasable and have an epoch.
-  markWord prototype_header() const      { return _prototype_header; }
+  markWord prototype_header() const      {
+    assert(UseCompactObjectHeaders, "only use with compact object headers");
+    return _prototype_header;
+  }
 
   // NOTE: once instances of this klass are floating around in the
   // system, this header must only be updated at a safepoint.

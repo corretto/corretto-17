@@ -56,6 +56,9 @@ public class Mark extends VMObject {
     biasedLockShift     = db.lookupLongConstant("markWord::biased_lock_shift").longValue();
     ageShift            = db.lookupLongConstant("markWord::age_shift").longValue();
     hashShift           = db.lookupLongConstant("markWord::hash_shift").longValue();
+    if (VM.getVM().isLP64()) {
+      klassShift          = db.lookupLongConstant("markWord::klass_shift").longValue();
+    }
     lockMask            = db.lookupLongConstant("markWord::lock_mask").longValue();
     lockMaskInPlace     = db.lookupLongConstant("markWord::lock_mask_in_place").longValue();
     biasedLockMask      = db.lookupLongConstant("markWord::biased_lock_mask").longValue();
@@ -91,6 +94,7 @@ public class Mark extends VMObject {
   private static long biasedLockShift;
   private static long ageShift;
   private static long hashShift;
+  private static long klassShift;
 
   private static long lockMask;
   private static long lockMaskInPlace;
@@ -120,6 +124,10 @@ public class Mark extends VMObject {
   private static long cmsShift;
   private static long cmsMask;
   private static long sizeShift;
+
+  public static long getKlassShift() {
+    return klassShift;
+  }
 
   public Mark(Address addr) {
     super(addr);
@@ -223,7 +231,9 @@ public class Mark extends VMObject {
   }
 
   public Klass getKlass() {
-    return (Klass)Metadata.instantiateWrapperFor(addr.getCompKlassAddressAt(4));
+    assert(VM.getVM().isCompactObjectHeadersEnabled());
+    assert(!hasMonitor());
+    return (Klass)Metadata.instantiateWrapperFor(addr.getCompKlassAddressAt(0));
   }
 
   // Debugging

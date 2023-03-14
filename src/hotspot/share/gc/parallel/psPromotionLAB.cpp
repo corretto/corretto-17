@@ -83,22 +83,22 @@ void PSPromotionLAB::flush() {
   // so they can always fill with an array.
   HeapWord* tlab_end = end() + filler_header_size;
   typeArrayOop filler_oop = (typeArrayOop) cast_to_oop(top());
-#ifdef _LP64
-  filler_oop->set_mark(Universe::intArrayKlassObj()->prototype_header());
-#else
-  filler_oop->set_mark(markWord::prototype());
-  filler_oop->set_klass(Universe::intArrayKlassObj());
-#endif
-  int header_size = (arrayOopDesc::base_offset_in_bytes(T_INT) + BytesPerWord) / BytesPerWord;
-  const size_t array_length =
-    pointer_delta(tlab_end, top()) - header_size;
-  assert( (array_length * (HeapWordSize/sizeof(jint))) < (size_t)max_jint, "array too big in PSPromotionLAB");
-  filler_oop->set_length((int)(array_length * (HeapWordSize/sizeof(jint))));
+  if (UseCompactObjectHeaders) {
+    filler_oop->set_mark(Universe::intArrayKlassObj()->prototype_header());
+  } else {
+    filler_oop->set_mark(markWord::prototype());
+    filler_oop->set_klass(Universe::intArrayKlassObj());
+  }
+  int header_size = arrayOopDesc::base_offset_in_bytes(T_INT);
+  const size_t array_length_bytes = pointer_delta(tlab_end, top(), 1) - header_size;
+  assert((array_length_bytes / sizeof(jint)) < (size_t)max_jint, "array too big in PSPromotionLAB");
+  filler_oop->set_length((int)(array_length_bytes / sizeof(jint)));
 
 #ifdef ASSERT
   // Note that we actually DO NOT want to use the aligned header size!
-  HeapWord* elt_words = cast_from_oop<HeapWord*>(filler_oop) + header_size;
-  Copy::fill_to_words(elt_words, array_length, 0xDEAABABE);
+  const size_t array_length_words = pointer_delta(tlab_end, top()) - heap_word_size(header_size);
+  HeapWord* elt_words = cast_from_oop<HeapWord*>(filler_oop) + heap_word_size(header_size);
+  Copy::fill_to_words(elt_words, array_length_words, 0xDEAABABE);
 #endif
 
   set_bottom(NULL);
