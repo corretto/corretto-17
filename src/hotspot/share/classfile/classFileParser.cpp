@@ -2079,7 +2079,11 @@ void ClassFileParser::ClassAnnotationCollector::apply_to(InstanceKlass* ik) {
     ik->set_has_value_based_class_annotation();
     if (DiagnoseSyncOnValueBasedClasses) {
       ik->set_is_value_based();
-      ik->set_prototype_header(markWord::prototype());
+      markWord prototype = markWord::prototype();
+      if (UseCompactObjectHeaders) {
+        prototype = prototype.set_klass(ik);
+      }
+      ik->set_prototype_header(prototype);
     }
   }
 }

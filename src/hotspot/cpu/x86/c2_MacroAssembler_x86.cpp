@@ -728,7 +728,7 @@ void C2_MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register t
     testptr(boxReg, boxReg);
     jccb(Assembler::notZero, L_regular_inflated_unlock);
     xend();
-    jmpb(DONE_LABEL);
+    jmp(DONE_LABEL);
     bind(L_regular_inflated_unlock);
   }
 #endif

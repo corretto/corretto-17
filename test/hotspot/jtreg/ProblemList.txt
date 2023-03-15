@@ -179,3 +179,5 @@ gc/arguments/TestCompressedClassFlags.java 1234567 generic-all
 
 # Dispabled because Lilliput forces -UseBiasedLocking
 runtime/logging/BiasedLockingTest.java 1234567 generic-all
+# Because of -UseBiasedLocking, too
+compiler/rtm/cli/TestUseRTMLockingOptionWithBiasedLocking.java 1234567 generic-all
