@@ -33,11 +33,10 @@ The following issues are addressed in 17.0.6.10.1:
 
 The following CVEs are addressed in 17.0.6.10.1:
 
-| CVE            | CVSS    | Component |
-|----------------|---------|-----------|
-| CVE-2023-21835 | 8287411 | 5.3       |
-| CVE-2023-21830 | 8285021 | 5.3       |
-| CVE-2023-21843 | 8293742 | 3.7       |
+| CVE            | CVSS | Component                   |
+|----------------|------|-----------------------------|
+| CVE-2023-21835 | 5.3  | security-libs/javax.net.ssl |
+| CVE-2023-21843 | 3.7  | client-libs/javax.sound     |
 
 
 ## Corretto version: 17.0.5.8.1
