@@ -76,7 +76,7 @@ void C2CheckLockStackStub::emit(C2_MacroAssembler& masm) {
 
 #ifdef _LP64
 int C2HandleAnonOMOwnerStub::max_size() const {
-  return 17;
+  return 18;
 }
 
 void C2HandleAnonOMOwnerStub::emit(C2_MacroAssembler& masm) {
