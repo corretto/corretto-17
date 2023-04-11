@@ -24,3 +24,5 @@ NashornProfile.txt
 /.classpath
 /.cproject
 commitId.txt
+/compile_commands.json
+/.cache
