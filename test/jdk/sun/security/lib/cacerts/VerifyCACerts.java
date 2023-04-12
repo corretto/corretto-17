@@ -370,8 +370,8 @@ public class VerifyCACerts {
             // Valid until: Sat May 21 04:00:00 GMT 2022
             add("geotrustglobalca [jdk]");
             // Amazon Linux
-            add("globalsignrootca-r2");
-            add("cybertrustglobalroot");
+            add("e-tugracertificationauthority");
+            add("hongkongpostrootca1");
         }
     };
 
