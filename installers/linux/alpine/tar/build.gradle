@@ -88,12 +88,13 @@ task configureBuild(type: Exec) {
     workingDir "$buildRoot"
 
     // Platform specific flags
-    def command = ['bash', 'configure',
-            "--with-cacerts-file=${depsMap[caCerts]}"
-    ]
+    def command = ['bash', 'configure']
     // Common flags
     command += project.correttoCommonFlags
-    commandLine command.flatten()
+    command += ["--with-cacerts-file=${depsMap[caCerts]}",
+                "--with-zlib=system"
+    ]
+   commandLine command.flatten()
 }
 
 task executeBuild(type: Exec) {
