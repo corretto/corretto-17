@@ -969,21 +969,24 @@ JvmtiEnvBase::get_object_monitor_usage(JavaThread* calling_thread, jobject objec
 
   uint32_t debug_bits = 0;
   // first derive the object's owner and entry_count (if any)
-  {
-    owning_thread = ObjectSynchronizer::get_lock_owner(tlh.list(), hobj);
+  owning_thread = ObjectSynchronizer::get_lock_owner(tlh.list(), hobj);
+  if (owning_thread != NULL) {  // monitor is owned
+    Handle th(current_thread, owning_thread->threadObj());
+    ret.owner = (jthread)jni_reference(calling_thread, th);
 
-    if (owning_thread != NULL) {  // monitor is owned
-      // The recursions field of a monitor does not reflect recursions
-      // as lightweight locks before inflating the monitor are not included.
-      // We have to count the number of recursive monitor entries the hard way.
-      // We pass a handle to survive any GCs along the way.
-      ret.entry_count = count_locked_objects(owning_thread, hobj);
-    }
-    // implied else: entry_count == 0
+    // The recursions field of a monitor does not reflect recursions
+    // as lightweight locks before inflating the monitor are not included.
+    // We have to count the number of recursive monitor entries the hard way.
+    // We pass a handle to survive any GCs along the way.
+    ret.entry_count = count_locked_objects(owning_thread, hobj);
   }
+  // implied else: entry_count == 0
 
   jint nWant = 0, nWait = 0;
-  if (mon != NULL) {
+  markWord mark = hobj->mark();
+  if (mark.has_monitor()) {
+    mon = mark.monitor();
+    assert(mon != NULL, "must have monitor");
     // this object has a heavyweight monitor
     nWant = mon->contentions(); // # of threads contending for monitor
     nWait = mon->waiters();     // # of threads in Object.wait()
