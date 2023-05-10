@@ -78,7 +78,7 @@ task configureBuild(type: Exec) {
     // Platform specific flags
     def command = ['bash', 'configure',
             "--with-cacerts-file=${depsMap[caCerts]}",
-            "--with-zlib=bundled"
+            "--with-zlib=system"
     ]
     // Common flags
     command += project.correttoCommonFlags
