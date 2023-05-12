@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018, 2021, Red Hat, Inc. All rights reserved.
+ * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -756,9 +757,13 @@ void ShenandoahBarrierSetAssembler::generate_c1_pre_barrier_runtime_stub(StubAss
   // Is marking still active?
   Address gc_state(thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
   __ ldrb(tmp, gc_state);
-  __ mov(rscratch2, ShenandoahHeap::YOUNG_MARKING | ShenandoahHeap::OLD_MARKING);
-  __ tst(tmp, rscratch2);
-  __ br(Assembler::EQ, done);
+  if (!ShenandoahHeap::heap()->mode()->is_generational()) {
+    __ tbz(tmp, ShenandoahHeap::YOUNG_MARKING_BITPOS, done);
+  } else {
+    __ mov(rscratch2, ShenandoahHeap::YOUNG_MARKING | ShenandoahHeap::OLD_MARKING);
+    __ tst(tmp, rscratch2);
+    __ br(Assembler::EQ, done);
+  }
 
   // Can we store original value in the thread's buffer?
   __ ldr(tmp, queue_index);
