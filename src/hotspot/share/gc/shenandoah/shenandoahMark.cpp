@@ -54,7 +54,7 @@ ShenandoahMark::ShenandoahMark(ShenandoahGeneration* generation) :
 template <ShenandoahGenerationType GENERATION, bool CANCELLABLE, StringDedupMode STRING_DEDUP>
 void ShenandoahMark::mark_loop_prework(uint w, TaskTerminator *t, ShenandoahReferenceProcessor *rp, bool update_refs) {
   ShenandoahObjToScanQueue* q = get_queue(w);
-  ShenandoahObjToScanQueue* old = get_old_queue(w);
+  ShenandoahObjToScanQueue* old_q = get_old_queue(w);
 
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
   ShenandoahLiveData* ld = heap->get_liveness_cache(w);
@@ -64,21 +64,21 @@ void ShenandoahMark::mark_loop_prework(uint w, TaskTerminator *t, ShenandoahRefe
   if (heap->unload_classes()) {
     if (update_refs) {
       using Closure = ShenandoahMarkUpdateRefsMetadataClosure<GENERATION, STRING_DEDUP>;
-      Closure cl(q, rp, old);
+      Closure cl(q, rp, old_q);
       mark_loop_work<Closure, GENERATION, CANCELLABLE>(&cl, ld, w, t);
     } else {
       using Closure = ShenandoahMarkRefsMetadataClosure<GENERATION, STRING_DEDUP>;
-      Closure cl(q, rp, old);
+      Closure cl(q, rp, old_q);
       mark_loop_work<Closure, GENERATION, CANCELLABLE>(&cl, ld, w, t);
     }
   } else {
     if (update_refs) {
       using Closure = ShenandoahMarkUpdateRefsClosure<GENERATION, STRING_DEDUP>;
-      Closure cl(q, rp, old);
+      Closure cl(q, rp, old_q);
       mark_loop_work<Closure, GENERATION, CANCELLABLE>(&cl, ld, w, t);
     } else {
       using Closure = ShenandoahMarkRefsClosure<GENERATION, STRING_DEDUP>;
-      Closure cl(q, rp, old);
+      Closure cl(q, rp, old_q);
       mark_loop_work<Closure, GENERATION, CANCELLABLE>(&cl, ld, w, t);
     }
   }
@@ -175,9 +175,9 @@ void ShenandoahMark::mark_loop_work(T* cl, ShenandoahLiveData* live_data, uint w
     }
   }
   q = get_queue(worker_id);
-  ShenandoahObjToScanQueue* old = get_old_queue(worker_id);
+  ShenandoahObjToScanQueue* old_q = get_old_queue(worker_id);
 
-  ShenandoahSATBBufferClosure<GENERATION> drain_satb(q, old);
+  ShenandoahSATBBufferClosure<GENERATION> drain_satb(q, old_q);
   SATBMarkQueueSet& satb_mq_set = ShenandoahBarrierSet::satb_mark_queue_set();
 
   /*
@@ -211,5 +211,3 @@ void ShenandoahMark::mark_loop_work(T* cl, ShenandoahLiveData* live_data, uint w
     }
   }
 }
-
-

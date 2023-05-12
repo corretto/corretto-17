@@ -52,11 +52,11 @@
 #include "utilities/events.hpp"
 
 class ShenandoahFlushAllSATB : public ThreadClosure {
- private:
+private:
   SATBMarkQueueSet& _satb_qset;
   uintx _claim_token;
 
- public:
+public:
   explicit ShenandoahFlushAllSATB(SATBMarkQueueSet& satb_qset) :
     _satb_qset(satb_qset),
     _claim_token(Threads::thread_claim_token()) { }
@@ -75,17 +75,16 @@ class ShenandoahProcessOldSATB : public SATBBufferClosure {
   ShenandoahObjToScanQueue* _queue;
   ShenandoahHeap* _heap;
   ShenandoahMarkingContext* const _mark_context;
+  size_t                          _trashed_oops;
 
- public:
-  size_t _trashed_oops;
-
+public:
   explicit ShenandoahProcessOldSATB(ShenandoahObjToScanQueue* q) :
     _queue(q),
     _heap(ShenandoahHeap::heap()),
     _mark_context(_heap->marking_context()),
     _trashed_oops(0) {}
 
-  void do_buffer(void **buffer, size_t size) {
+  void do_buffer(void** buffer, size_t size) {
     assert(size == 0 || !_heap->has_forwarded_objects() || _heap->is_concurrent_old_mark_in_progress(), "Forwarded objects are not expected here");
     if (ShenandoahStringDedup::is_enabled()) {
       do_buffer_impl<ENQUEUE_DEDUP>(buffer, size);
@@ -102,19 +101,22 @@ class ShenandoahProcessOldSATB : public SATBBufferClosure {
       if (region->is_old() && region->is_active()) {
           ShenandoahMark::mark_through_ref<oop, OLD, STRING_DEDUP>(p, _queue, NULL, _mark_context, &_stringdedup_requests, false);
       } else {
-        ++_trashed_oops;
+        _trashed_oops++;
       }
     }
+  }
+
+  size_t trashed_oops() {
+    return _trashed_oops;
   }
 };
 
 class ShenandoahPurgeSATBTask : public AbstractGangTask {
 private:
   ShenandoahObjToScanQueueSet* _mark_queues;
+  volatile size_t             _trashed_oops;
 
 public:
-  volatile size_t _trashed_oops;
-
   explicit ShenandoahPurgeSATBTask(ShenandoahObjToScanQueueSet* queues) :
     AbstractGangTask("Purge SATB"),
     _mark_queues(queues),
@@ -124,7 +126,7 @@ public:
 
   ~ShenandoahPurgeSATBTask() {
     if (_trashed_oops > 0) {
-      log_info(gc)("Purged " SIZE_FORMAT " oops from old generation SATB buffers.", _trashed_oops);
+      log_info(gc)("Purged " SIZE_FORMAT " oops from old generation SATB buffers", _trashed_oops);
     }
   }
 
@@ -138,19 +140,20 @@ public:
     ShenandoahProcessOldSATB processor(mark_queue);
     while (satb_queues.apply_closure_to_completed_buffer(&processor)) {}
 
-    Atomic::add(&_trashed_oops, processor._trashed_oops);
+    Atomic::add(&_trashed_oops, processor.trashed_oops());
   }
 };
 
 class ShenandoahConcurrentCoalesceAndFillTask : public AbstractGangTask {
- private:
-  uint _nworkers;
-  ShenandoahHeapRegion** _coalesce_and_fill_region_array;
-  uint _coalesce_and_fill_region_count;
-  volatile bool _is_preempted;
+private:
+  uint                    _nworkers;
+  ShenandoahHeapRegion**  _coalesce_and_fill_region_array;
+  uint                    _coalesce_and_fill_region_count;
+  volatile bool           _is_preempted;
 
- public:
-  ShenandoahConcurrentCoalesceAndFillTask(uint nworkers, ShenandoahHeapRegion** coalesce_and_fill_region_array,
+public:
+  ShenandoahConcurrentCoalesceAndFillTask(uint nworkers,
+                                          ShenandoahHeapRegion** coalesce_and_fill_region_array,
                                           uint region_count) :
     AbstractGangTask("Shenandoah Concurrent Coalesce and Fill"),
     _nworkers(nworkers),
@@ -163,7 +166,8 @@ class ShenandoahConcurrentCoalesceAndFillTask : public AbstractGangTask {
     for (uint region_idx = worker_id; region_idx < _coalesce_and_fill_region_count; region_idx += _nworkers) {
       ShenandoahHeapRegion* r = _coalesce_and_fill_region_array[region_idx];
       if (r->is_humongous()) {
-        // there's only one object in this region and it's not garbage, so no need to coalesce or fill
+        // There is only one object in this region and it is not garbage,
+        // so no need to coalesce or fill.
         continue;
       }
 
@@ -188,10 +192,6 @@ ShenandoahOldGeneration::ShenandoahOldGeneration(uint max_queues, size_t max_cap
 {
   // Always clear references for old generation
   ref_processor()->set_soft_reference_policy(true);
-}
-
-const char* ShenandoahOldGeneration::name() const {
-  return "OLD";
 }
 
 bool ShenandoahOldGeneration::contains(ShenandoahHeapRegion* region) const {
@@ -219,7 +219,7 @@ bool ShenandoahOldGeneration::is_concurrent_mark_in_progress() {
 
 void ShenandoahOldGeneration::cancel_marking() {
   if (is_concurrent_mark_in_progress()) {
-    log_info(gc)("Abandon satb buffers.");
+    log_info(gc)("Abandon SATB buffers");
     ShenandoahBarrierSet::satb_mark_queue_set().abandon_partial_marking();
   }
 
@@ -227,7 +227,6 @@ void ShenandoahOldGeneration::cancel_marking() {
 }
 
 void ShenandoahOldGeneration::prepare_gc() {
-
   // Make the old generation regions parseable, so they can be safely
   // scanned when looking for objects in memory indicated by dirty cards.
   if (entry_coalesce_and_fill()) {
@@ -292,7 +291,7 @@ void ShenandoahOldGeneration::transfer_pointers_from_satb() {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   shenandoah_assert_safepoint();
   assert(heap->is_concurrent_old_mark_in_progress(), "Only necessary during old marking.");
-  log_info(gc)("Transfer satb buffers.");
+  log_info(gc)("Transfer SATB buffers");
   uint nworkers = heap->workers()->active_workers();
   StrongRootsScope scope(nworkers);
 
@@ -315,7 +314,9 @@ void ShenandoahOldGeneration::prepare_regions_and_collection_set(bool concurrent
   assert(!heap->is_full_gc_in_progress(), "Only for concurrent and degenerated GC");
 
   {
-    ShenandoahGCPhase phase(concurrent ? ShenandoahPhaseTimings::final_update_region_states : ShenandoahPhaseTimings::degen_gc_final_update_region_states);
+    ShenandoahGCPhase phase(concurrent ?
+        ShenandoahPhaseTimings::final_update_region_states :
+        ShenandoahPhaseTimings::degen_gc_final_update_region_states);
     ShenandoahFinalMarkUpdateRegionStateClosure cl(complete_marking_context());
 
     parallel_heap_region_iterate(&cl);
@@ -325,7 +326,9 @@ void ShenandoahOldGeneration::prepare_regions_and_collection_set(bool concurrent
   {
     // This doesn't actually choose a collection set, but prepares a list of
     // regions as 'candidates' for inclusion in a mixed collection.
-    ShenandoahGCPhase phase(concurrent ? ShenandoahPhaseTimings::choose_cset : ShenandoahPhaseTimings::degen_gc_choose_cset);
+    ShenandoahGCPhase phase(concurrent ?
+        ShenandoahPhaseTimings::choose_cset :
+        ShenandoahPhaseTimings::degen_gc_choose_cset);
     ShenandoahHeapLocker locker(heap->lock());
     heuristics()->choose_collection_set(nullptr, nullptr);
   }
@@ -333,7 +336,9 @@ void ShenandoahOldGeneration::prepare_regions_and_collection_set(bool concurrent
   {
     // Though we did not choose a collection set above, we still may have
     // freed up immediate garbage regions so proceed with rebuilding the free set.
-    ShenandoahGCPhase phase(concurrent ? ShenandoahPhaseTimings::final_rebuild_freeset : ShenandoahPhaseTimings::degen_gc_final_rebuild_freeset);
+    ShenandoahGCPhase phase(concurrent ?
+        ShenandoahPhaseTimings::final_rebuild_freeset :
+        ShenandoahPhaseTimings::degen_gc_final_rebuild_freeset);
     ShenandoahHeapLocker locker(heap->lock());
     heap->free_set()->rebuild();
   }
@@ -341,10 +346,10 @@ void ShenandoahOldGeneration::prepare_regions_and_collection_set(bool concurrent
 
 const char* ShenandoahOldGeneration::state_name(State state) {
   switch (state) {
-    case IDLE:          return "Idle";
-    case FILLING:       return "Coalescing";
-    case BOOTSTRAPPING: return "Bootstrapping";
-    case MARKING:       return "Marking";
+    case IDLE:              return "Idle";
+    case FILLING:           return "Coalescing";
+    case BOOTSTRAPPING:     return "Bootstrapping";
+    case MARKING:           return "Marking";
     case WAITING_FOR_EVAC:  return "Waiting for evacuation";
     case WAITING_FOR_FILL:  return "Waiting for fill";
     default:
@@ -356,7 +361,7 @@ const char* ShenandoahOldGeneration::state_name(State state) {
 void ShenandoahOldGeneration::transition_to(State new_state) {
   if (_state != new_state) {
     log_info(gc)("Old generation transition from %s to %s", state_name(_state), state_name(new_state));
-    assert(validate_transition(new_state), "Invalid state transition.");
+    validate_transition(new_state);
     _state = new_state;
   }
 }
@@ -412,7 +417,7 @@ void ShenandoahOldGeneration::transition_to(State new_state) {
 //                        +-----|    FILLING      |
 //                              +-----------------+
 //
-bool ShenandoahOldGeneration::validate_transition(State new_state) {
+void ShenandoahOldGeneration::validate_transition(State new_state) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   switch (new_state) {
     case IDLE:
@@ -421,32 +426,31 @@ bool ShenandoahOldGeneration::validate_transition(State new_state) {
       assert(_old_heuristics->unprocessed_old_collection_candidates() == 0, "Cannot become idle with collection candidates");
       assert(!heap->is_prepare_for_old_mark_in_progress(), "Cannot become idle while making old generation parseable.");
       assert(heap->young_generation()->old_gen_task_queues() == nullptr, "Cannot become idle when setup for bootstrapping.");
-      return true;
+      break;
     case FILLING:
       assert(_state == IDLE || _state == WAITING_FOR_FILL, "Cannot begin filling without first completing evacuations, state is '%s'", state_name(_state));
       assert(heap->is_prepare_for_old_mark_in_progress(), "Should be preparing for old mark now.");
-      return true;
+      break;
     case BOOTSTRAPPING:
       assert(_state == FILLING, "Cannot reset bitmap without making old regions parseable, state is '%s'", state_name(_state));
       assert(_old_heuristics->unprocessed_old_collection_candidates() == 0, "Cannot bootstrap with mixed collection candidates");
       assert(!heap->is_prepare_for_old_mark_in_progress(), "Cannot still be making old regions parseable.");
-      return true;
+      break;
     case MARKING:
       assert(_state == BOOTSTRAPPING, "Must have finished bootstrapping before marking, state is '%s'", state_name(_state));
       assert(heap->young_generation()->old_gen_task_queues() != nullptr, "Young generation needs old mark queues.");
       assert(heap->is_concurrent_old_mark_in_progress(), "Should be marking old now.");
-      return true;
+      break;
     case WAITING_FOR_EVAC:
       assert(_state == MARKING, "Cannot have old collection candidates without first marking, state is '%s'", state_name(_state));
       assert(_old_heuristics->unprocessed_old_collection_candidates() > 0, "Must have collection candidates here.");
-      return true;
+      break;
     case WAITING_FOR_FILL:
       assert(_state == MARKING || _state == WAITING_FOR_EVAC, "Cannot begin filling without first marking or evacuating, state is '%s'", state_name(_state));
       assert(_old_heuristics->unprocessed_old_collection_candidates() > 0, "Cannot wait for fill without something to fill.");
-      return true;
+      break;
     default:
-      ShouldNotReachHere();
-      return false;
+      fatal("Unknown new state");
   }
 }
 #endif

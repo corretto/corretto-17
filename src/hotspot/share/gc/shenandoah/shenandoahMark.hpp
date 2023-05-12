@@ -46,7 +46,7 @@ protected:
 
 public:
   template<class T, ShenandoahGenerationType GENERATION, StringDedupMode STRING_DEDUP>
-  static inline void mark_through_ref(T* p, ShenandoahObjToScanQueue* q, ShenandoahObjToScanQueue* old, ShenandoahMarkingContext* const mark_context, StringDedup::Requests* const req, bool weak);
+  static inline void mark_through_ref(T* p, ShenandoahObjToScanQueue* q, ShenandoahObjToScanQueue* old_q, ShenandoahMarkingContext* const mark_context, StringDedup::Requests* const req, bool weak);
 
   // Helpers
   inline ShenandoahObjToScanQueueSet* task_queues() const;

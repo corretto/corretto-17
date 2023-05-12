@@ -219,13 +219,13 @@ class ShenandoahSATBBufferClosure : public SATBBufferClosure {
 private:
   StringDedup::Requests     _stringdedup_requests;
   ShenandoahObjToScanQueue* _queue;
-  ShenandoahObjToScanQueue* _old;
+  ShenandoahObjToScanQueue* _old_queue;
   ShenandoahHeap* _heap;
   ShenandoahMarkingContext* const _mark_context;
 public:
-  ShenandoahSATBBufferClosure(ShenandoahObjToScanQueue* q, ShenandoahObjToScanQueue* old) :
+  ShenandoahSATBBufferClosure(ShenandoahObjToScanQueue* q, ShenandoahObjToScanQueue* old_q) :
     _queue(q),
-    _old(old),
+    _old_queue(old_q),
     _heap(ShenandoahHeap::heap()),
     _mark_context(_heap->marking_context())
   {
@@ -244,7 +244,7 @@ public:
   void do_buffer_impl(void **buffer, size_t size) {
     for (size_t i = 0; i < size; ++i) {
       oop *p = (oop *) &buffer[i];
-      ShenandoahMark::mark_through_ref<oop, GENERATION, STRING_DEDUP>(p, _queue, _old, _mark_context, &_stringdedup_requests, false);
+      ShenandoahMark::mark_through_ref<oop, GENERATION, STRING_DEDUP>(p, _queue, _old_queue, _mark_context, &_stringdedup_requests, false);
     }
   }
 };
@@ -252,18 +252,19 @@ public:
 template<ShenandoahGenerationType GENERATION>
 bool ShenandoahMark::in_generation(oop obj) {
   // Each in-line expansion of in_generation() resolves GENERATION at compile time.
-  if (GENERATION == YOUNG)
+  if (GENERATION == YOUNG) {
     return ShenandoahHeap::heap()->is_in_young(obj);
-  else if (GENERATION == OLD)
+  } else if (GENERATION == OLD) {
     return ShenandoahHeap::heap()->is_in_old(obj);
-  else if (GENERATION == GLOBAL)
+  } else if (GENERATION == GLOBAL) {
     return true;
-  else
+  } else {
     return false;
+  }
 }
 
 template<class T, ShenandoahGenerationType GENERATION, StringDedupMode STRING_DEDUP>
-inline void ShenandoahMark::mark_through_ref(T *p, ShenandoahObjToScanQueue* q, ShenandoahObjToScanQueue* old, ShenandoahMarkingContext* const mark_context, StringDedup::Requests* const req, bool weak) {
+inline void ShenandoahMark::mark_through_ref(T *p, ShenandoahObjToScanQueue* q, ShenandoahObjToScanQueue* old_q, ShenandoahMarkingContext* const mark_context, StringDedup::Requests* const req, bool weak) {
   T o = RawAccess<>::oop_load(p);
   if (!CompressedOops::is_null(o)) {
     oop obj = CompressedOops::decode_not_null(o);
@@ -274,6 +275,7 @@ inline void ShenandoahMark::mark_through_ref(T *p, ShenandoahObjToScanQueue* q, 
     if (in_generation<GENERATION>(obj)) {
       mark_ref<STRING_DEDUP>(q, mark_context, req, weak, obj);
       shenandoah_assert_marked(p, obj);
+      // TODO: This is v-call on very hot path, can we sense the same from GENERATION?
       if (heap->mode()->is_generational()) {
         // TODO: As implemented herein, GLOBAL collections reconstruct the card table during GLOBAL concurrent
         // marking. Note that the card table is cleaned at init_mark time so it needs to be reconstructed to support
@@ -288,9 +290,9 @@ inline void ShenandoahMark::mark_through_ref(T *p, ShenandoahObjToScanQueue* q, 
           heap->mark_card_as_dirty((HeapWord*)p);
         }
       }
-    } else if (old != nullptr) {
+    } else if (old_q != nullptr) {
       // Young mark, bootstrapping old or concurrent with old marking.
-      mark_ref<STRING_DEDUP>(old, mark_context, req, weak, obj);
+      mark_ref<STRING_DEDUP>(old_q, mark_context, req, weak, obj);
       shenandoah_assert_marked(p, obj);
     } else if (GENERATION == OLD) {
       // Old mark, found a young pointer.
