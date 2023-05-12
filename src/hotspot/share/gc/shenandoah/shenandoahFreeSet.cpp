@@ -289,6 +289,9 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, Shenandoah
       assert(_heap->mode()->is_generational(), "PLABs are only for generational mode");
       // Need to assure that plabs are aligned on multiple of card region.
       size_t free = r->free();
+      // e.g. card_size is 512, card_shift is 9, min_fill_size() is 8
+      //      free is 514
+      //      usable_free is 512, which is decreased to 0
       size_t usable_free = (free / CardTable::card_size) << CardTable::card_shift;
       if ((free != usable_free) && (free - usable_free < ShenandoahHeap::min_fill_size() * HeapWordSize)) {
         // We'll have to add another card's memory to the padding
