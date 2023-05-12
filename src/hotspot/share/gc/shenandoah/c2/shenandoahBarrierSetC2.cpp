@@ -477,17 +477,11 @@ void ShenandoahBarrierSetC2::post_barrier(GraphKit* kit,
     return;
   }
 
-  ShenandoahBarrierSet* ctbs = barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set());
-  CardTable* ct = ctbs->card_table();
-  // No store check needed if we're storing a NULL or an old object
-  // (latter case is probably a string constant). The concurrent
-  // mark sweep garbage collector, however, needs to have all nonNull
-  // oop updates flagged via card-marks.
+  // No store check needed if we're storing a null.
   if (val != NULL && val->is_Con()) {
     // must be either an oop or NULL
     const Type* t = val->bottom_type();
     if (t == TypePtr::NULL_PTR || t == Type::TOP)
-      // stores of null never (?) need barriers
       return;
   }
 
@@ -615,7 +609,8 @@ Node* ShenandoahBarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue&
     Node* result = BarrierSetC2::store_at_resolved(access, val);
     bool is_array = (decorators & IS_ARRAY) != 0;
     bool use_precise = is_array || anonymous;
-    post_barrier(kit, kit->control(), access.raw_access(), access.base(), adr, adr_idx, val.node(), access.type(), use_precise);
+    post_barrier(kit, kit->control(), access.raw_access(), access.base(),
+                 adr, adr_idx, val.node(), access.type(), use_precise);
     return result;
   } else {
     assert(access.is_opt_access(), "only for optimization passes");
@@ -741,7 +736,8 @@ Node* ShenandoahBarrierSetC2::atomic_cmpxchg_val_at_resolved(C2AtomicParseAccess
     }
 #endif
     load_store = kit->gvn().transform(new ShenandoahLoadReferenceBarrierNode(NULL, load_store, access.decorators()));
-    post_barrier(kit, kit->control(), access.raw_access(), access.base(), access.addr().node(), access.alias_idx(), new_val, T_OBJECT, true);
+    post_barrier(kit, kit->control(), access.raw_access(), access.base(),
+                 access.addr().node(), access.alias_idx(), new_val, T_OBJECT, true);
     return load_store;
   }
   return BarrierSetC2::atomic_cmpxchg_val_at_resolved(access, expected_val, new_val, value_type);
@@ -1020,21 +1016,20 @@ void ShenandoahBarrierSetC2::eliminate_gc_barrier(PhaseMacroExpand* macro, Node*
     shenandoah_eliminate_wb_pre(node, &macro->igvn());
   }
   if (node->Opcode() == Op_CastP2X && ShenandoahHeap::heap()->mode()->is_generational()) {
-    assert(node->Opcode() == Op_CastP2X, "ConvP2XNode required");
-     Node *shift = node->unique_out();
-     Node *addp = shift->unique_out();
-     for (DUIterator_Last jmin, j = addp->last_outs(jmin); j >= jmin; --j) {
-       Node *mem = addp->last_out(j);
-       if (UseCondCardMark && mem->is_Load()) {
-         assert(mem->Opcode() == Op_LoadB, "unexpected code shape");
-         // The load is checking if the card has been written so
-         // replace it with zero to fold the test.
-         macro->replace_node(mem, macro->intcon(0));
-         continue;
-       }
-       assert(mem->is_Store(), "store required");
-       macro->replace_node(mem, mem->in(MemNode::Memory));
-     }
+    Node* shift = node->unique_out();
+    Node* addp = shift->unique_out();
+    for (DUIterator_Last jmin, j = addp->last_outs(jmin); j >= jmin; --j) {
+      Node* mem = addp->last_out(j);
+      if (UseCondCardMark && mem->is_Load()) {
+        assert(mem->Opcode() == Op_LoadB, "unexpected code shape");
+        // The load is checking if the card has been written so
+        // replace it with zero to fold the test.
+        macro->replace_node(mem, macro->intcon(0));
+        continue;
+      }
+      assert(mem->is_Store(), "store required");
+      macro->replace_node(mem, mem->in(MemNode::Memory));
+    }
   }
 }
 

@@ -143,14 +143,14 @@ public:
     // First drain remaining SATB buffers.
     {
       ShenandoahObjToScanQueue* q = _cm->get_queue(worker_id);
-      ShenandoahObjToScanQueue* old = _cm->get_old_queue(worker_id);
+      ShenandoahObjToScanQueue* old_q = _cm->get_old_queue(worker_id);
 
-      ShenandoahSATBBufferClosure<GENERATION> cl(q, old);
+      ShenandoahSATBBufferClosure<GENERATION> cl(q, old_q);
       SATBMarkQueueSet& satb_mq_set = ShenandoahBarrierSet::satb_mark_queue_set();
       while (satb_mq_set.apply_closure_to_completed_buffer(&cl)) {}
       assert(!heap->has_forwarded_objects(), "Not expected");
 
-      ShenandoahMarkRefsClosure<GENERATION, NO_DEDUP> mark_cl(q, rp, old);
+      ShenandoahMarkRefsClosure<GENERATION, NO_DEDUP> mark_cl(q, rp, old_q);
       ShenandoahSATBAndRemarkThreadsClosure tc(satb_mq_set,
                                                ShenandoahIUBarrier ? &mark_cl : NULL);
       Threads::threads_do(&tc);
@@ -202,11 +202,11 @@ template<ShenandoahGenerationType GENERATION>
 void ShenandoahMarkConcurrentRootsTask<GENERATION>::work(uint worker_id) {
   ShenandoahConcurrentWorkerSession worker_session(worker_id);
   ShenandoahObjToScanQueue* q = _queue_set->queue(worker_id);
-  ShenandoahObjToScanQueue* old = _old_queue_set == NULL ? NULL : _old_queue_set->queue(worker_id);
+  ShenandoahObjToScanQueue* old_q = _old_queue_set == NULL ? NULL : _old_queue_set->queue(worker_id);
 
   // Cannot enable string deduplication during root scanning. Otherwise,
   // may result lock inversion between stack watermark and string dedup queue lock.
-  ShenandoahMarkRefsClosure<GENERATION, NO_DEDUP> cl(q, _rp, old);
+  ShenandoahMarkRefsClosure<GENERATION, NO_DEDUP> cl(q, _rp, old_q);
   _root_scanner.roots_do(&cl, worker_id);
 }
 
@@ -219,19 +219,23 @@ void ShenandoahConcurrentMark::mark_concurrent_roots() {
   _generation->reserve_task_queues(workers->active_workers());
   switch (_generation->type()) {
     case YOUNG: {
-      ShenandoahMarkConcurrentRootsTask<YOUNG> task(task_queues(), old_task_queues(), rp, ShenandoahPhaseTimings::conc_mark_roots, workers->active_workers());
+      ShenandoahMarkConcurrentRootsTask<YOUNG> task(task_queues(), old_task_queues(), rp,
+                                                    ShenandoahPhaseTimings::conc_mark_roots, workers->active_workers());
       workers->run_task(&task);
       break;
     }
     case GLOBAL: {
       assert(old_task_queues() == NULL, "Global mark should not have old gen mark queues.");
-      ShenandoahMarkConcurrentRootsTask<GLOBAL> task(task_queues(), old_task_queues(), rp, ShenandoahPhaseTimings::conc_mark_roots, workers->active_workers());
+      ShenandoahMarkConcurrentRootsTask<GLOBAL> task(task_queues(), NULL, rp, ShenandoahPhaseTimings::conc_mark_roots, workers->active_workers());
       workers->run_task(&task);
       break;
     }
+    case OLD: {
+      // We use a YOUNG generation cycle to bootstrap concurrent old marking.
+      ShouldNotReachHere();
+      break;
+    }
     default:
-      // Intentionally haven't added OLD here. We use a YOUNG generation
-      // cycle to bootstrap concurrent old marking.
       ShouldNotReachHere();
   }
 }

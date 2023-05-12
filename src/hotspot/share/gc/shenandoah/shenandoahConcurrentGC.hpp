@@ -99,7 +99,6 @@ protected:
   void entry_class_unloading();
   void entry_strong_roots();
   void entry_cleanup_early();
-  virtual void op_final_mark();
 
 private:
   void entry_evacuate();
@@ -127,6 +126,8 @@ private:
   void op_final_roots();
   void op_cleanup_complete();
   void op_global_coalesce_and_fill();
+protected:
+  virtual void op_final_mark();
 
   // Messages for GC trace events, they have to be immortal for
   // passing around the logging/tracing systems
