@@ -39,9 +39,9 @@ package gc.shenandoah;
 /* @test id=generational-100
  * @requires vm.gc.Shenandoah
  * @library /test/lib
- * @build jdk.test.whitebox.WhiteBox
+ * @build sun.hotspot.WhiteBox
  * @modules java.base
- * @run main jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
+ * @run main jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm
  *      -Xbootclasspath/a:.
  *      -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
