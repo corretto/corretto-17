@@ -179,7 +179,9 @@ public class TestChurnNotifications {
         };
 
         for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
-            ((NotificationEmitter) bean).addNotificationListener(listener, null, null);
+            if (bean.getName().endsWith("Pauses") || bean.getName().endsWith("Cycles")) {
+                ((NotificationEmitter) bean).addNotificationListener(listener, null, null);
+            }
         }
 
         final int size = 100_000;
