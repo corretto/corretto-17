@@ -41,8 +41,11 @@
 //
 //  64 bits:
 //  --------
-//  nklass:32 hash:25 -->| unused_gap:1   age:4    biased_lock:1 lock:2 (normal object)
 //  JavaThread*:54 epoch:2 unused_gap:1   age:4    biased_lock:1 lock:2 (biased object)
+//
+//  64 bits (with compact headers):
+//  -------------------------------
+//  nklass:32 hash:25 -->| unused_gap:1  age:4  self-fwded:1  lock:2 (normal object)
 //
 //  - hash contains the identity hash value: largest value is
 //    31 bits, see os::random().  Also, 64-bit vm's require
@@ -132,11 +135,15 @@ class markWord {
   static const int biased_lock_bits               = 1;
   static const int self_forwarded_bits            = 1;
   static const int max_hash_bits                  = BitsPerWord - age_bits - lock_bits - self_forwarded_bits;
-  static const int hash_bits                      = max_hash_bits > 25 ? 25 : max_hash_bits;
+  static const int hash_bits                      = max_hash_bits > 31 ? 31 : max_hash_bits;
+  static const int hash_bits_compact              = max_hash_bits > 25 ? 25 : max_hash_bits;
+  // Used only without compact headers.
+  static const int unused_gap_bits                = LP64_ONLY(1) NOT_LP64(0);
+  static const int epoch_bits                     = 2;
 #ifdef _LP64
+  // Used only with compact headers.
   static const int klass_bits                     = 32;
 #endif
-  static const int epoch_bits                     = 2;
 
   // The biased locking code currently requires that the age bits be
   // contiguous to the lock bits.
@@ -144,9 +151,12 @@ class markWord {
   static const int biased_lock_shift              = lock_bits;
   static const int self_forwarded_shift           = lock_shift + lock_bits;
   static const int age_shift                      = self_forwarded_shift + self_forwarded_bits;
-  static const int hash_shift                     = age_shift + age_bits;
+  static const int unused_gap_shift               = age_shift + age_bits;
+  static const int hash_shift                     = unused_gap_shift + unused_gap_bits;
+  static const int hash_shift_compact             = age_shift + age_bits;
 #ifdef _LP64
-  static const int klass_shift                    = hash_shift + hash_bits;
+  // Used only with compact headers.
+  static const int klass_shift                    = hash_shift_compact + hash_bits_compact;
 #endif
   static const int epoch_shift                    = hash_shift;
 
@@ -164,6 +174,8 @@ class markWord {
 
   static const uintptr_t hash_mask                = right_n_bits(hash_bits);
   static const uintptr_t hash_mask_in_place       = hash_mask << hash_shift;
+  static const uintptr_t hash_mask_compact        = right_n_bits(hash_bits_compact);
+  static const uintptr_t hash_mask_compact_in_place = hash_mask_compact << hash_shift_compact;
 
 #ifdef _LP64
   static const uintptr_t klass_mask               = right_n_bits(klass_bits);
@@ -311,9 +323,15 @@ class markWord {
   markWord displaced_mark_helper() const;
   void set_displaced_mark_helper(markWord m) const;
   markWord copy_set_hash(intptr_t hash) const {
-    uintptr_t tmp = value() & (~hash_mask_in_place);
-    tmp |= ((hash & hash_mask) << hash_shift);
-    return markWord(tmp);
+    if (UseCompactObjectHeaders) {
+      uintptr_t tmp = value() & (~hash_mask_compact_in_place);
+      tmp |= ((hash & hash_mask_compact) << hash_shift_compact);
+      return markWord(tmp);
+    } else {
+      uintptr_t tmp = value() & (~hash_mask_in_place);
+      tmp |= ((hash & hash_mask) << hash_shift);
+      return markWord(tmp);
+    }
   }
   // it is only used to be stored into BasicLock as the
   // indicator that the lock is using heavyweight monitor
@@ -353,7 +371,11 @@ class markWord {
 
   // hash operations
   intptr_t hash() const {
-    return mask_bits(value() >> hash_shift, hash_mask);
+    if (UseCompactObjectHeaders) {
+      return mask_bits(value() >> hash_shift_compact, hash_mask_compact);
+    } else {
+      return mask_bits(value() >> hash_shift, hash_mask);
+    }
   }
 
   bool has_no_hash() const {
