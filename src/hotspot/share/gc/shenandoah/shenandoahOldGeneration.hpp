@@ -84,7 +84,7 @@ class ShenandoahOldGeneration : public ShenandoahGeneration {
   virtual void record_success_concurrent(bool abbreviated) override;
 
   enum State {
-    IDLE, FILLING, BOOTSTRAPPING, MARKING, WAITING
+    IDLE, FILLING, BOOTSTRAPPING, MARKING, WAITING_FOR_EVAC, WAITING_FOR_FILL
   };
 
   static const char* state_name(State state);
@@ -97,6 +97,10 @@ class ShenandoahOldGeneration : public ShenandoahGeneration {
 
   State state() const {
     return _state;
+  }
+
+  bool can_start_gc() {
+    return _state == IDLE || _state == WAITING_FOR_FILL;
   }
 
  private:
