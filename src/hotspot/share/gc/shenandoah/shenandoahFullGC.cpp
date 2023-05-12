@@ -34,7 +34,7 @@
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahFullGC.hpp"
-#include "gc/shenandoah/shenandoahGeneration.hpp"
+#include "gc/shenandoah/shenandoahGlobalGeneration.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahMark.inline.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
@@ -148,7 +148,7 @@ void ShenandoahFullGC::vmop_entry_full(GCCause::Cause cause) {
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
   TraceCollectorStats tcs(heap->monitoring_support()->full_stw_collection_counters());
   ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::full_gc_gross);
-  TraceMemoryManagerPauseStats pause_stats(heap->memory_manager(GLOBAL),
+  TraceMemoryManagerPauseStats pause_stats(heap->memory_manager(GLOBAL_GEN),
       /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::full_gc_gross), 
       /* phase_threads = */                 0L,
       /* record_accumulated_pause_time = */ false,
@@ -168,7 +168,7 @@ void ShenandoahFullGC::vmop_entry_full(GCCause::Cause cause) {
 void ShenandoahFullGC::entry_full(GCCause::Cause cause) {
   static const char* msg = "Pause Full";
   uint num_workers = ShenandoahWorkerPolicy::calc_workers_for_fullgc();
-  ShenandoahPausePhase gc_phase(msg, ShenandoahPhaseTimings::full_gc, GLOBAL, num_workers, true /* log_heap_usage */);
+  ShenandoahPausePhase gc_phase(msg, ShenandoahPhaseTimings::full_gc, GLOBAL_GEN, num_workers, true /* log_heap_usage */);
   EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(ShenandoahHeap::heap()->workers(),

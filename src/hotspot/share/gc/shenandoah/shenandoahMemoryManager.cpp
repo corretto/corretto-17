@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Amazon.com, Inc. or its affiliates. All rights reserved.
+ * Copyright Amazon.com, Inc. or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,7 @@ void ShenandoahMemoryManager::gc_end(bool recordPostGCUsage,
     _current_gc_stat->set_copied_between_pools(_current_gc_stat->get_copied_between_pools() + _heap->old_generation()->bytes_allocated_since_gc_start());
   }
 
-  if (_heap->mode()->is_generational() && _generation->type() == GLOBAL) {
+  if (_heap->mode()->is_generational() && _generation->is_global()) {
     // When running in generational mode, there is no allocation in the global_generation
     _current_gc_stat->set_allocated_during_collection(_heap->young_generation()->bytes_allocated_since_gc_start());
   } else {
@@ -92,7 +92,7 @@ void ShenandoahMemoryManager::gc_end(bool recordPostGCUsage,
 
 void ShenandoahMemoryManager::gc_requested() {
   // This method is called before the actual gc starts, so we can record information related to the previous cycle
-  if (_heap->mode()->is_generational() && _generation->type() == GLOBAL) {
+  if (_heap->mode()->is_generational() && _generation->is_global()) {
     // When running in generational mode, there is no allocation in the global_generation
     _allocated_since_previous_start = _heap->young_generation()->bytes_allocated_since_gc_start();
   } else {
