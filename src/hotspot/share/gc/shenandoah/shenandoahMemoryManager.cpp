@@ -50,7 +50,7 @@ void ShenandoahMemoryManager::gc_begin(bool recordGCBeginTime,
   set_num_gc_threads(_heap->workers()->total_workers());
   ConcurrentGCMemoryManager::gc_begin(recordGCBeginTime, recordPreGCUsage, recordAccumulatedGCTime);
   _current_gc_stat->set_allocated_since_previous(_allocated_since_previous_start - _last_gc_stat->get_allocated_during_collection());
-  if (_heap->mode()->is_generational() && _generation->generation_mode() != OLD) {
+  if (_heap->mode()->is_generational() && _generation->type() != OLD) {
     // Discount how much the old gen sees now from the total. This value should always be zero when not in generational mode or for old gen.
     _current_gc_stat->set_copied_between_pools(-_heap->old_generation()->bytes_allocated_since_gc_start());
   }
@@ -62,12 +62,12 @@ void ShenandoahMemoryManager::gc_end(bool recordPostGCUsage,
                                            GCCause::Cause cause,
                                            bool allMemoryPoolsAffected) {
 
-  if (_heap->mode()->is_generational() && _generation->generation_mode() != OLD) {
+  if (_heap->mode()->is_generational() && _generation->type() != OLD) {
     // Final update of the copied between pools. This value should always be zero when not in generational mode or for old gen.
     _current_gc_stat->set_copied_between_pools(_current_gc_stat->get_copied_between_pools() + _heap->old_generation()->bytes_allocated_since_gc_start());
   }
 
-  if (_heap->mode()->is_generational() && _generation->generation_mode() == GLOBAL) {
+  if (_heap->mode()->is_generational() && _generation->type() == GLOBAL) {
     // When running in generational mode, there is no allocation in the global_generation
     _current_gc_stat->set_allocated_during_collection(_heap->young_generation()->bytes_allocated_since_gc_start());
   } else {
@@ -92,7 +92,7 @@ void ShenandoahMemoryManager::gc_end(bool recordPostGCUsage,
 
 void ShenandoahMemoryManager::gc_requested() {
   // This method is called before the actual gc starts, so we can record information related to the previous cycle
-  if (_heap->mode()->is_generational() && _generation->generation_mode() == GLOBAL) {
+  if (_heap->mode()->is_generational() && _generation->type() == GLOBAL) {
     // When running in generational mode, there is no allocation in the global_generation
     _allocated_since_previous_start = _heap->young_generation()->bytes_allocated_since_gc_start();
   } else {

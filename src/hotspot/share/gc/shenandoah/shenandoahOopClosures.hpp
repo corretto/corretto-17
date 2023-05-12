@@ -48,7 +48,7 @@ private:
   bool _weak;
 
 protected:
-  template <class T, GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
+  template <class T, ShenandoahGenerationType GENERATION, StringDedupMode STRING_DEDUP>
   void work(T *p);
 
 public:
@@ -67,7 +67,7 @@ class ShenandoahMarkUpdateRefsSuperClosure : public ShenandoahMarkRefsSuperClosu
 protected:
   ShenandoahHeap* const _heap;
 
-  template <class T, GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
+  template <class T, ShenandoahGenerationType GENERATION, StringDedupMode STRING_DEDUP>
   inline void work(T* p);
 
 public:
@@ -78,7 +78,7 @@ public:
   };
 };
 
-template <GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
+template <ShenandoahGenerationType GENERATION, StringDedupMode STRING_DEDUP>
 class ShenandoahMarkUpdateRefsClosure : public ShenandoahMarkUpdateRefsSuperClosure {
 private:
   template <class T>
@@ -93,7 +93,7 @@ public:
   virtual bool do_metadata()        { return false; }
 };
 
-template <GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
+template <ShenandoahGenerationType GENERATION, StringDedupMode STRING_DEDUP>
 class ShenandoahMarkUpdateRefsMetadataClosure : public ShenandoahMarkUpdateRefsSuperClosure {
 private:
   template <class T>
@@ -109,7 +109,7 @@ public:
 };
 
 
-template <GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
+template <ShenandoahGenerationType GENERATION, StringDedupMode STRING_DEDUP>
 class ShenandoahMarkRefsClosure : public ShenandoahMarkRefsSuperClosure {
 private:
   template <class T>
@@ -125,7 +125,7 @@ public:
 };
 
 
-template <GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
+template <ShenandoahGenerationType GENERATION, StringDedupMode STRING_DEDUP>
 class ShenandoahMarkRefsMetadataClosure : public ShenandoahMarkRefsSuperClosure {
 private:
   template <class T>

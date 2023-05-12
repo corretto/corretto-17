@@ -45,7 +45,7 @@ protected:
   ShenandoahMark(ShenandoahGeneration* generation);
 
 public:
-  template<class T, GenerationMode GENERATION, StringDedupMode STRING_DEDUP>
+  template<class T, ShenandoahGenerationType GENERATION, StringDedupMode STRING_DEDUP>
   static inline void mark_through_ref(T* p, ShenandoahObjToScanQueue* q, ShenandoahObjToScanQueue* old, ShenandoahMarkingContext* const mark_context, StringDedup::Requests* const req, bool weak);
 
   // Helpers
@@ -72,13 +72,13 @@ private:
 
   inline void count_liveness(ShenandoahLiveData* live_data, oop obj);
 
-  template <class T, GenerationMode GENERATION, bool CANCELLABLE>
+  template <class T, ShenandoahGenerationType GENERATION, bool CANCELLABLE>
   void mark_loop_work(T* cl, ShenandoahLiveData* live_data, uint worker_id, TaskTerminator *t);
 
-  template <GenerationMode GENERATION, bool CANCELLABLE, StringDedupMode STRING_DEDUP>
+  template <ShenandoahGenerationType GENERATION, bool CANCELLABLE, StringDedupMode STRING_DEDUP>
   void mark_loop_prework(uint worker_id, TaskTerminator *terminator, ShenandoahReferenceProcessor *rp, bool update_refs);
 
-  template <GenerationMode GENERATION>
+  template <ShenandoahGenerationType GENERATION>
   static bool in_generation(oop obj);
 
   template<StringDedupMode STRING_DEDUP>
@@ -86,9 +86,9 @@ private:
 
 protected:
   template<bool CANCELLABLE, StringDedupMode STRING_DEDUP>
-  void mark_loop(GenerationMode generation, uint worker_id, TaskTerminator* terminator, ShenandoahReferenceProcessor *rp);
+  void mark_loop(ShenandoahGenerationType generation, uint worker_id, TaskTerminator* terminator, ShenandoahReferenceProcessor *rp);
 
-  void mark_loop(GenerationMode generation, uint worker_id, TaskTerminator* terminator,
+  void mark_loop(ShenandoahGenerationType generation, uint worker_id, TaskTerminator* terminator,
                  ShenandoahReferenceProcessor *rp, bool cancellable, StringDedupMode dedup_mode);
 };
 

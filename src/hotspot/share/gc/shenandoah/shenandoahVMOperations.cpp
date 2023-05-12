@@ -49,12 +49,12 @@ void VM_ShenandoahReferenceOperation::doit_epilogue() {
 }
 
 void VM_ShenandoahInitMark::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
   _gc->entry_init_mark();
 }
 
 void VM_ShenandoahFinalMarkStartEvac::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
   _gc->entry_final_mark();
 }
 
@@ -64,22 +64,22 @@ void VM_ShenandoahFullGC::doit() {
 }
 
 void VM_ShenandoahDegeneratedGC::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
   _gc->entry_degenerated();
 }
 
 void VM_ShenandoahInitUpdateRefs::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
   _gc->entry_init_updaterefs();
 }
 
 void VM_ShenandoahFinalUpdateRefs::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
   _gc->entry_final_updaterefs();
 }
 
 void VM_ShenandoahFinalRoots::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->generation_mode());
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
 
   if (_incr_region_ages) {
     // TODO: Do we even care about this?  Do we want to parallelize it?

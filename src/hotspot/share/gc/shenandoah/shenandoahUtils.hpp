@@ -91,7 +91,7 @@ private:
   ConcurrentGCTimer* const _timer;
 
 public:
-  ShenandoahPausePhase(const char* title, ShenandoahPhaseTimings::Phase phase, GenerationMode generation_mode, size_t num_workers, bool log_heap_usage = false);
+  ShenandoahPausePhase(const char* title, ShenandoahPhaseTimings::Phase phase, ShenandoahGenerationType generation_mode, size_t num_workers, bool log_heap_usage = false);
   ~ShenandoahPausePhase();
 };
 
@@ -106,7 +106,7 @@ private:
   TraceMemoryManagerConcurrentStats  _trace_gc_concurrent_stats;
 
 public:
-  ShenandoahConcurrentPhase(const char* title, ShenandoahPhaseTimings::Phase phase, GenerationMode generation_mode, size_t num_workers, bool log_heap_usage = false);
+  ShenandoahConcurrentPhase(const char* title, ShenandoahPhaseTimings::Phase phase, ShenandoahGenerationType generation_mode, size_t num_workers, bool log_heap_usage = false);
   ~ShenandoahConcurrentPhase();
 };
 
@@ -144,7 +144,7 @@ private:
 
 public:
   ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type,
-                        GenerationMode generation_mode);
+                        ShenandoahGenerationType generation_mode);
 };
 
 class ShenandoahSafepoint : public AllStatic {

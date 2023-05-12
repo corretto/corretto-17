@@ -51,7 +51,7 @@ ShenandoahMark::ShenandoahMark(ShenandoahGeneration* generation) :
   _old_gen_task_queues(generation->old_gen_task_queues()) {
 }
 
-template <GenerationMode GENERATION, bool CANCELLABLE, StringDedupMode STRING_DEDUP>
+template <ShenandoahGenerationType GENERATION, bool CANCELLABLE, StringDedupMode STRING_DEDUP>
 void ShenandoahMark::mark_loop_prework(uint w, TaskTerminator *t, ShenandoahReferenceProcessor *rp, bool update_refs) {
   ShenandoahObjToScanQueue* q = get_queue(w);
   ShenandoahObjToScanQueue* old = get_old_queue(w);
@@ -87,7 +87,7 @@ void ShenandoahMark::mark_loop_prework(uint w, TaskTerminator *t, ShenandoahRefe
 }
 
 template<bool CANCELLABLE, StringDedupMode STRING_DEDUP>
-void ShenandoahMark::mark_loop(GenerationMode generation, uint worker_id, TaskTerminator* terminator,
+void ShenandoahMark::mark_loop(ShenandoahGenerationType generation, uint worker_id, TaskTerminator* terminator,
                                ShenandoahReferenceProcessor *rp) {
   bool update_refs = ShenandoahHeap::heap()->has_forwarded_objects();
   switch (generation) {
@@ -107,7 +107,7 @@ void ShenandoahMark::mark_loop(GenerationMode generation, uint worker_id, TaskTe
   }
 }
 
-void ShenandoahMark::mark_loop(GenerationMode generation, uint worker_id, TaskTerminator* terminator,
+void ShenandoahMark::mark_loop(ShenandoahGenerationType generation, uint worker_id, TaskTerminator* terminator,
                                ShenandoahReferenceProcessor *rp, bool cancellable, StringDedupMode dedup_mode) {
   if (cancellable) {
     switch(dedup_mode) {
@@ -136,7 +136,7 @@ void ShenandoahMark::mark_loop(GenerationMode generation, uint worker_id, TaskTe
   }
 }
 
-template <class T, GenerationMode GENERATION, bool CANCELLABLE>
+template <class T, ShenandoahGenerationType GENERATION, bool CANCELLABLE>
 void ShenandoahMark::mark_loop_work(T* cl, ShenandoahLiveData* live_data, uint worker_id, TaskTerminator *terminator) {
   uintx stride = ShenandoahMarkLoopStride;
 
@@ -145,7 +145,7 @@ void ShenandoahMark::mark_loop_work(T* cl, ShenandoahLiveData* live_data, uint w
   ShenandoahObjToScanQueue* q;
   ShenandoahMarkTask t;
 
-  assert(heap->active_generation()->generation_mode() == GENERATION, "Sanity");
+  assert(heap->active_generation()->type() == GENERATION, "Sanity");
   heap->active_generation()->ref_processor()->set_mark_closure(worker_id, cl);
 
   /*

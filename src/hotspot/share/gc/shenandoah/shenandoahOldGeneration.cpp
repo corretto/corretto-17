@@ -195,7 +195,8 @@ const char* ShenandoahOldGeneration::name() const {
 }
 
 bool ShenandoahOldGeneration::contains(ShenandoahHeapRegion* region) const {
-  return region->affiliation() != YOUNG_GENERATION;
+  // TODO: Should this be region->is_old() instead?
+  return !region->is_young();
 }
 
 void ShenandoahOldGeneration::parallel_heap_region_iterate(ShenandoahHeapRegionClosure* cl) {
@@ -233,7 +234,7 @@ void ShenandoahOldGeneration::prepare_gc() {
     // Now that we have made the old generation parseable, it is safe to reset the mark bitmap.
     static const char* msg = "Concurrent reset (OLD)";
     uint workers_count = ShenandoahWorkerPolicy::calc_workers_for_conc_reset();
-    ShenandoahConcurrentPhase gc_phase(msg, ShenandoahPhaseTimings::conc_reset_old, GenerationMode::OLD, workers_count);
+    ShenandoahConcurrentPhase gc_phase(msg, ShenandoahPhaseTimings::conc_reset_old, ShenandoahGenerationType::OLD, workers_count);
     ShenandoahWorkerScope scope(ShenandoahHeap::heap()->workers(), workers_count, msg);
     ShenandoahGeneration::prepare_gc();
   }
@@ -250,7 +251,7 @@ bool ShenandoahOldGeneration::entry_coalesce_and_fill() {
   // TODO: I don't think we're using these concurrent collection counters correctly.
   TraceCollectorStats tcs(heap->monitoring_support()->concurrent_collection_counters());
   uint workers_count = ShenandoahWorkerPolicy::calc_workers_for_conc_marking();
-  ShenandoahConcurrentPhase gc_phase("Coalescing and filling (OLD)", ShenandoahPhaseTimings::coalesce_and_fill, GenerationMode::OLD, workers_count);
+  ShenandoahConcurrentPhase gc_phase("Coalescing and filling (OLD)", ShenandoahPhaseTimings::coalesce_and_fill, ShenandoahGenerationType::OLD, workers_count);
   ShenandoahWorkerScope scope(heap->workers(), workers_count, msg);
 
   return coalesce_and_fill();

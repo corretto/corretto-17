@@ -102,7 +102,7 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
   bool is_generational = heap->mode()->is_generational();
 
   assert(collection_set->count() == 0, "Must be empty");
-  assert(_generation->generation_mode() != OLD, "Old GC invokes ShenandoahOldHeuristics::choose_collection_set()");
+  assert(!_generation->is_old(), "Old GC invokes ShenandoahOldHeuristics::choose_collection_set()");
 
   // Check all pinned regions have updated status before choosing the collection set.
   heap->assert_pinned_region_status();
@@ -142,7 +142,7 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
         immediate_garbage += garbage;
         region->make_trash_immediate();
       } else {
-        assert (_generation->generation_mode() != OLD, "OLD is handled elsewhere");
+        assert(!_generation->is_old(), "OLD is handled elsewhere");
         live_memory += region->get_live_data_bytes();
         // This is our candidate for later consideration.
         candidates[cand_idx]._region = region;
@@ -214,7 +214,7 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
   size_t collectable_garbage = collection_set->garbage() + immediate_garbage;
   size_t collectable_garbage_percent = (total_garbage == 0) ? 0 : (collectable_garbage * 100 / total_garbage);
 
-  heap->memory_manager(_generation->generation_mode())->report_garbage(total_garbage, collectable_garbage);
+  heap->memory_manager(_generation->type())->report_garbage(total_garbage, collectable_garbage);
 
   log_info(gc, ergo)("Collectable Garbage: " SIZE_FORMAT "%s (" SIZE_FORMAT "%%), "
                      "Immediate: " SIZE_FORMAT "%s (" SIZE_FORMAT "%%) R: " SIZE_FORMAT ", "
@@ -372,15 +372,12 @@ double ShenandoahHeuristics::elapsed_cycle_time() const {
 }
 
 bool ShenandoahHeuristics::in_generation(ShenandoahHeapRegion* region) {
-  return ((_generation->generation_mode() == GLOBAL)
-          || (_generation->generation_mode() == YOUNG && region->affiliation() == YOUNG_GENERATION)
-          || (_generation->generation_mode() == OLD && region->affiliation() == OLD_GENERATION));
+  return _generation->is_global()
+          || (_generation->is_young() && region->is_young())
+          || (_generation->is_old()   && region->is_old());
 }
 
 size_t ShenandoahHeuristics::min_free_threshold() {
-  size_t min_free_threshold =
-      _generation->generation_mode() == GenerationMode::OLD
-          ? ShenandoahOldMinFreeThreshold
-          : ShenandoahMinFreeThreshold;
+  size_t min_free_threshold = _generation->is_old() ? ShenandoahOldMinFreeThreshold : ShenandoahMinFreeThreshold;
   return _generation->soft_max_capacity() / 100 * min_free_threshold;
 }

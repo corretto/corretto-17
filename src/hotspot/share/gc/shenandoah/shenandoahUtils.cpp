@@ -65,7 +65,7 @@ ShenandoahGCSession::ShenandoahGCSession(GCCause::Cause cause, ShenandoahGenerat
           /* recordGCEndTime = */         true,
           /* countCollection = */         true
   );
-  _trace_memory_manager_stats.initialize(_heap->memory_manager(generation->generation_mode()), cause,
+  _trace_memory_manager_stats.initialize(_heap->memory_manager(generation->type()), cause,
           /* allMemoryPoolsAffected */    true,
           /* recordGCBeginTime = */       true,
           /* recordPreGCUsage = */        true,
@@ -87,7 +87,7 @@ ShenandoahGCSession::~ShenandoahGCSession() {
 
 }
 
-ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type, GenerationMode generation_mode) :
+ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type, ShenandoahGenerationType generation_mode) :
   _heap(ShenandoahHeap::heap()), _gc_id_mark(gc_id), _svc_gc_mark(type), _is_gc_active_mark() {
   _trace_pause.initialize(_heap->stw_memory_manager(), _heap->gc_cause(),
           /* allMemoryPoolsAffected */    true,
@@ -112,7 +112,7 @@ ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_typ
           /* cycle_pause = */                   false);
 }
 
-ShenandoahPausePhase::ShenandoahPausePhase(const char* title, ShenandoahPhaseTimings::Phase phase, GenerationMode generation_mode, size_t num_workers, bool log_heap_usage) :
+ShenandoahPausePhase::ShenandoahPausePhase(const char* title, ShenandoahPhaseTimings::Phase phase, ShenandoahGenerationType generation_mode, size_t num_workers, bool log_heap_usage) :
   ShenandoahTimingsTracker(phase),
   _tracer(title, NULL, GCCause::_no_gc, log_heap_usage),
   _timer(ShenandoahHeap::heap()->gc_timer()) {
@@ -133,7 +133,7 @@ ShenandoahPausePhase::~ShenandoahPausePhase() {
   _timer->register_gc_pause_end();
 }
 
-ShenandoahConcurrentPhase::ShenandoahConcurrentPhase(const char* title, ShenandoahPhaseTimings::Phase phase, GenerationMode generation_mode, size_t num_workers, bool log_heap_usage) :
+ShenandoahConcurrentPhase::ShenandoahConcurrentPhase(const char* title, ShenandoahPhaseTimings::Phase phase, ShenandoahGenerationType generation_mode, size_t num_workers, bool log_heap_usage) :
   ShenandoahTimingsTracker(phase),
   _tracer(title, NULL, GCCause::_no_gc, log_heap_usage),
   _timer(ShenandoahHeap::heap()->gc_timer()) {

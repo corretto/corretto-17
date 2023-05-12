@@ -67,7 +67,7 @@ void ShenandoahDegenGC::vmop_degenerated() {
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
   TraceCollectorStats tcs(heap->monitoring_support()->full_stw_collection_counters());
   ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::degen_gc_gross);
-  TraceMemoryManagerPauseStats pause_stats(heap->memory_manager(_generation->generation_mode()),
+  TraceMemoryManagerPauseStats pause_stats(heap->memory_manager(_generation->type()),
       /* phase_cause = */                   ShenandoahPhaseTimings::phase_name(ShenandoahPhaseTimings::degen_gc_gross),
       /* phase_threads = */                 0L,
       /* record_accumulated_pause_time = */ false,
@@ -87,7 +87,7 @@ void ShenandoahDegenGC::entry_degenerated() {
   char msg[1024];
   degen_event_message(_degen_point, msg, sizeof(msg));
   uint num_workers = ShenandoahWorkerPolicy::calc_workers_for_stw_degenerated();
-  ShenandoahPausePhase gc_phase(msg, ShenandoahPhaseTimings::degen_gc, _generation->generation_mode(), num_workers, true /* log_heap_usage */);
+  ShenandoahPausePhase gc_phase(msg, ShenandoahPhaseTimings::degen_gc, _generation->type(), num_workers, true /* log_heap_usage */);
   EventMark em("%s", msg);
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
   ShenandoahWorkerScope scope(heap->workers(),
@@ -108,7 +108,7 @@ void ShenandoahDegenGC::op_degenerated() {
 
 #ifdef ASSERT
   if (heap->mode()->is_generational()) {
-    if (_generation->generation_mode() == GenerationMode::GLOBAL) {
+    if (_generation->is_global()) {
       // We can only get to a degenerated global cycle _after_ a concurrent global cycle
       // has been cancelled. In which case, we expect the concurrent global cycle to have
       // cancelled the old gc already.
@@ -148,9 +148,9 @@ void ShenandoahDegenGC::op_degenerated() {
 
       // Note that we can only do this for "outside-cycle" degens, otherwise we would risk
       // changing the cycle parameters mid-cycle during concurrent -> degenerated handover.
-      heap->set_unload_classes((!heap->mode()->is_generational() || _generation->generation_mode() == GLOBAL) && _generation->heuristics()->can_unload_classes());
+      heap->set_unload_classes((!heap->mode()->is_generational() || _generation->is_global()) && _generation->heuristics()->can_unload_classes());
 
-      if (heap->mode()->is_generational() && (_generation->generation_mode() == YOUNG || (_generation->generation_mode() == GLOBAL && ShenandoahVerify))) {
+      if (heap->mode()->is_generational() && (_generation->is_young() || (_generation->is_global() && ShenandoahVerify))) {
         // Swap remembered sets for young, or if the verifier will run during a global collect
         _generation->swap_remembered_set();
       }
@@ -200,7 +200,7 @@ void ShenandoahDegenGC::op_degenerated() {
 
     case _degenerated_evac:
 
-      if (heap->mode()->is_generational() && _generation->generation_mode() == GLOBAL) {
+      if (heap->mode()->is_generational() && _generation->is_global()) {
         op_global_coalesce_and_fill();
       }
 
