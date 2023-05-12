@@ -29,6 +29,7 @@
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahGeneration.hpp"
+#include "gc/shenandoah/shenandoahGenerationType.hpp"
 #include "gc/shenandoah/shenandoahMark.inline.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahReferenceProcessor.hpp"
@@ -100,6 +101,7 @@ void ShenandoahMark::mark_loop(ShenandoahGenerationType generation, uint worker_
       break;
     case GLOBAL_GEN:
       mark_loop_prework<GLOBAL_GEN, CANCELLABLE, STRING_DEDUP>(worker_id, terminator, rp, update_refs);
+      break;
     case GLOBAL_NON_GEN:
       mark_loop_prework<GLOBAL_NON_GEN, CANCELLABLE, STRING_DEDUP>(worker_id, terminator, rp, update_refs);
       break;
@@ -147,7 +149,8 @@ void ShenandoahMark::mark_loop_work(T* cl, ShenandoahLiveData* live_data, uint w
   ShenandoahObjToScanQueue* q;
   ShenandoahMarkTask t;
 
-  assert(heap->active_generation()->type() == GENERATION, "Sanity");
+  assert(heap->active_generation()->type() == GENERATION,
+         "Expected %s, but got: %s", shenandoah_generation_name(heap->active_generation()->type()), shenandoah_generation_name(GENERATION));
   heap->active_generation()->ref_processor()->set_mark_closure(worker_id, cl);
 
   /*
