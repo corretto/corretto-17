@@ -344,7 +344,7 @@ class LibraryCallKit : public GraphKit {
 
   void clear_upper_avx() {
 #ifdef X86
-    if (false && UseAVX >= 2) {
+    if (UseAVX >= 2) {
       C->set_clear_upper_avx(true);
     }
 #endif
