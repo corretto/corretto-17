@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,17 @@
  */
 
 /*
- * @test
- * @bug 4638015 8248001
- * @summary Determine if Hrefs are processed properly when they
- * appear in doc comments.
- * @library ../../lib
- * @modules jdk.javadoc/jdk.javadoc.internal.tool
- * @build javadoc.tester.*
- * @run main TestHrefInDocComment
- */
+   @test
+   @bug 4243313
+   @summary Tests that instantiating JTable through reflection
+            does not throw ClassNotFoundException
+*/
 
-import javadoc.tester.JavadocTester;
+import java.beans.Beans;
 
-public class TestHrefInDocComment extends JavadocTester {
+public class bug4243313 {
 
-    public static void main(String... args) throws Exception {
-        TestHrefInDocComment tester = new TestHrefInDocComment();
-        tester.runTests();
-    }
-
-    @Test
-    public void test() {
-        javadoc("-d", "out",
-                "-sourcepath", testSrc, "pkg");
-        checkExit(Exit.OK);
+    public static void main(String[] argv) throws Exception {
+        Object table = Beans.instantiate(null, "javax.swing.JTable");
     }
 }

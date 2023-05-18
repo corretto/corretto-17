@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,35 @@
  */
 
 /*
- * @test
- * @bug 4638015 8248001
- * @summary Determine if Hrefs are processed properly when they
- * appear in doc comments.
- * @library ../../lib
- * @modules jdk.javadoc/jdk.javadoc.internal.tool
- * @build javadoc.tester.*
- * @run main TestHrefInDocComment
- */
+  @test
+  @bug 4420658
+  @summary No ClassCastException should be thrown when getComponent()
+           is called on an event with a non-Component source.
+           The result should be null.
+  @run main ObjectSourceTest
+*/
 
-import javadoc.tester.JavadocTester;
+import java.awt.Component;
+import java.awt.Panel;
+import java.awt.event.HierarchyEvent;
+import java.lang.reflect.InvocationTargetException;
 
-public class TestHrefInDocComment extends JavadocTester {
 
-    public static void main(String... args) throws Exception {
-        TestHrefInDocComment tester = new TestHrefInDocComment();
-        tester.runTests();
-    }
+public class ObjectSourceTest {
+    static Panel panel;
 
-    @Test
-    public void test() {
-        javadoc("-d", "out",
-                "-sourcepath", testSrc, "pkg");
-        checkExit(Exit.OK);
+    public static void main(String args[]) throws InterruptedException,
+            InvocationTargetException {
+        panel = new Panel();
+
+        HierarchyEvent he = new HierarchyEvent(panel, HierarchyEvent.ANCESTOR_MOVED,
+                panel, panel);
+        Object obj = new Object();
+        he.setSource(obj);
+
+        Component comp = he.getComponent();
+        if (comp != null) {
+            throw new RuntimeException("ObjectSourceTest failed.  comp != null");
+        }
     }
 }

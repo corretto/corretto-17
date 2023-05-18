@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,30 +21,22 @@
  * questions.
  */
 
+
 /*
- * @test
- * @bug 4638015 8248001
- * @summary Determine if Hrefs are processed properly when they
- * appear in doc comments.
- * @library ../../lib
- * @modules jdk.javadoc/jdk.javadoc.internal.tool
- * @build javadoc.tester.*
- * @run main TestHrefInDocComment
- */
+  @test
+  @bug 4173633
+  @summary Test for infinite recursion when JMenu with separator
+  @run main bug4173633
+*/
 
-import javadoc.tester.JavadocTester;
+import javax.swing.JMenu;
 
-public class TestHrefInDocComment extends JavadocTester {
-
-    public static void main(String... args) throws Exception {
-        TestHrefInDocComment tester = new TestHrefInDocComment();
-        tester.runTests();
-    }
-
-    @Test
-    public void test() {
-        javadoc("-d", "out",
-                "-sourcepath", testSrc, "pkg");
-        checkExit(Exit.OK);
+public class bug4173633 {
+    public static void main(String[] args) {
+        JMenu m = new JMenu("bug4173633");
+        m.addSeparator();
+        if (m.getItem(0) == m) {
+            throw new RuntimeException("BUG 4173633 FAILED");
+        }
     }
 }

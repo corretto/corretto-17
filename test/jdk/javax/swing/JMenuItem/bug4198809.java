@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,30 +21,35 @@
  * questions.
  */
 
-/*
- * @test
- * @bug 4638015 8248001
- * @summary Determine if Hrefs are processed properly when they
- * appear in doc comments.
- * @library ../../lib
- * @modules jdk.javadoc/jdk.javadoc.internal.tool
- * @build javadoc.tester.*
- * @run main TestHrefInDocComment
- */
+/* @test
+   @bug 4198809
+   @key headful
+   @summary If JMenuItem is disabled and disabled icon is null, throws NPE.
+   @run main bug4198809
+*/
 
-import javadoc.tester.JavadocTester;
+import javax.swing.JFrame;
+import javax.swing.JMenuItem;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
-public class TestHrefInDocComment extends JavadocTester {
+public class bug4198809 {
+    static JFrame frame;
+    public static void main(String args[]) throws Exception {
+        UIManager.setLookAndFeel("com.sun.java.swing.plaf.motif.MotifLookAndFeel");
 
-    public static void main(String... args) throws Exception {
-        TestHrefInDocComment tester = new TestHrefInDocComment();
-        tester.runTests();
-    }
-
-    @Test
-    public void test() {
-        javadoc("-d", "out",
-                "-sourcepath", testSrc, "pkg");
-        checkExit(Exit.OK);
+        SwingUtilities.invokeAndWait(() -> {
+            try {
+                frame = new JFrame("bug4198809");
+                JMenuItem mi = new JMenuItem("test");
+                mi.setDisabledIcon(null);
+                mi.setEnabled(false);
+                frame.getContentPane().add(mi);
+            } finally {
+                if (frame != null) {
+                    frame.dispose();
+                }
+            }
+        });
     }
 }

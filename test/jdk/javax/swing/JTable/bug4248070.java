@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,38 @@
  */
 
 /*
- * @test
- * @bug 4638015 8248001
- * @summary Determine if Hrefs are processed properly when they
- * appear in doc comments.
- * @library ../../lib
- * @modules jdk.javadoc/jdk.javadoc.internal.tool
- * @build javadoc.tester.*
- * @run main TestHrefInDocComment
- */
+   @test
+   @bug 4248070
+   @summary cellEditor bound in JTable.
+*/
 
-import javadoc.tester.JavadocTester;
+import javax.swing.JTable;
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.IntrospectionException;
+import java.beans.PropertyDescriptor;
 
-public class TestHrefInDocComment extends JavadocTester {
+public class bug4248070 {
 
-    public static void main(String... args) throws Exception {
-        TestHrefInDocComment tester = new TestHrefInDocComment();
-        tester.runTests();
+  public static void main(String[] argv) {
+
+    BeanInfo bi = null;
+
+    try {
+        bi = Introspector.getBeanInfo(JTable.class);
+    } catch (IntrospectionException e) {
     }
 
-    @Test
-    public void test() {
-        javadoc("-d", "out",
-                "-sourcepath", testSrc, "pkg");
-        checkExit(Exit.OK);
+    PropertyDescriptor[] pd = bi.getPropertyDescriptors();
+    int i;
+    for (i=0; i<pd.length; i++) {
+        if (pd[i].getName().equals("cellEditor")) {
+            break;
+        }
     }
+    if (!pd[i].isBound()) {
+       throw new RuntimeException("cellEditor property of JTable isn't flagged as bound in bean info...");
+    }
+  }
+
 }

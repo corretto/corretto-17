@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,22 @@
  */
 
 /*
- * @test
- * @bug 4638015 8248001
- * @summary Determine if Hrefs are processed properly when they
- * appear in doc comments.
- * @library ../../lib
- * @modules jdk.javadoc/jdk.javadoc.internal.tool
- * @build javadoc.tester.*
- * @run main TestHrefInDocComment
- */
+   @test
+   @bug 4130356
+   @summary JTable.setRowSelectionInterval(int, int) shouldn't accept invalid range
+*/
 
-import javadoc.tester.JavadocTester;
+import javax.swing.JTable;
+import javax.swing.ListSelectionModel;
 
-public class TestHrefInDocComment extends JavadocTester {
+public class bug4130356 {
 
-    public static void main(String... args) throws Exception {
-        TestHrefInDocComment tester = new TestHrefInDocComment();
-        tester.runTests();
-    }
-
-    @Test
-    public void test() {
-        javadoc("-d", "out",
-                "-sourcepath", testSrc, "pkg");
-        checkExit(Exit.OK);
-    }
+  public static void main(String[] argv) {
+    JTable table = new JTable(4,3);
+    table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+    try {
+      table.setRowSelectionInterval(10,13);
+      throw new Error("Invalid arguments supported!!!");
+    } catch (IllegalArgumentException iae) {}
+  }
 }
