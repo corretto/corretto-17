@@ -726,7 +726,7 @@ void InterpreterMacroAssembler::remove_activation(
 void InterpreterMacroAssembler::lock_object(Register lock_reg)
 {
   assert(lock_reg == c_rarg1, "The argument is only for looks. It must be c_rarg1");
-  if (UseHeavyMonitors) {
+  if (LockingMode == LM_MONITOR) {
     call_VM(noreg,
             CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
             lock_reg);
@@ -754,7 +754,7 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg)
       br(Assembler::NE, slow_case);
     }
 
-    if (UseFastLocking) {
+    if (LockingMode == LM_LIGHTWEIGHT) {
       ldr(tmp, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
       fast_lock(obj_reg, tmp, rscratch1, rscratch2, slow_case);
       b(done);
@@ -832,9 +832,15 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg)
     bind(slow_case);
 
     // Call the runtime routine for slow case
-    call_VM(noreg,
-            CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
-            UseFastLocking ? obj_reg : lock_reg);
+    if (LockingMode == LM_LIGHTWEIGHT) {
+      call_VM(noreg,
+              CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter_obj),
+              obj_reg);
+    } else {
+      call_VM(noreg,
+              CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
+              lock_reg);
+    }
 
     bind(done);
   }
@@ -856,7 +862,7 @@ void InterpreterMacroAssembler::unlock_object(Register lock_reg)
 {
   assert(lock_reg == c_rarg1, "The argument is only for looks. It must be rarg1");
 
-  if (UseHeavyMonitors) {
+  if (LockingMode == LM_MONITOR) {
     call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), lock_reg);
   } else {
     Label done;
@@ -867,38 +873,40 @@ void InterpreterMacroAssembler::unlock_object(Register lock_reg)
 
     save_bcp(); // Save in case of exception
 
-    if (UseFastLocking) {
+    if (LockingMode != LM_LIGHTWEIGHT) {
+      // Convert from BasicObjectLock structure to object and BasicLock
+      // structure Store the BasicLock address into %r0
+      lea(swap_reg, Address(lock_reg, BasicObjectLock::lock_offset_in_bytes()));
+    }
+
+    // Load oop into obj_reg(%c_rarg3)
+    ldr(obj_reg, Address(lock_reg, BasicObjectLock::obj_offset_in_bytes()));
+
+    // Free entry
+    str(zr, Address(lock_reg, BasicObjectLock::obj_offset_in_bytes()));
+
+    if (LockingMode == LM_LIGHTWEIGHT) {
       Label slow_case;
-
-      // Load oop into obj_reg(%c_rarg3)
-      ldr(obj_reg, Address(lock_reg, BasicObjectLock::obj_offset_in_bytes()));
-
-      // Free entry
-      str(zr, Address(lock_reg, BasicObjectLock::obj_offset_in_bytes()));
 
       // Check for non-symmetric locking. This is allowed by the spec and the interpreter
       // must handle it.
-      Register tmp = header_reg;
-      ldr(tmp, Address(rthread, JavaThread::lock_stack_current_offset()));
-      ldr(tmp, Address(tmp, -oopSize));
+      Register tmp = rscratch1;
+      // First check for lock-stack underflow.
+      ldrw(tmp, Address(rthread, JavaThread::lock_stack_top_offset()));
+      cmpw(tmp, (unsigned)LockStack::start_offset());
+      br(Assembler::LE, slow_case);
+      // Then check if the top of the lock-stack matches the unlocked object.
+      subw(tmp, tmp, oopSize);
+      ldr(tmp, Address(rthread, tmp));
       cmpoop(tmp, obj_reg);
       br(Assembler::NE, slow_case);
 
       ldr(header_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
+      tbnz(header_reg, exact_log2(markWord::monitor_value), slow_case);
       fast_unlock(obj_reg, header_reg, swap_reg, rscratch1, slow_case);
       b(done);
       bind(slow_case);
     } else {
-      // Convert from BasicObjectLock structure to object and BasicLock
-      // structure Store the BasicLock address into %r0
-      lea(swap_reg, Address(lock_reg, BasicObjectLock::lock_offset_in_bytes()));
-
-      // Load oop into obj_reg(%c_rarg3)
-      ldr(obj_reg, Address(lock_reg, BasicObjectLock::obj_offset_in_bytes()));
-
-      // Free entry
-      str(zr, Address(lock_reg, BasicObjectLock::obj_offset_in_bytes()));
-
       if (UseBiasedLocking) {
         biased_locking_exit(obj_reg, header_reg, done);
       }

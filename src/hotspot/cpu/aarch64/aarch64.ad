@@ -1912,18 +1912,6 @@ void MachPrologNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
 
   __ build_frame(framesize);
 
-  int max_monitors = C->method() != NULL ? C->max_monitors() : 0;
-  if (UseFastLocking && max_monitors > 0) {
-    C2CheckLockStackStub* stub = new (C->comp_arena()) C2CheckLockStackStub();
-    C->output()->add_stub(stub);
-    __ ldr(r9, Address(rthread, JavaThread::lock_stack_current_offset()));
-    __ add(r9, r9, max_monitors * oopSize);
-    __ ldr(r10, Address(rthread, JavaThread::lock_stack_limit_offset()));
-    __ cmp(r9, r10);
-    __ br(Assembler::GE, stub->entry());
-    __ bind(stub->continuation());
-  }
-
   if (C->stub_function() == NULL) {
     BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
     bs->nmethod_entry_barrier(&_masm);
@@ -3842,11 +3830,10 @@ encode %{
     // Check for existing monitor
     __ tbnz(disp_hdr, exact_log2(markWord::monitor_value), object_has_monitor);
 
-    if (UseFastLocking) {
-      __ fast_lock(oop, disp_hdr, tmp, rscratch1, cont, false);
-      // Indicate success at cont.
-      __ cmp(oop, oop);
-    } else {
+    if (LockingMode == LM_MONITOR) {
+      __ tst(oop, oop); // Set NE to indicate 'failure' -> take slow-path. We know that oop != 0.
+      __ b(cont);
+    } else if (LockingMode == LM_LEGACY) {
       // Set tmp to be (markWord of object | UNLOCK_VALUE).
       __ orr(tmp, disp_hdr, markWord::unlocked_value);
 
@@ -3877,8 +3864,12 @@ encode %{
       // displaced header in the box, which indicates that it is a recursive lock.
       __ ands(tmp/*==0?*/, disp_hdr, tmp);   // Sets flags for result
       __ str(tmp/*==0, perhaps*/, Address(box, BasicLock::displaced_header_offset_in_bytes()));
+      __ b(cont);
+    } else {
+      assert(LockingMode == LM_LIGHTWEIGHT, "must be");
+      __ fast_lock(oop, disp_hdr, tmp, rscratch1, cont);
+      __ b(cont);
     }
-    __ b(cont);
 
     // Handle existing monitor.
     __ bind(object_has_monitor);
@@ -3891,7 +3882,7 @@ encode %{
     __ cmpxchg(tmp, zr, rthread, Assembler::xword, /*acquire*/ true,
                /*release*/ true, /*weak*/ false, rscratch1); // Sets flags for result
 
-    if (!UseFastLocking) {
+    if (LockingMode != LM_LIGHTWEIGHT) {
       // Store a non-null value into the box to avoid looking like a re-entrant
       // lock. The fast-path monitor unlock code checks for
       // markWord::monitor_value so use markWord::unused_mark which has the
@@ -3928,7 +3919,7 @@ encode %{
       __ biased_locking_exit(oop, tmp, cont);
     }
 
-    if (!UseFastLocking) {
+    if (LockingMode == LM_LEGACY) {
       // Find the lock address and load the displaced header from the stack.
       __ ldr(disp_hdr, Address(box, BasicLock::displaced_header_offset_in_bytes()));
 
@@ -3941,20 +3932,23 @@ encode %{
     __ ldr(tmp, Address(oop, oopDesc::mark_offset_in_bytes()));
     __ tbnz(tmp, exact_log2(markWord::monitor_value), object_has_monitor);
 
-
-    if (UseFastLocking) {
-      __ fast_unlock(oop, tmp, box, disp_hdr, cont);
-      // Indicate success at cont.
-      __ cmp(oop, oop);
-    } else {
+    if (LockingMode == LM_MONITOR) {
+      __ tst(oop, oop); // Set NE to indicate 'failure' -> take slow-path. We know that oop != 0.
+      __ b(cont);
+    } else if (LockingMode == LM_LEGACY) {
       // Check if it is still a light weight lock, this is is true if we
       // see the stack address of the basicLock in the markWord of the
       // object.
 
       __ cmpxchg(oop, box, disp_hdr, Assembler::xword, /*acquire*/ false,
                  /*release*/ true, /*weak*/ false, tmp);
+      __ b(cont);
+    } else {
+      assert(LockingMode == LM_LIGHTWEIGHT, "must be");
+      __ fast_unlock(oop, tmp, box, disp_hdr, cont);
+      __ b(cont);
     }
-    __ b(cont);
+
     assert(oopDesc::mark_offset_in_bytes() == 0, "offset of _mark is not 0");
 
     // Handle existing monitor.
@@ -3962,13 +3956,13 @@ encode %{
     STATIC_ASSERT(markWord::monitor_value <= INT_MAX);
     __ add(tmp, tmp, -(int)markWord::monitor_value); // monitor
 
-    if (UseFastLocking) {
+    if (LockingMode == LM_LIGHTWEIGHT) {
       // If the owner is anonymous, we need to fix it -- in an outline stub.
       Register tmp2 = disp_hdr;
       __ ldr(tmp2, Address(tmp, ObjectMonitor::owner_offset_in_bytes()));
       // We cannot use tbnz here, the target might be too far away and cannot
       // be encoded.
-      __ tst(tmp2, (uint64_t)(intptr_t) ANONYMOUS_OWNER);
+      __ tst(tmp2, (uint64_t)ObjectMonitor::ANONYMOUS_OWNER);
       C2HandleAnonOMOwnerStub* stub = new (Compile::current()->comp_arena()) C2HandleAnonOMOwnerStub(tmp, tmp2);
       Compile::current()->output()->add_stub(stub);
       __ br(Assembler::NE, stub->entry());

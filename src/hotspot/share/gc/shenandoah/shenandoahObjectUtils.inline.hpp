@@ -44,7 +44,6 @@ markWord ShenandoahObjectUtils::stable_mark(oop obj) {
   markWord mark = obj->mark_acquire();
 
   assert(!mark.is_being_inflated(), "can not be inflating");
-  assert(!mark.has_locker(), "can not be stack-locked");
 
   // The mark can be in one of the following states:
   // *  Marked       - object is forwarded, try again on forwardee

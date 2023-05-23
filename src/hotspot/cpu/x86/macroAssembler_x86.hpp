@@ -1734,7 +1734,7 @@ public:
 
  public:
   // C2 compiled method's prolog code.
-  void verified_entry(int framesize, int stack_bang_size, bool fp_mode_24b, bool is_stub, int max_monitors);
+  void verified_entry(int framesize, int stack_bang_size, bool fp_mode_24b, bool is_stub);
 
   // clear memory of size 'cnt' qwords, starting at 'base';
   // if 'is_large' is set, do not try to produce short loop
@@ -1922,7 +1922,7 @@ public:
 
   void vallones(XMMRegister dst, int vector_len);
 
-  void fast_lock_impl(Register obj, Register hdr, Register thread, Register tmp, Label& slow, bool rt_check_stack = true);
+  void fast_lock_impl(Register obj, Register hdr, Register thread, Register tmp, Label& slow);
   void fast_unlock_impl(Register obj, Register hdr, Register tmp, Label& slow);
 };
 

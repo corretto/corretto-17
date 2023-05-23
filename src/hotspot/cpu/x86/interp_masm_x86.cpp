@@ -1197,7 +1197,7 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg) {
   assert(lock_reg == LP64_ONLY(c_rarg1) NOT_LP64(rdx),
          "The argument is only for looks. It must be c_rarg1");
 
-  if (UseHeavyMonitors) {
+  if (LockingMode == LM_MONITOR) {
     call_VM(noreg,
             CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
             lock_reg);
@@ -1231,7 +1231,7 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg) {
       biased_locking_enter(lock_reg, obj_reg, swap_reg, tmp_reg, rklass_decode_tmp, false, done, &slow_case);
     }
 
-    if (UseFastLocking) {
+    if (LockingMode == LM_LIGHTWEIGHT) {
 #ifdef _LP64
       const Register thread = r15_thread;
 #else
@@ -1307,10 +1307,15 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg) {
     bind(slow_case);
 
     // Call the runtime routine for slow case
-    call_VM(noreg,
-            CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
-            UseFastLocking ? obj_reg : lock_reg);
-
+    if (LockingMode == LM_LIGHTWEIGHT) {
+      call_VM(noreg,
+              CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter_obj),
+              obj_reg);
+    } else {
+      call_VM(noreg,
+              CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
+              lock_reg);
+    }
     bind(done);
   }
 }
@@ -1332,7 +1337,7 @@ void InterpreterMacroAssembler::unlock_object(Register lock_reg) {
   assert(lock_reg == LP64_ONLY(c_rarg1) NOT_LP64(rdx),
          "The argument is only for looks. It must be c_rarg1");
 
-  if (UseHeavyMonitors) {
+  if (LockingMode == LM_MONITOR) {
     call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorexit), lock_reg);
   } else {
     Label done, slow_case;
@@ -1343,13 +1348,19 @@ void InterpreterMacroAssembler::unlock_object(Register lock_reg) {
 
     save_bcp(); // Save in case of exception
 
+    if (LockingMode != LM_LIGHTWEIGHT) {
+      // Convert from BasicObjectLock structure to object and BasicLock
+      // structure Store the BasicLock address into %rax
+      lea(swap_reg, Address(lock_reg, BasicObjectLock::lock_offset_in_bytes()));
+    }
+
     // Load oop into obj_reg(%c_rarg3)
     movptr(obj_reg, Address(lock_reg, BasicObjectLock::obj_offset_in_bytes()));
 
     // Free entry
     movptr(Address(lock_reg, BasicObjectLock::obj_offset_in_bytes()), (int32_t)NULL_WORD);
 
-    if (UseFastLocking) {
+    if (LockingMode == LM_LIGHTWEIGHT) {
 #ifdef _LP64
       const Register thread = r15_thread;
 #else
@@ -1358,8 +1369,8 @@ void InterpreterMacroAssembler::unlock_object(Register lock_reg) {
 #endif
       // Handle unstructured locking.
       Register tmp = swap_reg;
-      movptr(tmp, Address(thread, JavaThread::lock_stack_current_offset()));
-      cmpptr(obj_reg, Address(tmp, -oopSize));
+      movl(tmp, Address(thread, JavaThread::lock_stack_top_offset()));
+      cmpptr(obj_reg, Address(thread, tmp, Address::times_1,  -oopSize));
       jcc(Assembler::notEqual, slow_case);
       // Try to swing header from locked to unlock.
       movptr(swap_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
@@ -1367,10 +1378,6 @@ void InterpreterMacroAssembler::unlock_object(Register lock_reg) {
       fast_unlock_impl(obj_reg, swap_reg, header_reg, slow_case);
       jmp(done);
     } else {
-      // Convert from BasicObjectLock structure to object and BasicLock
-      // structure Store the BasicLock address into %rax
-      lea(swap_reg, Address(lock_reg, BasicObjectLock::lock_offset_in_bytes()));
-
       if (UseBiasedLocking) {
         biased_locking_exit(obj_reg, header_reg, done);
       }

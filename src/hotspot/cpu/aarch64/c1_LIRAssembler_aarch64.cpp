@@ -242,7 +242,7 @@ void LIR_Assembler::osr_entry() {
 
   // build frame
   ciMethod* m = compilation()->method();
-  __ build_frame(initial_frame_size_in_bytes(), bang_size_in_bytes(), compilation()->max_monitors());
+  __ build_frame(initial_frame_size_in_bytes(), bang_size_in_bytes());
 
   // OSR buffer is
   //
@@ -2539,7 +2539,7 @@ void LIR_Assembler::emit_lock(LIR_OpLock* op) {
   Register obj = op->obj_opr()->as_register();  // may not be an oop
   Register hdr = op->hdr_opr()->as_register();
   Register lock = op->lock_opr()->as_register();
-  if (UseHeavyMonitors) {
+  if (LockingMode == LM_MONITOR) {
     if (op->info() != NULL) {
       add_debug_info_for_null_check_here(op->info());
       __ null_check(obj, -1);

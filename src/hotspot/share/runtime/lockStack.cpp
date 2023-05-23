@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Red Hat, Inc. All rights reserved.
+ * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,62 +25,55 @@
 
 #include "precompiled.hpp"
 #include "memory/allocation.hpp"
-#include "runtime/lockStack.hpp"
+#include "runtime/lockStack.inline.hpp"
 #include "runtime/safepoint.hpp"
+#include "runtime/stackWatermark.hpp"
+#include "runtime/stackWatermarkSet.inline.hpp"
 #include "runtime/thread.hpp"
 #include "utilities/copy.hpp"
 #include "utilities/ostream.hpp"
 
-LockStack::LockStack() :
-        _base(UseHeavyMonitors ? NULL : NEW_C_HEAP_ARRAY(oop, INITIAL_CAPACITY, mtSynchronizer)),
-        _limit(_base + INITIAL_CAPACITY),
-        _current(_base) {
+const int LockStack::lock_stack_offset =      in_bytes(JavaThread::lock_stack_offset());
+const int LockStack::lock_stack_top_offset =  in_bytes(JavaThread::lock_stack_top_offset());
+const int LockStack::lock_stack_base_offset = in_bytes(JavaThread::lock_stack_base_offset());
+
+LockStack::LockStack(JavaThread* jt) :
+  _top(lock_stack_base_offset), _base() {
+#ifdef ASSERT
+  for (int i = 0; i < CAPACITY; i++) {
+    _base[i] = NULL;
+  }
+#endif
 }
 
-LockStack::~LockStack() {
-  if (!UseHeavyMonitors) {
-    FREE_C_HEAP_ARRAY(oop, _base);
-  }
+uint32_t LockStack::start_offset() {
+  int offset = lock_stack_base_offset;
+  assert(offset > 0, "must be positive offset");
+  return static_cast<uint32_t>(offset);
+}
+
+uint32_t LockStack::end_offset() {
+  int offset = lock_stack_base_offset + CAPACITY * oopSize;
+  assert(offset > 0, "must be positive offset");
+  return static_cast<uint32_t>(offset);
 }
 
 #ifndef PRODUCT
-void LockStack::validate(const char* msg) const {
-  assert(!UseHeavyMonitors, "never use lock-stack when fast-locking is disabled");
-  for (oop* loc1 = _base; loc1 < _current - 1; loc1++) {
-    for (oop* loc2 = loc1 + 1; loc2 < _current; loc2++) {
-      assert(*loc1 != *loc2, "entries must be unique: %s", msg);
+void LockStack::verify(const char* msg) const {
+  assert(LockingMode == LM_LIGHTWEIGHT, "never use lock-stack when light weight locking is disabled");
+  assert((_top <= end_offset()), "lockstack overflow: _top %d end_offset %d", _top, end_offset());
+  assert((_top >= start_offset()), "lockstack underflow: _top %d end_offset %d", _top, start_offset());
+  if (SafepointSynchronize::is_at_safepoint() || (Thread::current()->is_Java_thread() && is_owning_thread())) {
+    int top = to_index(_top);
+    for (int i = 0; i < top; i++) {
+      assert(_base[i] != NULL, "no zapped before top");
+      for (int j = i + 1; j < top; j++) {
+        assert(_base[i] != _base[j], "entries must be unique: %s", msg);
+      }
+    }
+    for (int i = top; i < CAPACITY; i++) {
+      assert(_base[i] == NULL, "only zapped entries after top: i: %d, top: %d, entry: " PTR_FORMAT, i, top, p2i(_base[i]));
     }
   }
 }
 #endif
-
-void LockStack::grow(size_t min_capacity) {
-  // Grow stack.
-  assert(_limit > _base, "invariant");
-  size_t capacity = _limit - _base;
-  size_t index = _current - _base;
-  size_t new_capacity = MAX2(min_capacity, capacity * 2);
-  oop* new_stack = NEW_C_HEAP_ARRAY(oop, new_capacity, mtSynchronizer);
-  for (size_t i = 0; i < index; i++) {
-    *(new_stack + i) = *(_base + i);
-  }
-  FREE_C_HEAP_ARRAY(oop, _base);
-  _base = new_stack;
-  _limit = _base + new_capacity;
-  _current = _base + index;
-  assert(_current < _limit, "must fit after growing");
-  assert((_limit - _base) >= (ptrdiff_t) min_capacity, "must grow enough");
-}
-
-void LockStack::grow() {
-  grow((_limit - _base) + 1);
-}
-
-void LockStack::grow(oop* required_limit) {
-  grow(required_limit - _base);
-}
-
-void LockStack::ensure_lock_stack_size(oop* _required_limit) {
-  JavaThread* jt = JavaThread::current();
-  jt->lock_stack().grow(_required_limit);
-}

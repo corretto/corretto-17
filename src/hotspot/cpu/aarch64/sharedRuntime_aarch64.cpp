@@ -1773,10 +1773,9 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     // Load the oop from the handle
     __ ldr(obj_reg, Address(oop_handle_reg, 0));
 
-    if (UseFastLocking) {
-      __ ldr(swap_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
-      __ fast_lock(obj_reg, swap_reg, tmp, rscratch1, slow_path_lock);
-    } else {
+    if (LockingMode == LM_MONITOR) {
+      __ b(slow_path_lock);
+    } else if (LockingMode == LM_LEGACY) {
       if (UseBiasedLocking) {
         __ biased_locking_enter(lock_reg, obj_reg, swap_reg, tmp, false, lock_done, &slow_path_lock);
       }
@@ -1811,6 +1810,10 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
       // Save the test result, for recursive case, the result is zero
       __ str(swap_reg, Address(lock_reg, mark_word_offset));
       __ br(Assembler::NE, slow_path_lock);
+    } else {
+      assert(LockingMode == LM_LIGHTWEIGHT, "must be");
+      __ ldr(swap_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
+      __ fast_lock(obj_reg, swap_reg, tmp, rscratch1, slow_path_lock);
     }
     // Slow path will re-enter here
 
@@ -1933,7 +1936,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
       __ biased_locking_exit(obj_reg, old_hdr, done);
     }
 
-    if (!UseFastLocking) {
+    if (LockingMode == LM_LEGACY) {
       // Simple recursive lock?
       __ ldr(rscratch1, Address(sp, lock_slot_offset * VMRegImpl::stack_slot_size));
       __ cbz(rscratch1, done);
@@ -1945,10 +1948,9 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     }
 
 
-    if (UseFastLocking) {
-      __ ldr(old_hdr, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
-      __ fast_unlock(obj_reg, old_hdr, swap_reg, rscratch1, slow_path_unlock);
-    } else {
+    if (LockingMode == LM_MONITOR) {
+      __ b(slow_path_unlock);
+    } else if (LockingMode == LM_LEGACY) {
       // get address of the stack lock
       __ lea(r0, Address(sp, lock_slot_offset * VMRegImpl::stack_slot_size));
       //  get old displaced header
@@ -1958,6 +1960,11 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
       Label succeed;
       __ cmpxchg_obj_header(r0, old_hdr, obj_reg, rscratch1, succeed, &slow_path_unlock);
       __ bind(succeed);
+    } else {
+      assert(LockingMode == LM_LIGHTWEIGHT, "");
+      __ ldr(old_hdr, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
+      __ tbnz(old_hdr, exact_log2(markWord::monitor_value), slow_path_unlock);
+      __ fast_unlock(obj_reg, old_hdr, swap_reg, rscratch1, slow_path_unlock);
     }
 
     // slow path re-enters here

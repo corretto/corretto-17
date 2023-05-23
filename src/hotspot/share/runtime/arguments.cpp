@@ -2003,6 +2003,22 @@ bool Arguments::check_vm_args_consistency() {
   }
 #endif
 
+#if !defined(X86) && !defined(AARCH64)
+  if (LockingMode == LM_LIGHTWEIGHT) {
+    FLAG_SET_CMDLINE(LockingMode, LM_LEGACY);
+    warning("New lightweight locking not supported on this platform");
+  }
+#endif
+
+  if (UseHeavyMonitors) {
+    if (FLAG_IS_CMDLINE(LockingMode) && LockingMode != LM_MONITOR) {
+      jio_fprintf(defaultStream::error_stream(),
+                  "Conflicting -XX:+UseHeavyMonitors and -XX:LockingMode=%d flags", LockingMode);
+      return false;
+    }
+    FLAG_SET_CMDLINE(LockingMode, LM_MONITOR);
+  }
+
   return status;
 }
 
@@ -3159,14 +3175,11 @@ jint Arguments::finalize_vm_init_args(bool patch_mod_javabase) {
     warning("Compact object headers require compressed class pointers. Disabling compact object headers.");
     FLAG_SET_DEFAULT(UseCompactObjectHeaders, false);
   }
-  if (UseCompactObjectHeaders) {
-    if (!UseFastLocking) {
-      // Lilliput requires fast-locking.
-      FLAG_SET_DEFAULT(UseFastLocking, true);
-    }
-    if (UseBiasedLocking) {
-      FLAG_SET_DEFAULT(UseBiasedLocking, false);
-    }
+  if (UseCompactObjectHeaders && LockingMode == LM_LEGACY) {
+    FLAG_SET_DEFAULT(LockingMode, LM_LIGHTWEIGHT);
+  }
+  if (UseCompactObjectHeaders && UseBiasedLocking) {
+    FLAG_SET_DEFAULT(UseBiasedLocking, false);
   }
   if (!UseCompactObjectHeaders) {
     FLAG_SET_DEFAULT(UseSharedSpaces, false);

@@ -285,7 +285,7 @@ void LIR_Assembler::osr_entry() {
 
   // build frame
   ciMethod* m = compilation()->method();
-  __ build_frame(initial_frame_size_in_bytes(), bang_size_in_bytes(), compilation()->max_monitors());
+  __ build_frame(initial_frame_size_in_bytes(), bang_size_in_bytes());
 
   // OSR buffer is
   //
@@ -3488,11 +3488,11 @@ void LIR_Assembler::emit_lock(LIR_OpLock* op) {
   Register obj = op->obj_opr()->as_register();  // may not be an oop
   Register hdr = op->hdr_opr()->as_register();
   Register lock = op->lock_opr()->as_register();
-  if (UseHeavyMonitors) {
+  if (LockingMode == LM_MONITOR) {
     __ jmp(*op->stub()->entry());
   } else if (op->code() == lir_lock) {
     Register scratch = noreg;
-    if (UseBiasedLocking || UseFastLocking) {
+    if (UseBiasedLocking || LockingMode == LM_LIGHTWEIGHT) {
       scratch = op->scratch_opr()->as_register();
     }
     assert(BasicLock::displaced_header_offset_in_bytes() == 0, "lock_reg must point to the displaced header");

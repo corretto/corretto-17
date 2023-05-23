@@ -49,20 +49,11 @@ void C2SafepointPollStub::emit(C2_MacroAssembler& masm) {
   __ far_jump(callback_addr);
 }
 
-int C2CheckLockStackStub::max_size() const {
-  return 20;
-}
-
-void C2CheckLockStackStub::emit(C2_MacroAssembler& masm) {
-  __ bind(entry());
-  assert(StubRoutines::aarch64::check_lock_stack() != NULL, "need runtime call stub");
-  __ movptr(rscratch1, (uintptr_t) StubRoutines::aarch64::check_lock_stack());
-  __ blr(rscratch1);
-  __ b(continuation());
-}
-
 int C2HandleAnonOMOwnerStub::max_size() const {
-  return 20;
+  // Max size of stub has been determined by testing with 0, in which case
+  // C2CodeStubList::emit() will throw an assertion and report the actual size that
+  // is needed.
+  return 24;
 }
 
 void C2HandleAnonOMOwnerStub::emit(C2_MacroAssembler& masm) {
@@ -75,9 +66,12 @@ void C2HandleAnonOMOwnerStub::emit(C2_MacroAssembler& masm) {
   __ str(rthread, Address(mon, ObjectMonitor::owner_offset_in_bytes()));
 
   // Pop owner object from lock-stack.
-  __ ldr(t, Address(rthread, JavaThread::lock_stack_current_offset()));
-  __ sub(t, t, oopSize);
-  __ str(t, Address(rthread, JavaThread::lock_stack_current_offset()));
+  __ ldrw(t, Address(rthread, JavaThread::lock_stack_top_offset()));
+  __ subw(t, t, oopSize);
+#ifdef ASSERT
+  __ str(zr, Address(rthread, t));
+#endif
+  __ strw(t, Address(rthread, JavaThread::lock_stack_top_offset()));
 
   __ b(continuation());
 }

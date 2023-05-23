@@ -89,8 +89,8 @@ int C1_MacroAssembler::lock_object(Register hdr, Register obj, Register disp_hdr
 
   // Load object header
   ldr(hdr, Address(obj, hdr_offset));
-  if (UseFastLocking) {
-    fast_lock(obj, hdr, rscratch1, rscratch2, slow_case, false);
+  if (LockingMode == LM_LIGHTWEIGHT) {
+    fast_lock(obj, hdr, rscratch1, rscratch2, slow_case);
   } else {
     // and mark it as unlocked
     orr(hdr, hdr, markWord::unlocked_value);
@@ -146,23 +146,28 @@ void C1_MacroAssembler::unlock_object(Register hdr, Register obj, Register disp_
     biased_locking_exit(obj, hdr, done);
   }
 
-  if (UseFastLocking) {
-    // load object
-    ldr(obj, Address(disp_hdr, BasicObjectLock::obj_offset_in_bytes()));
-    verify_oop(obj);
-    ldr(hdr, Address(obj, oopDesc::mark_offset_in_bytes()));
-    fast_unlock(obj, hdr, rscratch1, rscratch2, slow_case);
-  } else {
+  if (LockingMode != LM_LIGHTWEIGHT) {
     // load displaced header
     ldr(hdr, Address(disp_hdr, 0));
-    // if the loaded hdr is NULL we had recursive locking
+    // if the loaded hdr is null we had recursive locking
     // if we had recursive locking, we are done
     cbz(hdr, done);
-    if (!UseBiasedLocking) {
-      // load object
-      ldr(obj, Address(disp_hdr, BasicObjectLock::obj_offset_in_bytes()));
-    }
-    verify_oop(obj);
+  }
+
+  if (!UseBiasedLocking) {
+    // load object
+    ldr(obj, Address(disp_hdr, BasicObjectLock::obj_offset_in_bytes()));
+  }
+  verify_oop(obj);
+
+  if (LockingMode == LM_LIGHTWEIGHT) {
+    ldr(hdr, Address(obj, oopDesc::mark_offset_in_bytes()));
+    // We cannot use tbnz here, the target might be too far away and cannot
+    // be encoded.
+    tst(hdr, markWord::monitor_value);
+    br(Assembler::NE, slow_case);
+    fast_unlock(obj, hdr, rscratch1, rscratch2, slow_case);
+  } else {
     // test if object header is pointing to the displaced header, and if so, restore
     // the displaced header in the object - if the object header is not pointing to
     // the displaced header, get the object header instead
@@ -174,9 +179,9 @@ void C1_MacroAssembler::unlock_object(Register hdr, Register obj, Register disp_
     } else {
       cmpxchgptr(disp_hdr, hdr, obj, rscratch2, done, &slow_case);
     }
+    // done
+    bind(done);
   }
-  // done
-  bind(done);
 }
 
 
@@ -333,25 +338,12 @@ void C1_MacroAssembler::inline_cache_check(Register receiver, Register iCache) {
 }
 
 
-void C1_MacroAssembler::build_frame(int framesize, int bang_size_in_bytes, int max_monitors) {
+void C1_MacroAssembler::build_frame(int framesize, int bang_size_in_bytes) {
   assert(bang_size_in_bytes >= framesize, "stack bang size incorrect");
   // Make sure there is enough stack space for this method's activation.
   // Note that we do this before creating a frame.
   generate_stack_overflow_check(bang_size_in_bytes);
   MacroAssembler::build_frame(framesize);
-
-  if (UseFastLocking && max_monitors > 0) {
-    Label ok;
-    ldr(r9, Address(rthread, JavaThread::lock_stack_current_offset()));
-    add(r9, r9, max_monitors * oopSize);
-    ldr(r10, Address(rthread, JavaThread::lock_stack_limit_offset()));
-    cmp(r9, r10);
-    br(Assembler::LT, ok);
-    assert(StubRoutines::aarch64::check_lock_stack() != NULL, "need runtime call stub");
-    movptr(rscratch1, (uintptr_t) StubRoutines::aarch64::check_lock_stack());
-    blr(rscratch1);
-    bind(ok);
-  }
 
   // Insert nmethod entry barrier into frame.
   BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();

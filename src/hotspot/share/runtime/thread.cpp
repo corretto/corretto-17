@@ -703,7 +703,7 @@ void Thread::print_owned_locks_on(outputStream* st) const {
 // should be revisited, and they should be removed if possible.
 
 bool Thread::is_lock_owned(address adr) const {
-  assert(!UseFastLocking, "maybe not call that?");
+  assert(LockingMode != LM_LIGHTWEIGHT, "should not be called with new lightweight locking");
   return is_in_full_stack(adr);
 }
 
@@ -1094,8 +1094,8 @@ JavaThread::JavaThread() :
   _class_to_be_initialized(nullptr),
 
   _SleepEvent(ParkEvent::Allocate(this)),
-  _lock_stack()
-{
+
+  _lock_stack(this) {
   set_jni_functions(jni_functions());
 
 #if INCLUDE_JVMCI
@@ -1572,7 +1572,7 @@ JavaThread* JavaThread::active() {
 }
 
 bool JavaThread::is_lock_owned(address adr) const {
-  assert(!UseFastLocking, "should not be called with fast-locking");
+  assert(LockingMode != LM_LIGHTWEIGHT, "should not be called with new lightweight locking");
  if (Thread::is_lock_owned(adr)) return true;
 
   for (MonitorChunk* chunk = monitor_chunks(); chunk != NULL; chunk = chunk->next()) {
@@ -2024,7 +2024,7 @@ void JavaThread::oops_do_no_frames(OopClosure* f, CodeBlobClosure* cf) {
     jvmti_thread_state()->oops_do(f, cf);
   }
 
-  if (!UseHeavyMonitors && UseFastLocking) {
+  if (LockingMode == LM_LIGHTWEIGHT) {
     lock_stack().oops_do(f);
   }
 }
@@ -3736,7 +3736,7 @@ GrowableArray<JavaThread*>* Threads::get_pending_threads(ThreadsList * t_list,
 
 JavaThread *Threads::owning_thread_from_monitor_owner(ThreadsList * t_list,
                                                       address owner) {
-  assert(!UseFastLocking, "only with stack-locking");
+  assert(LockingMode != LM_LIGHTWEIGHT, "Not with new lightweight locking");
   // NULL owner means not locked so we can skip the search
   if (owner == NULL) return NULL;
 
@@ -3767,7 +3767,7 @@ JavaThread *Threads::owning_thread_from_monitor_owner(ThreadsList * t_list,
 }
 
 JavaThread* Threads::owning_thread_from_object(ThreadsList * t_list, oop obj) {
-  assert(UseFastLocking, "Only with fast-locking");
+  assert(LockingMode == LM_LIGHTWEIGHT, "Only with new lightweight locking");
   DO_JAVA_THREADS(t_list, q) {
     if (q->lock_stack().contains(obj)) {
       return q;
@@ -3777,31 +3777,17 @@ JavaThread* Threads::owning_thread_from_object(ThreadsList * t_list, oop obj) {
 }
 
 JavaThread* Threads::owning_thread_from_monitor(ThreadsList* t_list, ObjectMonitor* monitor) {
-  if (UseFastLocking) {
-    void* raw_owner = monitor->owner_raw();
-    if (raw_owner == ANONYMOUS_OWNER) {
+  if (LockingMode == LM_LIGHTWEIGHT) {
+    if (monitor->is_owner_anonymous()) {
       return owning_thread_from_object(t_list, monitor->object());
-    } else if (raw_owner == DEFLATER_MARKER) {
-      return NULL;
     } else {
-      Thread* owner = reinterpret_cast<Thread*>(raw_owner);
-#ifdef ASSERT
-      if (owner != NULL) {
-        bool found = false;
-        DO_JAVA_THREADS(t_list, q) {
-          if (q == owner) {
-            found = true;;
-            break;
-          }
-        }
-        assert(found, "owner is not a thread: " PTR_FORMAT, p2i(owner));
-      }
-#endif
+      Thread* owner = reinterpret_cast<Thread*>(monitor->owner());
       assert(owner == NULL || owner->is_Java_thread(), "only JavaThreads own monitors");
       return reinterpret_cast<JavaThread*>(owner);
     }
   } else {
-    return owning_thread_from_monitor_owner(t_list, (address)monitor->owner());
+    address owner = (address)monitor->owner();
+    return owning_thread_from_monitor_owner(t_list, owner);
   }
 }
 

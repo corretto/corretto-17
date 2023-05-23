@@ -1823,11 +1823,9 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     // Load the oop from the handle
     __ movptr(obj_reg, Address(oop_handle_reg, 0));
 
-    if (UseFastLocking) {
-     // Load object header
-     __ movptr(swap_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
-     __ fast_lock_impl(obj_reg, swap_reg, thread, lock_reg, slow_path_lock);
-    } else {
+    if (LockingMode == LM_MONITOR) {
+      __ jmp(slow_path_lock);
+    } else if (LockingMode == LM_LEGACY) {
       if (UseBiasedLocking) {
         // Note that oop_handle_reg is trashed during this call
         __ biased_locking_enter(lock_reg, obj_reg, swap_reg, oop_handle_reg, noreg, false, lock_done, &slow_path_lock);
@@ -1863,6 +1861,11 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
       // Save the test result, for recursive case, the result is zero
       __ movptr(Address(lock_reg, mark_word_offset), swap_reg);
       __ jcc(Assembler::notEqual, slow_path_lock);
+    } else {
+      assert(LockingMode == LM_LIGHTWEIGHT, "must be");
+     // Load object header
+     __ movptr(swap_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
+     __ fast_lock_impl(obj_reg, swap_reg, thread, lock_reg, slow_path_lock);
     }
     // Slow path will re-enter here
     __ bind(lock_done);
@@ -2003,7 +2006,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
       __ biased_locking_exit(obj_reg, rbx, done);
     }
 
-    if (!UseFastLocking) {
+    if (LockingMode == LM_LEGACY) {
       // Simple recursive lock?
 
       __ cmpptr(Address(rbp, lock_slot_rbp_offset), (int32_t)NULL_WORD);
@@ -2015,11 +2018,9 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
       save_native_result(masm, ret_type, stack_slots);
     }
 
-    if (UseFastLocking) {
-      __ movptr(swap_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
-      __ andptr(swap_reg, ~(int32_t)markWord::lock_mask_in_place);
-      __ fast_unlock_impl(obj_reg, swap_reg, lock_reg, slow_path_unlock);
-    } else {
+    if (LockingMode == LM_MONITOR) {
+      __ jmp(slow_path_unlock);
+    } else if (LockingMode == LM_LEGACY) {
       //  get old displaced header
       __ movptr(rbx, Address(rbp, lock_slot_rbp_offset));
 
@@ -2032,6 +2033,11 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
       __ lock();
       __ cmpxchgptr(rbx, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
       __ jcc(Assembler::notEqual, slow_path_unlock);
+    } else {
+      assert(LockingMode == LM_LIGHTWEIGHT, "must be");
+      __ movptr(swap_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
+      __ andptr(swap_reg, ~(int32_t)markWord::lock_mask_in_place);
+      __ fast_unlock_impl(obj_reg, swap_reg, lock_reg, slow_path_unlock);
     }
 
     // slow path re-enters here

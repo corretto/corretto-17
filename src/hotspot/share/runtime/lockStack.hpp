@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Red Hat, Inc. All rights reserved.
+ * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,30 +36,56 @@ class OopClosure;
 class LockStack {
   friend class VMStructs;
 private:
-  static const size_t INITIAL_CAPACITY = 1;
-  oop* _base;
-  oop* _limit;
-  oop* _current;
+  static const int CAPACITY = 8;
 
-  void grow();
-  void grow(size_t min_capacity);
-  void grow(oop* required_limit);
+  // TODO: It would be very useful if JavaThread::lock_stack_offset() and friends were constexpr,
+  // but this is currently not the case because we're using offset_of() which is non-constexpr,
+  // GCC would warn about non-standard-layout types if we were using offsetof() (which *is* constexpr).
+  static const int lock_stack_offset;
+  static const int lock_stack_top_offset;
+  static const int lock_stack_base_offset;
 
-  void validate(const char* msg) const PRODUCT_RETURN;
+  // The offset of the next element, in bytes, relative to the JavaThread structure.
+  // We do this instead of a simple index into the array because this allows for
+  // efficient addressing in generated code.
+  uint32_t _top;
+  oop _base[CAPACITY];
+
+  // Get the owning thread of this lock-stack.
+  inline JavaThread* get_thread() const;
+
+  // Tests if the calling thread is the thread that owns this lock-stack.
+  bool is_owning_thread() const;
+
+  // Verifies consistency of the lock-stack.
+  void verify(const char* msg) const PRODUCT_RETURN;
+
+  // Given an offset (in bytes) calculate the index into the lock-stack.
+  static inline int to_index(uint32_t offset);
+
 public:
-  static ByteSize current_offset()    { return byte_offset_of(LockStack, _current); }
-  static ByteSize base_offset()       { return byte_offset_of(LockStack, _base); }
-  static ByteSize limit_offset()      { return byte_offset_of(LockStack, _limit); }
+  static ByteSize top_offset()  { return byte_offset_of(LockStack, _top); }
+  static ByteSize base_offset() { return byte_offset_of(LockStack, _base); }
 
-  static void ensure_lock_stack_size(oop* _required_limit);
+  LockStack(JavaThread* jt);
 
-  LockStack();
-  ~LockStack();
+  // The boundary indicies of the lock-stack.
+  static uint32_t start_offset();
+  static uint32_t end_offset();
 
+  // Return true if we have room to push onto this lock-stack, false otherwise.
+  inline bool can_push() const;
+
+  // Pushes an oop on this lock-stack.
   inline void push(oop o);
+
+  // Pops an oop from this lock-stack.
   inline oop pop();
+
+  // Removes an oop from an arbitrary location of this lock-stack.
   inline void remove(oop o);
 
+  // Tests whether the oop is on this lock-stack.
   inline bool contains(oop o) const;
 
   // GC support

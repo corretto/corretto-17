@@ -302,7 +302,6 @@ class Compile : public Phase {
   bool                  _has_irreducible_loop;  // Found irreducible loops
   // JSR 292
   bool                  _has_method_handle_invokes; // True if this method has MethodHandle invokes.
-  uint                  _max_monitors;          // Keep track of maximum number of active monitors in this compilation
   RTMState              _rtm_state;             // State of Restricted Transactional Memory usage
   int                   _loop_opts_cnt;         // loop opts round
   bool                  _clinit_barrier_on_entry; // True if clinit barrier is needed on nmethod entry
@@ -596,10 +595,6 @@ class Compile : public Phase {
   void          set_max_node_limit(uint n)       { _max_node_limit = n; }
   bool              clinit_barrier_on_entry()       { return _clinit_barrier_on_entry; }
   void          set_clinit_barrier_on_entry(bool z) { _clinit_barrier_on_entry = z; }
-
-  void          push_monitor() { _max_monitors++; }
-  void          reset_max_monitors() { _max_monitors = 0; }
-  uint          max_monitors() { return _max_monitors; }
 
   // check the CompilerOracle for special behaviours for this compile
   bool          method_has_option(enum CompileCommand option) {

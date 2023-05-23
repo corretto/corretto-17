@@ -2103,8 +2103,12 @@ const intx ObjectAlignmentInBytes = 8;
   product(size_t, HeapObjectStatsSamplingInterval, 500, DIAGNOSTIC,         \
              "Heap object statistics sampling interval (ms)")               \
                                                                             \
-  product(bool, UseFastLocking, false, EXPERIMENTAL,                        \
-                "Use fast-locking instead of stack-locking")                \
+  product(int, LockingMode, LM_LEGACY, EXPERIMENTAL,                        \
+          "Select locking mode: "                                           \
+          "0: monitors only (LM_MONITOR), "                                 \
+          "1: monitors & legacy stack-locking (LM_LEGACY, default), "       \
+          "2: monitors & new lightweight locking (LM_LIGHTWEIGHT)")         \
+          range(0, 2)                                                       \
                                                                             \
   develop(bool, TraceOptimizedUpcallStubs, false,                              \
                 "Trace optimized upcall stub generation")                      \

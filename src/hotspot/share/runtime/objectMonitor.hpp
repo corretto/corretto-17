@@ -148,13 +148,19 @@ class ObjectMonitor : public CHeapObj<mtObjectMonitor> {
   // Used by async deflation as a marker in the _owner field.
   // Note that the choice of the two markers is peculiar:
   // - They need to represent values that cannot be pointers. In particular,
-  //   we achieve this by using the lowest two bits
+  //   we achieve this by using the lowest two bits.
   // - ANONYMOUS_OWNER should be a small value, it is used in generated code
-  //   and small values encode much better
+  //   and small values encode much better.
   // - We test for anonymous owner by testing for the lowest bit, therefore
   //   DEFLATER_MARKER must *not* have that bit set.
   #define DEFLATER_MARKER reinterpret_cast<void*>(2)
-  #define ANONYMOUS_OWNER reinterpret_cast<void*>(1)
+public:
+  // NOTE: Typed as uintptr_t so that we can pick it up in SA, via vmStructs.
+  static const uintptr_t ANONYMOUS_OWNER = 1;
+
+private:
+  static void* anon_owner_ptr() { return reinterpret_cast<void*>(ANONYMOUS_OWNER); }
+
   void* volatile _owner;            // pointer to owning thread OR BasicLock
   volatile jlong _previous_owner_tid;  // thread id of the previous owner of the monitor
   // Separate _owner and _next_om on different cache lines since
@@ -252,7 +258,7 @@ class ObjectMonitor : public CHeapObj<mtObjectMonitor> {
   }
   const char* is_busy_to_string(stringStream* ss);
 
-  intptr_t  is_entered(JavaThread* current) const;
+  bool is_entered(JavaThread* current) const;
 
   bool      has_owner() const;
   void*     owner() const;  // Returns NULL if DEFLATER_MARKER is observed.
@@ -273,15 +279,15 @@ class ObjectMonitor : public CHeapObj<mtObjectMonitor> {
   void*     try_set_owner_from(void* old_value, void* new_value);
 
   void set_owner_anonymous() {
-    set_owner_from(NULL, ANONYMOUS_OWNER);
+    set_owner_from(NULL, anon_owner_ptr());
   }
 
   bool is_owner_anonymous() const {
-    return owner_raw() == ANONYMOUS_OWNER;
+    return owner_raw() == anon_owner_ptr();
   }
 
   void set_owner_from_anonymous(Thread* owner) {
-    set_owner_from(ANONYMOUS_OWNER, owner);
+    set_owner_from(anon_owner_ptr(), owner);
   }
 
   // Simply get _next_om field.

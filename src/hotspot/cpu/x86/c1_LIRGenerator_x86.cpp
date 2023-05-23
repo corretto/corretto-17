@@ -314,7 +314,7 @@ void LIRGenerator::do_MonitorEnter(MonitorEnter* x) {
   LIR_Opr lock = new_register(T_INT);
   // Need a scratch register for biased locking on x86
   LIR_Opr scratch = LIR_OprFact::illegalOpr;
-  if (UseBiasedLocking || UseFastLocking) {
+  if (UseBiasedLocking || LockingMode == LM_LIGHTWEIGHT) {
     scratch = new_register(T_INT);
   }
 
