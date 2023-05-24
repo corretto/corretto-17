@@ -128,6 +128,18 @@ class arrayOopDesc : public oopDesc {
     *length_addr_impl(mem) = length;
   }
 
+  // Should only be called with constants as argument
+  // (will not constant fold otherwise)
+  // Returns the header size in words aligned to the requirements of the
+  // array object type.
+  static int header_size(BasicType type) {
+    assert(!UseCompactObjectHeaders, "Don't use this with compact headers");
+    size_t typesize_in_bytes = header_size_in_bytes();
+    return (int)(element_type_should_be_aligned(type)
+      ? align_object_offset(typesize_in_bytes/HeapWordSize)
+      : typesize_in_bytes/HeapWordSize);
+  }
+
   // Return the maximum length of an array of BasicType.  The length can passed
   // to typeArrayOop::object_size(scale, length, header_size) without causing an
   // overflow. We also need to make sure that this will not overflow a size_t on
