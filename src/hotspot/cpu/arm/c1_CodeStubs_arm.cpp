@@ -243,6 +243,9 @@ void MonitorExitStub::emit_code(LIR_Assembler* ce) {
   __ b(_continuation);
 }
 
+void LoadKlassStub::emit_code(LIR_Assembler* ce) {
+  Unimplemented();  // Only needed with compact object headers.
+}
 
 // Call return is directly after patch word
 int PatchingStub::_patch_info_offset = 0;
