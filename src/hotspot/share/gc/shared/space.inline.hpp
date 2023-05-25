@@ -30,7 +30,6 @@
 #include "gc/shared/blockOffsetTable.inline.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "gc/shared/generation.hpp"
-#include "gc/shared/genCollectedHeap.hpp"
 #include "gc/shared/spaceDecorator.hpp"
 #include "oops/oopsHierarchy.hpp"
 #include "oops/oop.inline.hpp"
@@ -164,13 +163,12 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
   HeapWord* cur_obj = space->bottom();
   HeapWord* scan_limit = space->scan_limit();
 
-  SlidingForwarding* const forwarding = GenCollectedHeap::heap()->forwarding();
   while (cur_obj < scan_limit) {
     if (space->scanned_block_is_obj(cur_obj) && cast_to_oop(cur_obj)->is_gc_marked()) {
       // prefetch beyond cur_obj
       Prefetch::write(cur_obj, interval);
       size_t size = space->scanned_block_size(cur_obj);
-      compact_top = cp->space->forward(cast_to_oop(cur_obj), size, cp, compact_top, forwarding);
+      compact_top = cp->space->forward(cast_to_oop(cur_obj), size, cp, compact_top);
       cur_obj += size;
       end_of_live = cur_obj;
     } else {
@@ -186,7 +184,7 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
       // we don't have to compact quite as often.
       if (cur_obj == compact_top && dead_spacer.insert_deadspace(cur_obj, end)) {
         oop obj = cast_to_oop(cur_obj);
-        compact_top = cp->space->forward(obj, obj->size(), cp, compact_top, forwarding);
+        compact_top = cp->space->forward(obj, obj->size(), cp, compact_top);
         end_of_live = end;
       } else {
         // otherwise, it really is a free region.
@@ -225,7 +223,6 @@ inline void CompactibleSpace::scan_and_adjust_pointers(SpaceType* space) {
   HeapWord* cur_obj = space->bottom();
   HeapWord* const end_of_live = space->_end_of_live;  // Established by "scan_and_forward".
   HeapWord* const first_dead = space->_first_dead;    // Established by "scan_and_forward".
-  const SlidingForwarding* const forwarding = GenCollectedHeap::heap()->forwarding();
 
   assert(first_dead <= end_of_live, "Stands to reason, no?");
 
@@ -237,7 +234,7 @@ inline void CompactibleSpace::scan_and_adjust_pointers(SpaceType* space) {
     if (cur_obj < first_dead || cast_to_oop(cur_obj)->is_gc_marked()) {
       // cur_obj is alive
       // point all the oops to the new location
-      size_t size = MarkSweep::adjust_pointers(forwarding, cast_to_oop(cur_obj));
+      size_t size = MarkSweep::adjust_pointers(cast_to_oop(cur_obj));
       size = space->adjust_obj_size(size);
       debug_only(prev_obj = cur_obj);
       cur_obj += size;
@@ -319,8 +316,6 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space) {
     cur_obj = *(HeapWord**)(space->_first_dead);
   }
 
-  const SlidingForwarding* const forwarding = GenCollectedHeap::heap()->forwarding();
-
   debug_only(HeapWord* prev_obj = NULL);
   while (cur_obj < end_of_live) {
     if (!cast_to_oop(cur_obj)->is_gc_marked()) {
@@ -334,7 +329,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space) {
 
       // size and destination
       size_t size = space->obj_size(cur_obj);
-      HeapWord* compaction_top = cast_from_oop<HeapWord*>(forwarding->forwardee(cast_to_oop(cur_obj)));
+      HeapWord* compaction_top = cast_from_oop<HeapWord*>(SlidingForwarding::forwardee(cast_to_oop(cur_obj)));
 
       // prefetch beyond compaction_top
       Prefetch::write(compaction_top, copy_interval);

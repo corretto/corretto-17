@@ -689,7 +689,10 @@
   product(uintx, GCDrainStackTargetSize, 64,                                \
           "Number of entries we will try to leave on the stack "            \
           "during parallel gc")                                             \
-          range(0, max_juint)
+          range(0, max_juint)                                               \
+                                                                            \
+  product(bool, UseAltGCForwarding, false, EXPERIMENTAL,                    \
+          "Use alternative GC forwarding that preserves object headers")    \
 
 // end of GC_FLAGS
 

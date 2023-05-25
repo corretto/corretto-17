@@ -30,7 +30,6 @@
 #include "utilities/growableArray.hpp"
 
 class HeapRegion;
-class SlidingForwarding;
 
 class G1FullGCCompactionPoint : public CHeapObj<mtGC> {
   HeapRegion* _current_region;
@@ -52,7 +51,7 @@ public:
   bool is_initialized();
   void initialize(HeapRegion* hr, bool init_threshold);
   void update();
-  void forward(SlidingForwarding* const forwarding, oop object, size_t size);
+  void forward(oop object, size_t size);
   void add(HeapRegion* hr);
 
   HeapRegion* remove_last();

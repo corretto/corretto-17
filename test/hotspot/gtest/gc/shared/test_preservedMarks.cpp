@@ -22,6 +22,7 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shared/gc_globals.hpp"
 #include "gc/shared/preservedMarks.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "unittest.hpp"
@@ -49,7 +50,7 @@ public:
     _oop.set_mark(m);
   }
 
-  static markWord originalMark() { return markWord(markWord::unlocked_value); }
+  static markWord originalMark() { return markWord(markWord::lock_mask_in_place); }
   static markWord changedMark()  { return markWord(0x4711); }
 };
 
@@ -65,6 +66,8 @@ TEST_VM(PreservedMarks, iterate_and_restore) {
   FakeOop o2;
   FakeOop o3;
   FakeOop o4;
+
+  FlagSetting fs(UseAltGCForwarding, false);
 
   // Make sure initial marks are correct.
   ASSERT_MARK_WORD_EQ(o1.mark(), FakeOop::originalMark());
@@ -89,9 +92,6 @@ TEST_VM(PreservedMarks, iterate_and_restore) {
   ASSERT_EQ(o2.get_oop()->forwardee(), o4.get_oop());
   // Adjust will update the PreservedMarks stack to
   // make sure the mark is updated at the new location.
-  // TODO: This is the only use of PM::adjust_during_full_gc().
-  // GCs use the variant with a forwarding structure here,
-  // test that variant, and remove the method.
   pm.adjust_during_full_gc();
 
   // Restore all preserved and verify that the changed

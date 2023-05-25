@@ -34,7 +34,6 @@
 
 class G1CMBitMap;
 class G1FullCollector;
-class SlidingForwarding;
 
 class G1FullGCPrepareTask : public G1FullGCTask {
 protected:
@@ -77,7 +76,6 @@ protected:
 
   class G1PrepareCompactLiveClosure : public StackObj {
     G1FullGCCompactionPoint* _cp;
-    SlidingForwarding* const _forwarding;
 
   public:
     G1PrepareCompactLiveClosure(G1FullGCCompactionPoint* cp);

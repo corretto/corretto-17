@@ -82,7 +82,7 @@
 #include "gc/shared/locationPrinter.inline.hpp"
 #include "gc/shared/oopStorageParState.hpp"
 #include "gc/shared/preservedMarks.inline.hpp"
-#include "gc/shared/slidingForwarding.inline.hpp"
+#include "gc/shared/slidingForwarding.hpp"
 #include "gc/shared/suspendibleThreadSet.hpp"
 #include "gc/shared/referenceProcessor.inline.hpp"
 #include "gc/shared/taskTerminator.hpp"
@@ -1604,8 +1604,6 @@ jint G1CollectedHeap::initialize() {
 
   initialize_reserved_region(heap_rs);
 
-  _forwarding = new SlidingForwarding(heap_rs.region(), HeapRegion::LogOfHRGrainBytes - LogHeapWordSize);
-
   // Create the barrier set for the entire reserved region.
   G1CardTable* ct = new G1CardTable(heap_rs.region());
   ct->initialize();
@@ -1776,6 +1774,8 @@ jint G1CollectedHeap::initialize() {
   _regions_failed_evacuation = NEW_C_HEAP_ARRAY(volatile bool, max_regions(), mtGC);
 
   G1InitLogger::print();
+
+  SlidingForwarding::initialize(heap_rs.region(), HeapRegion::GrainWords);
 
   return JNI_OK;
 }

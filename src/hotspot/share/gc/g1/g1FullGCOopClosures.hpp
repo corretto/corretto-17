@@ -25,7 +25,6 @@
 #ifndef SHARE_GC_G1_G1FULLGCOOPCLOSURES_HPP
 #define SHARE_GC_G1_G1FULLGCOOPCLOSURES_HPP
 
-#include "gc/g1/g1CollectedHeap.hpp"
 #include "gc/shared/verifyOption.hpp"
 #include "memory/iterator.hpp"
 
@@ -33,7 +32,6 @@ class G1CollectedHeap;
 class G1FullCollector;
 class G1CMBitMap;
 class G1FullGCMarker;
-class SlidingForwarding;
 
 // Below are closures used by the G1 Full GC.
 class G1IsAliveClosure : public BoolObjectClosure {
@@ -81,13 +79,10 @@ public:
 
 class G1AdjustClosure : public BasicOopIterateClosure {
   G1FullCollector* _collector;
-  const SlidingForwarding* const _forwarding;
 
   template <class T> inline void adjust_pointer(T* p);
 public:
-  G1AdjustClosure(G1FullCollector* collector) :
-    _collector(collector),
-    _forwarding(G1CollectedHeap::heap()->forwarding()) { }
+  G1AdjustClosure(G1FullCollector* collector) : _collector(collector) { }
   template <class T> void do_oop_work(T* p) { adjust_pointer(p); }
   virtual void do_oop(oop* p);
   virtual void do_oop(narrowOop* p);

@@ -257,7 +257,6 @@ public:
   void verify_forwardee(oop forwardee) NOT_DEBUG_RETURN;
 
   inline void forward_to(oop p);
-  inline bool cas_forward_to(oop p, markWord compare, atomic_memory_order order = memory_order_conservative);
   inline void forward_to_self();
 
   // Like "forward_to", but inserts the forwarding pointer atomically.

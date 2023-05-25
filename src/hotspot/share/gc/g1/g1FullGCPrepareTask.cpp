@@ -158,31 +158,29 @@ void G1FullGCPrepareTask::G1CalculatePointersClosure::reset_region_metadata(Heap
 }
 
 G1FullGCPrepareTask::G1PrepareCompactLiveClosure::G1PrepareCompactLiveClosure(G1FullGCCompactionPoint* cp) :
-    _cp(cp), _forwarding(G1CollectedHeap::heap()->forwarding()) { }
+    _cp(cp) { }
 
 size_t G1FullGCPrepareTask::G1PrepareCompactLiveClosure::apply(oop object) {
   size_t size = object->size();
-  _cp->forward(_forwarding, object, size);
+  _cp->forward(object, size);
   return size;
 }
 
 size_t G1FullGCPrepareTask::G1RePrepareClosure::apply(oop obj) {
-  ShouldNotReachHere();
   // We only re-prepare objects forwarded within the current region, so
   // skip objects that are already forwarded to another region.
-  /*
-  oop forwarded_to = obj->forwardee();
-  if (forwarded_to != NULL && !_current->is_in(forwarded_to)) {
-    return obj->size();
+  if (SlidingForwarding::is_forwarded(obj)) {
+    oop forwarded_to = SlidingForwarding::forwardee(obj);
+    assert(forwarded_to != NULL, "must have forwardee");
+    if (!_current->is_in(forwarded_to)) {
+      return obj->size();
+    }
   }
-
   // Get size and forward.
   size_t size = obj->size();
-  _cp->forward(_forwarding, obj, size);
+  _cp->forward(obj, size);
 
   return size;
-  */
-  return 0;
 }
 
 void G1FullGCPrepareTask::G1CalculatePointersClosure::prepare_for_compaction_work(G1FullGCCompactionPoint* cp,
@@ -203,24 +201,20 @@ void G1FullGCPrepareTask::G1CalculatePointersClosure::prepare_for_compaction(Hea
 }
 
 void G1FullGCPrepareTask::prepare_serial_compaction() {
-  ShouldNotReachHere(); // Disabled in Lilliput.
-  // GCTraceTime(Debug, gc, phases) debug("Phase 2: Prepare Serial Compaction", collector()->scope()->timer());
+  GCTraceTime(Debug, gc, phases) debug("Phase 2: Prepare Serial Compaction", collector()->scope()->timer());
   // At this point we know that no regions were completely freed by
   // the parallel compaction. That means that the last region of
   // all compaction queues still have data in them. We try to compact
   // these regions in serial to avoid a premature OOM.
-  /*
   for (uint i = 0; i < collector()->workers(); i++) {
     G1FullGCCompactionPoint* cp = collector()->compaction_point(i);
     if (cp->has_regions()) {
       collector()->serial_compaction_point()->add(cp->remove_last());
     }
   }
-  */
 
   // Update the forwarding information for the regions in the serial
   // compaction point.
-  /*
   G1FullGCCompactionPoint* cp = collector()->serial_compaction_point();
   for (GrowableArrayIterator<HeapRegion*> it = cp->regions()->begin(); it != cp->regions()->end(); ++it) {
     HeapRegion* current = *it;
@@ -236,7 +230,6 @@ void G1FullGCPrepareTask::prepare_serial_compaction() {
     }
   }
   cp->update();
-  */
 }
 
 bool G1FullGCPrepareTask::G1CalculatePointersClosure::freed_regions() {

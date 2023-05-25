@@ -25,6 +25,7 @@
 #ifndef SHARE_OOPS_MARKWORD_HPP
 #define SHARE_OOPS_MARKWORD_HPP
 
+#include "gc/shared/gc_globals.hpp"
 #include "metaprogramming/integralConstant.hpp"
 #include "metaprogramming/primitiveConversions.hpp"
 #include "oops/oopsHierarchy.hpp"
@@ -411,13 +412,18 @@ class markWord {
   // Recover address of oop from encoded form used in mark
   inline void* decode_pointer() { if (UseBiasedLocking && has_bias_pattern()) return NULL; return (void*)clear_lock_bits().value(); }
 
+#ifdef _LP64
   inline bool self_forwarded() const {
-    return mask_bits(value(), self_forwarded_mask_in_place) != 0;
+    bool self_fwd = mask_bits(value(), self_forwarded_mask_in_place) != 0;
+    assert(!self_fwd || UseAltGCForwarding, "Only set self-fwd bit when using alt GC forwarding");
+    return self_fwd;
   }
 
   inline markWord set_self_forwarded() const {
+    assert(UseAltGCForwarding, "Only call this with alt GC forwarding");
     return markWord(value() | self_forwarded_mask_in_place | marked_value);
   }
+#endif
 };
 
 // Support atomic operations.

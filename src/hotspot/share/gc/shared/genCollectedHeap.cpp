@@ -122,7 +122,6 @@ jint GenCollectedHeap::initialize() {
   }
 
   initialize_reserved_region(heap_rs);
-  _forwarding = new SlidingForwarding(_reserved);
 
   _rem_set = create_rem_set(heap_rs.region());
   _rem_set->initialize();
@@ -138,6 +137,8 @@ jint GenCollectedHeap::initialize() {
   _old_gen = _old_gen_spec->init(old_rs, rem_set());
 
   GCInitLogger::print();
+
+  SlidingForwarding::initialize(_reserved, SpaceAlignment / HeapWordSize);
 
   return JNI_OK;
 }
@@ -1114,7 +1115,6 @@ GenCollectedHeap* GenCollectedHeap::heap() {
 void GenCollectedHeap::prepare_for_compaction() {
   // Start by compacting into same gen.
   CompactPoint cp(_old_gen);
-  _forwarding->clear();
   _old_gen->prepare_for_compaction(&cp);
   _young_gen->prepare_for_compaction(&cp);
 }
