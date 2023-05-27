@@ -426,10 +426,14 @@ void HeapShared::copy_roots() {
   memset(mem, 0, size * BytesPerWord);
   {
     // This is copied from MemAllocator::finish
-    if (UseCompactObjectHeaders) {
+    if (UseBiasedLocking) {
       oopDesc::set_mark(mem, k->prototype_header());
+    } else if (UseCompactObjectHeaders) {
+      oopDesc::release_set_mark(mem, k->prototype_header());
     } else {
       oopDesc::set_mark(mem, markWord::prototype());
+    }
+    if (!UseCompactObjectHeaders) {
       oopDesc::release_set_klass(mem, k);
     }
   }
