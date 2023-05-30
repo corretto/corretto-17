@@ -36,9 +36,8 @@
 
 ShenandoahMemoryManager::ShenandoahMemoryManager(ShenandoahHeap* heap,
                                                  ShenandoahGeneration* generation,
-                                                 const char* name,
-                                                 const char* gc_end_message) :
-        ConcurrentGCMemoryManager(name, gc_end_message),
+                                                 const char* name) :
+        ConcurrentGCMemoryManager(name),
         _heap(heap),
         _generation(generation),
         _allocated_since_previous_start(0L)
@@ -57,10 +56,11 @@ void ShenandoahMemoryManager::gc_begin(bool recordGCBeginTime,
 }
 
 void ShenandoahMemoryManager::gc_end(bool recordPostGCUsage,
-                                           bool recordAccumulatedGCTime,
-                                           bool recordGCEndTime, bool countCollection,
-                                           GCCause::Cause cause,
-                                           bool allMemoryPoolsAffected) {
+                                     bool recordAccumulatedGCTime,
+                                     bool recordGCEndTime, bool countCollection,
+                                     GCCause::Cause cause,
+                                     bool allMemoryPoolsAffected,
+                                     const char* message) {
 
   if (_heap->mode()->is_generational() && _generation->type() != OLD) {
     // Final update of the copied between pools. This value should always be zero when not in generational mode or for old gen.
@@ -87,7 +87,7 @@ void ShenandoahMemoryManager::gc_end(bool recordPostGCUsage,
 
 
   ConcurrentGCMemoryManager::gc_end(recordPostGCUsage, recordAccumulatedGCTime,
-                recordGCEndTime, countCollection, cause,allMemoryPoolsAffected);
+                recordGCEndTime, countCollection, cause,allMemoryPoolsAffected, message);
 }
 
 void ShenandoahMemoryManager::gc_requested() {
@@ -114,34 +114,34 @@ void ShenandoahMemoryManager::report_garbage(jlong found, jlong collected) {
 // Global Memory Manager
 //
 ShenandoahGlobalMemoryManager::ShenandoahGlobalMemoryManager(ShenandoahHeap* heap) :
-        ShenandoahMemoryManager(heap, heap->global_generation(), "Shenandoah Global", "end of global collection") 
+        ShenandoahMemoryManager(heap, heap->global_generation(), "Shenandoah Global")
         {}
 
 //
 // Young Gen memory manager
 //
 ShenandoahYoungGenMemoryManager::ShenandoahYoungGenMemoryManager(ShenandoahHeap* heap) :
-        ShenandoahMemoryManager(heap, heap->young_generation(), "Shenandoah Young Gen", "end of young generation collection") 
+        ShenandoahMemoryManager(heap, heap->young_generation(), "Shenandoah Young Gen")
         {}
 
 //
 // Old Gen memory manager
 //
 ShenandoahOldGenMemoryManager::ShenandoahOldGenMemoryManager(ShenandoahHeap* heap) :
-        ShenandoahMemoryManager(heap, heap->old_generation(), "Shenandoah Old Gen", "end of old generation collection"),
+        ShenandoahMemoryManager(heap, heap->old_generation(), "Shenandoah Old Gen"),
         _interrupted(false),
         _completed_cycles(0L)
         {}
 
 void ShenandoahOldGenMemoryManager::gc_end(bool recordPostGCUsage, bool recordAccumulatedGCTime,
                       bool recordGCEndTime, bool countCollection, GCCause::Cause cause,
-                      bool allMemoryPoolsAffected) {
+                      bool allMemoryPoolsAffected, const char* message) {
 
   _interrupted = ShenandoahHeap::heap()->cancelled_gc();
   if (!_interrupted) {
     _completed_cycles++;
   }
-  ShenandoahMemoryManager::gc_end(recordPostGCUsage, recordAccumulatedGCTime, recordGCEndTime, countCollection, cause, allMemoryPoolsAffected);
+  ShenandoahMemoryManager::gc_end(recordPostGCUsage, recordAccumulatedGCTime, recordGCEndTime, countCollection, cause, allMemoryPoolsAffected, message);
 }
 
 jlong ShenandoahOldGenMemoryManager::ext_attribute_info_size() {

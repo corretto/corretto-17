@@ -280,7 +280,7 @@ protected:
   const char*  _gc_end_message;
 
 public:
-  GCMemoryManager(const char* name, const char* gc_end_message);
+  GCMemoryManager(const char* name);
   ~GCMemoryManager();
 
   void add_pool(MemoryPool* pool);
@@ -309,7 +309,7 @@ public:
                 bool recordAccumulatedGCTime);
   virtual void   gc_end(bool recordPostGCUsage, bool recordAccumulatedGCTime,
                 bool recordGCEndTime, bool countCollection, GCCause::Cause cause,
-                bool allMemoryPoolsAffected);
+                bool allMemoryPoolsAffected, const char* message);
 
   virtual void   reset_gc_stat();
 
@@ -330,7 +330,7 @@ private:
   size_t       _num_pauses;
   elapsedTimer _accumulated_pause_timer;
 public:
-  ConcurrentGCMemoryManager(const char* name, const char* gc_end_message);
+  ConcurrentGCMemoryManager(const char* name);
 
   jlong gc_time_ms() override         { return _accumulated_pause_timer.milliseconds(); }
   jlong gc_time_ns() override         { return _accumulated_pause_timer.nanoseconds(); }

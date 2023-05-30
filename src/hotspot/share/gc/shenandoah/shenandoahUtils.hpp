@@ -158,7 +158,8 @@ private:
   TraceMemoryManagerPauseStats  _trace_gc_pause_stats;
 
 public:
-  ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type,
+  ShenandoahGCPauseMark(uint gc_id, const char* notification_action, 
+                        SvcGCMarker::reason_type type,
                         ShenandoahGenerationType generation_mode);
 };
 

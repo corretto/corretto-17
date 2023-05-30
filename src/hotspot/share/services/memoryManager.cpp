@@ -217,8 +217,8 @@ void GCStatInfo::clear() {
 }
 
 
-GCMemoryManager::GCMemoryManager(const char* name, const char* gc_end_message) :
-  MemoryManager(name), _gc_end_message(gc_end_message) {
+GCMemoryManager::GCMemoryManager(const char* name) :
+  MemoryManager(name) {
   _num_collections = 0;
   _last_gc_stat = NULL;
   _last_gc_lock = new Mutex(Mutex::leaf, "_last_gc_lock", true,
@@ -289,9 +289,11 @@ void GCMemoryManager::gc_begin(bool recordGCBeginTime, bool recordPreGCUsage,
 // to ensure the current gc stat is placed in _last_gc_stat.
 void GCMemoryManager::gc_end(bool recordPostGCUsage,
                              bool recordAccumulatedGCTime,
-                             bool recordGCEndTime, bool countCollection,
+                             bool recordGCEndTime,
+                             bool countCollection,
                              GCCause::Cause cause,
-                             bool allMemoryPoolsAffected) {
+                             bool allMemoryPoolsAffected,
+                             const char* message) {
 
   bool recordExtendedStats = false;
   #if INCLUDE_SHENANDOAHGC
@@ -354,7 +356,7 @@ void GCMemoryManager::gc_end(bool recordPostGCUsage,
     }
 
     if (is_notification_enabled()) {
-      GCNotifier::pushNotification(this, _gc_end_message, GCCause::to_string(cause));
+      GCNotifier::pushNotification(this, message, GCCause::to_string(cause));
     }
   }
 }
@@ -419,8 +421,8 @@ jlong GCMemoryManager::ext_attribute_values(jvalue* ext_attribute_values) {
   return 1;
 }
 
-ConcurrentGCMemoryManager::ConcurrentGCMemoryManager(const char* name, const char* gc_end_message) :
-  GCMemoryManager(name, gc_end_message) {
+ConcurrentGCMemoryManager::ConcurrentGCMemoryManager(const char* name) :
+  GCMemoryManager(name) {
   _num_pauses = 0;
   _accumulated_pause_timer.reset();
 }

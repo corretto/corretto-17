@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2013, 2021, Red Hat, Inc. All rights reserved.
- * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,56 +48,38 @@ void VM_ShenandoahReferenceOperation::doit_epilogue() {
 }
 
 void VM_ShenandoahInitMark::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
+  ShenandoahGCPauseMark mark(_gc_id, "Init Mark", SvcGCMarker::CONCURRENT, _gc->_generation->type());
   _gc->entry_init_mark();
 }
 
 void VM_ShenandoahFinalMarkStartEvac::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
+  ShenandoahGCPauseMark mark(_gc_id, "Final Mark", SvcGCMarker::CONCURRENT, _gc->_generation->type());
   _gc->entry_final_mark();
 }
 
 void VM_ShenandoahFullGC::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::FULL, GLOBAL_GEN);
+  // Full GC may be either GLOBAL_GEN or GLOBAL_NON_GEN depending on configuration
+  auto type = ShenandoahHeap::heap()->global_generation()->type();
+  ShenandoahGCPauseMark mark(_gc_id, "Full GC", SvcGCMarker::FULL, type);
   _full_gc->entry_full(_gc_cause);
 }
 
 void VM_ShenandoahDegeneratedGC::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
+  ShenandoahGCPauseMark mark(_gc_id, "Degenerated GC", SvcGCMarker::CONCURRENT, _gc->_generation->type());
   _gc->entry_degenerated();
 }
 
 void VM_ShenandoahInitUpdateRefs::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
+  ShenandoahGCPauseMark mark(_gc_id, "Init Update Refs", SvcGCMarker::CONCURRENT, _gc->_generation->type());
   _gc->entry_init_updaterefs();
 }
 
 void VM_ShenandoahFinalUpdateRefs::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
+  ShenandoahGCPauseMark mark(_gc_id, "Final Update Refs", SvcGCMarker::CONCURRENT, _gc->_generation->type());
   _gc->entry_final_updaterefs();
 }
 
 void VM_ShenandoahFinalRoots::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::CONCURRENT, _gc->_generation->type());
-
-  if (_incr_region_ages) {
-    // TODO: Do we even care about this?  Do we want to parallelize it?
-    ShenandoahHeap* heap = ShenandoahHeap::heap();
-    ShenandoahMarkingContext* ctx = heap->complete_marking_context();
-
-    for (size_t i = 0; i < heap->num_regions(); i++) {
-      ShenandoahHeapRegion *r = heap->get_region(i);
-      if (r->is_active() && r->is_young()) {
-        HeapWord* tams = ctx->top_at_mark_start(r);
-        HeapWord* top = r->top();
-        if (top > tams) {
-          r->reset_age();
-        } else if (heap->is_aging_cycle()) {
-          // TODO: Does _incr_region_ages imply heap->is_aging_cycle()?
-          r->increment_age();
-        }
-      }
-    }
-  }
+  ShenandoahGCPauseMark mark(_gc_id, "Final Roots", SvcGCMarker::CONCURRENT, _gc->_generation->type());
   _gc->entry_final_roots();
 }

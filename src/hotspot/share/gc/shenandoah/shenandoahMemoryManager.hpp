@@ -35,15 +35,16 @@ protected:
    jlong _allocated_since_previous_start;
 
 public:
-  ShenandoahMemoryManager(ShenandoahHeap* heap, ShenandoahGeneration* generation,
-                          const char* name, const char* gc_end_message);
+  ShenandoahMemoryManager(ShenandoahHeap* heap,
+                          ShenandoahGeneration* generation,
+                          const char* name);
 
   virtual void gc_begin(bool recordGCBeginTime, bool recordPreGCUsage,
               bool recordAccumulatedGCTime) override;
 
   virtual void gc_end(bool recordPostGCUsage, bool recordAccumulatedGCTime,
               bool recordGCEndTime, bool countCollection, GCCause::Cause cause,
-              bool allMemoryPoolsAffected) override;
+              bool allMemoryPoolsAffected, const char* message) override;
 
   virtual void gc_requested();
   virtual void update_copied_between_pools(jlong copied_before_reset);
@@ -72,7 +73,7 @@ public:
   ShenandoahOldGenMemoryManager(ShenandoahHeap* heap);
   virtual void gc_end(bool recordPostGCUsage, bool recordAccumulatedGCTime,
                       bool recordGCEndTime, bool countCollection, GCCause::Cause cause,
-                      bool allMemoryPoolsAffected) override;
+                      bool allMemoryPoolsAffected, const char* message) override;
   virtual jlong ext_attribute_info_size() override;
   virtual jint  ext_attribute_info(jmmExtAttributeInfo* info, jint count) override;
   virtual jlong ext_attribute_values(jvalue* ext_attribute_values) override;
