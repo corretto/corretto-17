@@ -173,12 +173,6 @@ public:
   void prepare_for_graceful_shutdown();
   bool in_graceful_shutdown();
 
-  char* name() const { return (char*)"ShenandoahControlThread";}
-
-  // Printing
-  void print_on(outputStream* st) const;
-  void print() const;
-
   void service_concurrent_normal_cycle(const ShenandoahHeap* heap,
                                        const ShenandoahGenerationType generation,
                                        GCCause::Cause cause);

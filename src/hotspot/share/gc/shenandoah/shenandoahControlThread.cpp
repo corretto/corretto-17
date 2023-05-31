@@ -67,7 +67,7 @@ ShenandoahControlThread::ShenandoahControlThread() :
   _degen_generation(NULL),
   _allocs_seen(0),
   _mode(none) {
-
+  set_name("Shenandoah Control Thread");
   reset_gc_id();
   create_and_start();
   _periodic_task.enroll();
@@ -1015,16 +1015,6 @@ void ShenandoahControlThread::update_gc_id() {
 
 size_t ShenandoahControlThread::get_gc_id() {
   return Atomic::load(&_gc_id);
-}
-
-void ShenandoahControlThread::print() const {
-  print_on(tty);
-}
-
-void ShenandoahControlThread::print_on(outputStream* st) const {
-  st->print("Shenandoah Concurrent Thread");
-  Thread::print_on(st);
-  st->cr();
 }
 
 void ShenandoahControlThread::start() {
