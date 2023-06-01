@@ -58,9 +58,8 @@ void VM_ShenandoahFinalMarkStartEvac::doit() {
 }
 
 void VM_ShenandoahFullGC::doit() {
-  // Full GC may be either GLOBAL_GEN or GLOBAL_NON_GEN depending on configuration
-  auto type = ShenandoahHeap::heap()->global_generation()->type();
-  ShenandoahGCPauseMark mark(_gc_id, "Full GC", SvcGCMarker::FULL, type);
+  ShenandoahGeneration* global = ShenandoahHeap::heap()->global_generation();
+  ShenandoahGCPauseMark mark(_gc_id, "Full GC", SvcGCMarker::FULL, global->type());
   _full_gc->entry_full(_gc_cause);
 }
 

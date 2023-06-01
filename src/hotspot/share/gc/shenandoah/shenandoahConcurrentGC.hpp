@@ -71,7 +71,7 @@ private:
 
 protected:
   void vmop_entry_final_mark();
-  void vmop_entry_final_roots(bool incr_region_ages);
+  void vmop_entry_final_roots();
 
 private:
   void vmop_entry_init_updaterefs();
