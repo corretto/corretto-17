@@ -67,12 +67,12 @@ GCName GCConfiguration::old_collector() const {
     return ParallelOld;
   }
 
-  if (UseZGC) {
-    return Z;
-  }
-
   if (UseShenandoahGC) {
     return Shenandoah;
+  }
+
+  if (UseZGC) {
+    return Z;
   }
 
   return SerialOld;
