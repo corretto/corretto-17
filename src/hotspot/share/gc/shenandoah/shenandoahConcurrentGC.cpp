@@ -857,12 +857,12 @@ void ShenandoahConcurrentGC::op_final_mark() {
           heap->verifier()->verify_during_evacuation();
         }
 
-      // Notify JVMTI that oops are changed.
-      JvmtiTagMap::set_needs_rehashing();
-
         // Arm nmethods/stack for concurrent processing
         ShenandoahCodeRoots::arm_nmethods();
         ShenandoahStackWatermark::change_epoch_id();
+
+        // Notify JVMTI that oops are changed.
+        JvmtiTagMap::set_needs_rehashing();
 
         if (ShenandoahPacing) {
           heap->pacer()->setup_for_evac();
@@ -903,6 +903,9 @@ void ShenandoahConcurrentGC::op_final_mark() {
         // Arm nmethods/stack for concurrent processing
         ShenandoahCodeRoots::arm_nmethods();
         ShenandoahStackWatermark::change_epoch_id();
+
+        // Notify JVMTI that oops are changed.
+        JvmtiTagMap::set_needs_rehashing();
 
         if (ShenandoahPacing) {
           heap->pacer()->setup_for_evac();
