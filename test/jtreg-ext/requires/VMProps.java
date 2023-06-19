@@ -524,7 +524,11 @@ public class VMProps implements Callable<Map<String, String>> {
                 // added by run-test framework
                 "MaxRAMPercentage",
                 // added by test environment
-                "CreateCoredumpOnCrash"
+                "CreateCoredumpOnCrash",
+                // experimental features unlocking flag does not affect behavior
+                "UnlockExperimentalVMOptions",
+                // all compact headers settings should run flagless tests
+                "UseCompactObjectHeaders"
         );
         result &= allFlags.stream()
                           .filter(s -> s.startsWith("-XX:"))
