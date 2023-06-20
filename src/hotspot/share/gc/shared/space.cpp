@@ -347,6 +347,7 @@ void CompactibleSpace::clear(bool mangle_space) {
   _compaction_top = bottom();
 }
 
+template <bool ALT_FWD>
 HeapWord* CompactibleSpace::forward(oop q, size_t size,
                                     CompactPoint* cp, HeapWord* compact_top) {
   // q is alive
@@ -371,7 +372,7 @@ HeapWord* CompactibleSpace::forward(oop q, size_t size,
 
   // store the forwarding pointer into the mark word
   if (cast_from_oop<HeapWord*>(q) != compact_top) {
-    SlidingForwarding::forward_to(q, cast_to_oop(compact_top));
+    SlidingForwarding::forward_to<ALT_FWD>(q, cast_to_oop(compact_top));
     assert(q->is_gc_marked(), "encoding the pointer should preserve the mark");
   } else {
     // if the object isn't moving we can just set the mark to the default
@@ -394,7 +395,11 @@ HeapWord* CompactibleSpace::forward(oop q, size_t size,
 #if INCLUDE_SERIALGC
 
 void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
-  scan_and_forward(this, cp);
+  if (UseAltGCForwarding) {
+    scan_and_forward<true>(this, cp);
+  } else {
+    scan_and_forward<false>(this, cp);
+  }
 }
 
 void CompactibleSpace::adjust_pointers() {
@@ -403,11 +408,19 @@ void CompactibleSpace::adjust_pointers() {
     return;   // Nothing to do.
   }
 
-  scan_and_adjust_pointers(this);
+  if (UseAltGCForwarding) {
+    scan_and_adjust_pointers<true>(this);
+  } else {
+    scan_and_adjust_pointers<false>(this);
+  }
 }
 
 void CompactibleSpace::compact() {
-  scan_and_compact(this);
+  if (UseAltGCForwarding) {
+    scan_and_compact<true>(this);
+  } else {
+    scan_and_compact<false>(this);
+  }
 }
 
 #endif // INCLUDE_SERIALGC

@@ -431,7 +431,8 @@ public:
   // If the forwarding crosses "cp->threshold", invokes the "cross_threshold"
   // function of the then-current compaction space, and updates "cp->threshold
   // accordingly".
-  virtual HeapWord* forward(oop q, size_t size, CompactPoint* cp,
+  template <bool ALT_FWD>
+  HeapWord* forward(oop q, size_t size, CompactPoint* cp,
                     HeapWord* compact_top);
 
   // Return a size with adjustments as required of the space.
@@ -460,17 +461,17 @@ protected:
 
 #if INCLUDE_SERIALGC
   // Frequently calls adjust_obj_size().
-  template <class SpaceType>
+  template <bool ALT_FWD, class SpaceType>
   static inline void scan_and_adjust_pointers(SpaceType* space);
 #endif
 
   // Frequently calls obj_size().
-  template <class SpaceType>
+  template <bool ALT_FWD, class SpaceType>
   static inline void scan_and_compact(SpaceType* space);
 
   // Frequently calls scanned_block_is_obj() and scanned_block_size().
   // Requires the scan_limit() function.
-  template <class SpaceType>
+  template <bool ALT_FWD, class SpaceType>
   static inline void scan_and_forward(SpaceType* space, CompactPoint* cp);
 };
 
@@ -481,7 +482,7 @@ class GenSpaceMangler;
 class ContiguousSpace: public CompactibleSpace {
   friend class VMStructs;
   // Allow scan_and_forward function to call (private) overrides for auxiliary functions on this class
-  template <typename SpaceType>
+  template <bool ALT_FWD, typename SpaceType>
   friend void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* cp);
 
  private:

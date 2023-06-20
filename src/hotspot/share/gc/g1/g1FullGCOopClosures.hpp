@@ -77,6 +77,7 @@ public:
   virtual void do_cld(ClassLoaderData* cld);
 };
 
+template <bool ALT_FWD>
 class G1AdjustClosure : public BasicOopIterateClosure {
   G1FullCollector* _collector;
 

@@ -42,6 +42,10 @@ protected:
 
   void set_freed_regions();
 
+private:
+  template <bool ALT_FWD>
+  void prepare_serial_compaction_impl();
+
 public:
   G1FullGCPrepareTask(G1FullCollector* collector);
   void work(uint worker_id);
@@ -74,6 +78,7 @@ protected:
     bool freed_regions();
   };
 
+  template <bool ALT_FWD>
   class G1PrepareCompactLiveClosure : public StackObj {
     G1FullGCCompactionPoint* _cp;
 
@@ -82,6 +87,7 @@ protected:
     size_t apply(oop object);
   };
 
+  template <bool ALT_FWD>
   class G1RePrepareClosure : public StackObj {
     G1FullGCCompactionPoint* _cp;
     HeapRegion* _current;

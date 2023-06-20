@@ -279,18 +279,31 @@ void GenMarkSweep::mark_sweep_phase3() {
   // Need new claim bits for the pointer adjustment tracing.
   ClassLoaderDataGraph::clear_claimed_marks();
 
-  {
-    StrongRootsScope srs(0);
-
-    gch->full_process_roots(true,  // this is the adjust phase
-                            GenCollectedHeap::SO_AllCodeCache,
-                            false, // all roots
-                            &adjust_pointer_closure,
-                            &adjust_cld_closure);
+  if (UseAltGCForwarding) {
+    AdjustPointerClosure<true> adjust_pointer_closure;
+    CLDToOopClosure adjust_cld_closure(&adjust_pointer_closure, ClassLoaderData::_claim_strong);
+    {
+      StrongRootsScope srs(0);
+      gch->full_process_roots(true,  // this is the adjust phase
+                              GenCollectedHeap::SO_AllCodeCache,
+                              false, // all roots
+                              &adjust_pointer_closure,
+                              &adjust_cld_closure);
+    }
+    gch->gen_process_weak_roots(&adjust_pointer_closure);
+  } else {
+    AdjustPointerClosure<false> adjust_pointer_closure;
+    CLDToOopClosure adjust_cld_closure(&adjust_pointer_closure, ClassLoaderData::_claim_strong);
+    {
+      StrongRootsScope srs(0);
+      gch->full_process_roots(true,  // this is the adjust phase
+                              GenCollectedHeap::SO_AllCodeCache,
+                              false, // all roots
+                              &adjust_pointer_closure,
+                              &adjust_cld_closure);
+    }
+    gch->gen_process_weak_roots(&adjust_pointer_closure);
   }
-
-  gch->gen_process_weak_roots(&adjust_pointer_closure);
-
   adjust_marks();
   GenAdjustPointersClosure blk;
   gch->generation_iterate(&blk, true);
