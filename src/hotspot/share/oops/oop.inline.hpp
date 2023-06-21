@@ -168,11 +168,21 @@ void oopDesc::release_set_klass(HeapWord* mem, Klass* k) {
   }
 }
 
+int oopDesc::klass_gap() const {
+  assert(!UseCompactObjectHeaders, "don't get Klass* gap with compact headers");
+  return *(int*)(((intptr_t)this) + klass_gap_offset_in_bytes());
+}
+
 void oopDesc::set_klass_gap(HeapWord* mem, int v) {
   assert(!UseCompactObjectHeaders, "don't set Klass* gap with compact headers");
   if (UseCompressedClassPointers) {
     *(int*)(((char*)mem) + klass_gap_offset_in_bytes()) = v;
   }
+}
+
+void oopDesc::set_klass_gap(int v) {
+  assert(!UseCompactObjectHeaders, "don't set Klass* gap with compact headers");
+  set_klass_gap((HeapWord*)this, v);
 }
 
 bool oopDesc::is_a(Klass* k) const {
