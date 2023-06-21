@@ -108,6 +108,7 @@ ObjectSampler::~ObjectSampler() {
 bool ObjectSampler::create(size_t size) {
   assert(SafepointSynchronize::is_at_safepoint(), "invariant");
   assert(_oop_storage != NULL, "should be already created");
+  assert(!UseCompactObjectHeaders, "should not be here: broken with compact object headers");
   ObjectSampleCheckpoint::clear();
   assert(_instance == NULL, "invariant");
   _instance = new ObjectSampler(size);

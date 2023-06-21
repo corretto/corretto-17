@@ -43,6 +43,13 @@ bool LeakProfiler::start(int sample_count) {
     return true;
   }
 
+  if (UseCompactObjectHeaders) {
+    // Leak profiler is broken with Lilliput, forcefully disable it.
+    // See JDK-8275415 for more details.
+    log_warning(jfr)("Leak profiler does not work with compact object headers, disabling.");
+    return false;
+  }
+
   // Allows user to disable leak profiler on command line by setting queue size to zero.
   if (sample_count == 0) {
     return false;

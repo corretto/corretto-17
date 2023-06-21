@@ -27,13 +27,78 @@
 # for the known and innocuous implementation reasons.
 #
 
+
 #
-# Lilliput forces specific UseCompressedClassPointers mode
+# Tests require specific UseCompressedClassPointers mode
 #
 gc/arguments/TestCompressedClassFlags.java                      1234567 generic-all
 
+
 #
-# Lilliput forces specific UseBiasedLocking mode
+# Tests require specific UseBiasedLocking mode
 #
-runtime/logging/BiasedLockingTest.java                          1234567 generic-all
-compiler/rtm/cli/TestUseRTMLockingOptionWithBiasedLocking.java  1234567 generic-x64,generic-i586
+runtime/logging/BiasedLockingTest.java                                              8256425 generic-all
+compiler/rtm/cli/TestUseRTMLockingOptionWithBiasedLocking.java                      8256425 generic-x64,generic-i586
+jdk/jfr/event/runtime/TestBiasedLockRevocationEvents.java                           8256425 generic-all
+
+
+#
+# JFR heap iteration is unsafe, disabled and prints warnings
+#
+jdk/jfr/event/oldobject/TestAllocationTime.java                                     8308296 generic-all
+jdk/jfr/event/oldobject/TestArrayInformation.java                                   8308296 generic-all
+jdk/jfr/event/oldobject/TestCircularReference.java                                  8308296 generic-all
+jdk/jfr/event/oldobject/TestClassLoaderLeak.java                                    8308296 generic-all
+jdk/jfr/event/oldobject/TestFieldInformation.java                                   8308296 generic-all
+jdk/jfr/event/oldobject/TestG1.java                                                 8308296 generic-all
+jdk/jfr/event/oldobject/TestObjectDescription.java                                  8308296 generic-all
+jdk/jfr/event/oldobject/TestHeapDeep.java                                           8308296 generic-all
+jdk/jfr/event/oldobject/TestHeapShallow.java                                        8308296 generic-all
+jdk/jfr/event/oldobject/TestLastKnownHeapUsage.java                                 8308296 generic-all
+jdk/jfr/event/oldobject/TestListenerLeak.java                                       8308296 generic-all
+jdk/jfr/event/oldobject/TestLargeRootSet.java                                       8308296 generic-all
+jdk/jfr/event/oldobject/TestMetadataRetention.java                                  8308296 generic-all
+jdk/jfr/event/oldobject/TestParallel.java                                           8308296 generic-all
+jdk/jfr/event/oldobject/TestReferenceChainLimit.java                                8308296 generic-all
+jdk/jfr/event/oldobject/TestSanityDefault.java                                      8308296 generic-all
+jdk/jfr/event/oldobject/TestSerial.java                                             8308296 generic-all
+jdk/jfr/event/oldobject/TestShenandoah.java                                         8308296 generic-all
+jdk/jfr/event/oldobject/TestThreadLocalLeak.java                                    8308296 generic-all
+jdk/jfr/event/oldobject/TestZ.java                                                  8308296 generic-all
+jdk/jfr/event/gc/objectcount/TestObjectCountAfterGCEventWithG1ConcurrentMark.java   8308296 generic-all
+jdk/jfr/event/gc/objectcount/TestObjectCountAfterGCEventWithG1FullCollection.java   8308296 generic-all
+jdk/jfr/event/gc/objectcount/TestObjectCountAfterGCEventWithSerial.java             8308296 generic-all
+jdk/jfr/event/gc/objectcount/TestObjectCountEvent.java                              8308296 generic-all
+jdk/jfr/event/gc/objectcount/TestObjectCountAfterGCEventWithParallelOld.java        8308296 generic-all
+jdk/jfr/jcmd/TestJcmdDump.java                                                      8308296 generic-all
+jdk/jfr/jcmd/TestJcmdDumpPathToGCRoots.java                                         8308296 generic-all
+jdk/jfr/startupargs/TestOldObjectQueueSize.java                                     8308296 generic-all
+jdk/jfr/startupargs/TestStartupMessage.java                                         8308296 generic-all
+
+
+#
+# JVMTI heap iteration is unsafe, disabled and prints warnings
+#
+serviceability/jvmti/Heap/IterateHeapWithEscapeAnalysisEnabled.java                                 8308411 generic-all
+vmTestbase/nsk/jvmti/IterateOverObjectsReachableFromObject/iterobjreachobj001/TestDescription.java  8308411 generic-all
+vmTestbase/nsk/jvmti/IterateOverObjectsReachableFromObject/iterobjreachobj002/TestDescription.java  8308411 generic-all
+vmTestbase/nsk/jvmti/IterateOverObjectsReachableFromObject/iterobjreachobj003/TestDescription.java  8308411 generic-all
+vmTestbase/nsk/jvmti/IterateOverObjectsReachableFromObject/iterobjreachobj004/TestDescription.java  8308411 generic-all
+vmTestbase/nsk/jvmti/IterateOverObjectsReachableFromObject/iterobjreachobj005/TestDescription.java  8308411 generic-all
+vmTestbase/nsk/jvmti/IterateOverReachableObjects/iterreachobj001/TestDescription.java               8308411 generic-all
+vmTestbase/nsk/jvmti/IterateOverReachableObjects/iterreachobj002/TestDescription.java               8308411 generic-all
+vmTestbase/nsk/jvmti/IterateOverReachableObjects/iterreachobj003/TestDescription.java               8308411 generic-all
+vmTestbase/nsk/jvmti/IterateOverReachableObjects/iterreachobj004/TestDescription.java               8308411 generic-all
+vmTestbase/nsk/jvmti/IterateOverReachableObjects/iterreachobj005/TestDescription.java               8308411 generic-all
+vmTestbase/nsk/jvmti/scenarios/allocation/AP01/ap01t001/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jvmti/scenarios/allocation/AP02/ap02t001/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jvmti/scenarios/allocation/AP03/ap03t001/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jvmti/scenarios/allocation/AP04/ap04t003/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jvmti/scenarios/allocation/AP05/ap05t001/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jvmti/scenarios/allocation/AP05/ap05t002/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jvmti/scenarios/allocation/AP06/ap06t001/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jvmti/scenarios/allocation/AP09/ap09t001/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jvmti/unit/FollowReferences/followref001/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jvmti/unit/FollowReferences/followref002/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jvmti/unit/FollowReferences/followref003/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jvmti/unit/heap/HeapWalkTests/TestDescription.java                                   8308411 generic-all
