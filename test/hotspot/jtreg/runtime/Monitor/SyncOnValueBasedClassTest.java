@@ -42,9 +42,13 @@ public class SyncOnValueBasedClassTest {
     static List<Object> testObjects = new ArrayList<Object>();
 
     private static final String[] specificFlags[] = {
+        {"-Xint", "-XX:+UseBiasedLocking"},
         {"-Xint", "-XX:-UseBiasedLocking"},
+        {"-Xcomp", "-XX:TieredStopAtLevel=1", "-XX:+UseBiasedLocking"},
         {"-Xcomp", "-XX:TieredStopAtLevel=1", "-XX:-UseBiasedLocking"},
         {"-Xcomp", "-XX:-TieredCompilation", "-XX:-UseBiasedLocking"},
+        {"-Xcomp", "-XX:-TieredCompilation", "-XX:+UseBiasedLocking", "-XX:+IgnoreUnrecognizedVMOptions", "-XX:+UseOptoBiasInlining"},
+        {"-Xcomp", "-XX:-TieredCompilation", "-XX:+UseBiasedLocking", "-XX:+IgnoreUnrecognizedVMOptions", "-XX:-UseOptoBiasInlining"}
     };
 
     private static void initTestObjects() {

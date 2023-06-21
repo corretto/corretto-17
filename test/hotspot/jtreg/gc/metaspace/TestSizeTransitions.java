@@ -35,21 +35,24 @@ import java.util.List;
  * @requires vm.gc.Serial
  * @summary Tests that the metaspace size transition logging is done correctly.
  * @library /test/lib
- * @run driver gc.metaspace.TestSizeTransitions -XX:+UseSerialGC
+ * @run driver gc.metaspace.TestSizeTransitions false -XX:+UseSerialGC
+ * @run driver gc.metaspace.TestSizeTransitions true  -XX:+UseSerialGC
  */
 
 /* @test TestSizeTransitionsParallel
  * @requires vm.gc.Parallel
  * @summary Tests that the metaspace size transition logging is done correctly.
  * @library /test/lib
- * @run driver gc.metaspace.TestSizeTransitions -XX:+UseParallelGC
+ * @run driver gc.metaspace.TestSizeTransitions false -XX:+UseParallelGC
+ * @run driver gc.metaspace.TestSizeTransitions true  -XX:+UseParallelGC
  */
 
 /* @test TestSizeTransitionsG1
  * @requires vm.gc.G1
  * @summary Tests that the metaspace size transition logging is done correctly.
  * @library /test/lib
- * @run driver gc.metaspace.TestSizeTransitions -XX:+UseG1GC
+ * @run driver gc.metaspace.TestSizeTransitions false -XX:+UseG1GC
+ * @run driver gc.metaspace.TestSizeTransitions true  -XX:+UseG1GC
  */
 
 public class TestSizeTransitions {
@@ -87,15 +90,25 @@ public class TestSizeTransitions {
                   SIZE_TRANSITION_REGEX);
 
   public static void main(String... args) throws Exception {
-    // args: <gc-arg>
-    if (args.length != 1) {
+    // args: <use-coops> <gc-arg>
+    if (args.length != 2) {
       throw new RuntimeException("wrong number of args: " + args.length);
     }
 
     final boolean hasCompressedKlassPointers = Platform.is64bit();
-    final String gcArg = args[0];
+    final boolean useCompressedKlassPointers = Boolean.parseBoolean(args[0]);
+    final String gcArg = args[1];
+
+    if (!hasCompressedKlassPointers && useCompressedKlassPointers) {
+       // No need to run this configuration.
+       System.out.println("Skipping test.");
+       return;
+    }
 
     List<String> jvmArgs = new ArrayList<>();
+    if (hasCompressedKlassPointers) {
+      jvmArgs.add(useCompressedKlassPointers ? "-XX:+UseCompressedClassPointers" : "-XX:-UseCompressedClassPointers");
+    }
     jvmArgs.add(gcArg);
     jvmArgs.add("-Xmx256m");
     jvmArgs.add("-Xlog:gc,gc+metaspace=info");
@@ -111,7 +124,7 @@ public class TestSizeTransitions {
     System.out.println(output.getStdout());
     output.shouldHaveExitValue(0);
 
-    if (hasCompressedKlassPointers) {
+    if (useCompressedKlassPointers) {
       output.stdoutShouldMatch(COMPRESSED_KLASS_POINTERS_REGEX);
       output.stdoutShouldNotMatch(NO_COMPRESSED_KLASS_POINTERS_REGEX);
     } else {

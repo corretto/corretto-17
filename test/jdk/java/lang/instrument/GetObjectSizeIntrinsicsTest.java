@@ -313,6 +313,9 @@ public class GetObjectSizeIntrinsicsTest extends ASimpleInstrumentationTestCase 
     static final int LARGE_INT_ARRAY_SIZE = 1024*1024*1024 + 1024;
     static final int LARGE_OBJ_ARRAY_SIZE = (4096/(int)REF_SIZE)*1024*1024 + 1024;
 
+    static final boolean COMPACT_HEADERS = WhiteBox.getWhiteBox().getBooleanVMFlag("UseCompactObjectHeaders");
+    static final int HEADER_SIZE = COMPACT_HEADERS ? 8 : (Platform.is64bit() ? 16 : 8);
+
     final String mode;
 
     public GetObjectSizeIntrinsicsTest(String name, String mode) {
@@ -372,14 +375,14 @@ public class GetObjectSizeIntrinsicsTest extends ASimpleInstrumentationTestCase 
     }
 
     private void testSize_newObject() {
-        long expected = roundUp(8, OBJ_ALIGN);
+        long expected = roundUp(HEADER_SIZE, OBJ_ALIGN);
         for (int c = 0; c < ITERS; c++) {
             assertEquals(expected, fInst.getObjectSize(new Object()));
         }
     }
 
     private void testSize_localObject() {
-        long expected = roundUp(8, OBJ_ALIGN);
+        long expected = roundUp(HEADER_SIZE, OBJ_ALIGN);
         Object o = new Object();
         for (int c = 0; c < ITERS; c++) {
             assertEquals(expected, fInst.getObjectSize(o));
@@ -389,7 +392,7 @@ public class GetObjectSizeIntrinsicsTest extends ASimpleInstrumentationTestCase 
     static Object staticO = new Object();
 
     private void testSize_fieldObject() {
-        long expected = roundUp(8, OBJ_ALIGN);
+        long expected = roundUp(HEADER_SIZE, OBJ_ALIGN);
         for (int c = 0; c < ITERS; c++) {
             assertEquals(expected, fInst.getObjectSize(staticO));
         }
