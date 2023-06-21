@@ -812,6 +812,11 @@ define SetupRunJtregTestBody
     $1_JTREG_BASIC_OPTIONS += $$(addprefix $$(JTREG_PROBLEM_LIST_PREFIX), $$($1_JTREG_PROBLEM_LIST))
   endif
 
+  # Add more Lilliput-specific ProblemLists when UCOH is enabled
+  ifneq ($$(findstring -XX:+UseCompactObjectHeaders, $$(TEST_OPTS)), )
+    JTREG_EXTRA_PROBLEM_LISTS += $(TOPDIR)/test/hotspot/jtreg/ProblemList-lilliput.txt
+  endif
+
   ifneq ($$(JTREG_EXTRA_PROBLEM_LISTS), )
     # Accept both absolute paths as well as relative to the current test root.
     $1_JTREG_BASIC_OPTIONS += $$(addprefix $$(JTREG_PROBLEM_LIST_PREFIX), $$(wildcard \
