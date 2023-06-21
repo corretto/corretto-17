@@ -439,6 +439,8 @@ DeadlockCycle* ThreadService::find_deadlocks_at_safepoint(ThreadsList * t_list, 
             // blocked permanently. We record this as a deadlock.
             num_deadlocks++;
 
+            cycle->set_deadlock(true);
+
             // add this cycle to the deadlocks list
             if (deadlocks == NULL) {
               deadlocks = cycle;

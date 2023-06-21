@@ -42,6 +42,7 @@
 //
 //  64 bits:
 //  --------
+//  unused:25 hash:31 -->| unused_gap:1   age:4    biased_lock:1 lock:2 (normal object)
 //  JavaThread*:54 epoch:2 unused_gap:1   age:4    biased_lock:1 lock:2 (biased object)
 //
 //  64 bits (with compact headers):

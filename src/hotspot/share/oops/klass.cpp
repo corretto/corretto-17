@@ -754,10 +754,8 @@ void Klass::oop_print_on(oop obj, outputStream* st) {
      // print header
      obj->mark().print_on(st);
      st->cr();
-     if (UseCompactObjectHeaders) {
-       st->print(BULLET"prototype_header: " INTPTR_FORMAT, _prototype_header.value());
-       st->cr();
-     }
+     st->print(BULLET"prototype_header: " INTPTR_FORMAT, _prototype_header.value());
+     st->cr();
   }
 
   // print class
