@@ -35,6 +35,7 @@
 class OopIterateClosure;
 
 inline void TypeArrayKlass::oop_oop_iterate_impl(oop obj, OopIterateClosure* closure) {
+  assert(UseCompactObjectHeaders || obj->is_typeArray(),"must be a type array");
   // Performance tweak: We skip processing the klass pointer since all
   // TypeArrayKlasses are guaranteed processed via the null class loader.
 }

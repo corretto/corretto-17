@@ -156,6 +156,7 @@ ObjArrayKlass::ObjArrayKlass(int n, Klass* element_klass, Symbol* name) : ArrayK
 }
 
 int ObjArrayKlass::oop_size(oop obj) const {
+  assert(UseCompactObjectHeaders || obj->is_objArray(), "must be object array");
   return objArrayOop(obj)->object_size();
 }
 

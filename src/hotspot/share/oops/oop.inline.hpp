@@ -457,6 +457,7 @@ void oopDesc::oop_iterate_backwards(OopClosureType* cl) {
 
 template <typename OopClosureType>
 void oopDesc::oop_iterate_backwards(OopClosureType* cl, Klass* k) {
+  assert(UseCompactObjectHeaders || k == klass(), "wrong klass");
   OopIteratorClosureDispatch::oop_oop_iterate_backwards(cl, this, k);
 }
 

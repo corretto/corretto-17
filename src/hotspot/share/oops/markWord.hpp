@@ -316,7 +316,7 @@ class markWord {
     return ((value() & monitor_value) != 0);
   }
   ObjectMonitor* monitor() const {
-   assert(has_monitor(), "check");
+    assert(has_monitor(), "check");
     // Use xor instead of &~ to provide one extra tag-bit check.
     return (ObjectMonitor*) (value() ^ monitor_value);
   }
