@@ -31,7 +31,7 @@
 #
 # Tests require specific UseCompressedClassPointers mode
 #
-gc/arguments/TestCompressedClassFlags.java                      1234567 generic-all
+gc/arguments/TestCompressedClassFlags.java                                          1234567 generic-all
 
 
 #
@@ -40,6 +40,16 @@ gc/arguments/TestCompressedClassFlags.java                      1234567 generic-
 runtime/logging/BiasedLockingTest.java                                              8256425 generic-all
 compiler/rtm/cli/TestUseRTMLockingOptionWithBiasedLocking.java                      8256425 generic-x64,generic-i586
 jdk/jfr/event/runtime/TestBiasedLockRevocationEvents.java                           8256425 generic-all
+
+
+#
+# Test library tests do not like non-whitelisted +UCOH flag
+#
+testlibrary_tests/ir_framework/tests/TestCheckedTests.java                          1234567 generic-all
+testlibrary_tests/ir_framework/tests/TestBadFormat.java                             1234567 generic-all
+testlibrary_tests/ir_framework/tests/TestRunTests.java                              1234567 generic-all
+testlibrary_tests/ir_framework/tests/TestScenarios.java                             1234567 generic-all
+testlibrary_tests/ir_framework/tests/TestIRMatching.java                            1234567 generic-all
 
 
 #
@@ -79,7 +89,68 @@ jdk/jfr/startupargs/TestStartupMessage.java                                     
 #
 # JVMTI heap iteration is unsafe, disabled and prints warnings
 #
+com/sun/jdi/EATests.java#id0                                                                        8308411 generic-all
+com/sun/jdi/InstancesTest.java                                                                      8308411 generic-all
+com/sun/jdi/ReferrersTest.java                                                                      8308411 generic-all
 serviceability/jvmti/Heap/IterateHeapWithEscapeAnalysisEnabled.java                                 8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnterRequest/MonitorContendedEnterRequest001/TestDescription.java 8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnterRequest/MonitorContendedEnterRequest002/TestDescription.java 8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnterRequest/addClassExclusionFilter/TestDescription.java        8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnterRequest/addClassFilter_ClassName/TestDescription.java       8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnterRequest/addClassFilter_ReferenceType/TestDescription.java   8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnterRequest/addInstanceFilter/TestDescription.java              8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnterRequest/addThreadFilter/TestDescription.java                8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnteredRequest/MonitorContendedEnteredRequest001/TestDescription.java 8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnteredRequest/MonitorContendedEnteredRequest002/TestDescription.java 8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnteredRequest/addClassExclusionFilter/TestDescription.java      8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnteredRequest/addClassFilter_ClassName/TestDescription.java     8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnteredRequest/addClassFilter_ReferenceType/TestDescription.java 8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnteredRequest/addInstanceFilter/TestDescription.java            8308411 generic-all
+vmTestbase/nsk/jdi/MonitorContendedEnteredRequest/addThreadFilter/TestDescription.java              8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitRequest/MonitorWaitRequest001/TestDescription.java                    8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitRequest/MonitorWaitRequest002/TestDescription.java                    8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitRequest/addClassExclusionFilter/TestDescription.java                  8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitRequest/addClassFilter_ClassName/TestDescription.java                 8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitRequest/addClassFilter_ReferenceType/TestDescription.java             8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitRequest/addInstanceFilter/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitRequest/addThreadFilter/TestDescription.java                          8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitedRequest/MonitorWaitedRequest001/TestDescription.java                8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitedRequest/MonitorWaitedRequest002/TestDescription.java                8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitedRequest/addClassExclusionFilter/TestDescription.java                8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitedRequest/addClassFilter_ClassName/TestDescription.java               8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitedRequest/addClassFilter_ReferenceType/TestDescription.java           8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitedRequest/addInstanceFilter/TestDescription.java                      8308411 generic-all
+vmTestbase/nsk/jdi/MonitorWaitedRequest/addThreadFilter/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jdi/ObjectReference/referringObjects/referringObjects001/referringObjects001.java    8308411 generic-all
+vmTestbase/nsk/jdi/ObjectReference/referringObjects/referringObjects002/referringObjects002.java    8308411 generic-all
+vmTestbase/nsk/jdi/ObjectReference/referringObjects/referringObjects003/referringObjects003.java    8308411 generic-all
+vmTestbase/nsk/jdi/ObjectReference/referringObjects/referringObjects004/referringObjects004.java    8308411 generic-all
+vmTestbase/nsk/jdi/ReferenceType/instances/instances001/instances001.java                           8308411 generic-all
+vmTestbase/nsk/jdi/ReferenceType/instances/instances002/instances002.java                           8308411 generic-all
+vmTestbase/nsk/jdi/ReferenceType/instances/instances003/instances003.java                           8308411 generic-all
+vmTestbase/nsk/jdi/ReferenceType/instances/instances004/TestDescription.java                        8308411 generic-all
+vmTestbase/nsk/jdi/ReferenceType/instances/instances005/instances005.java                           8308411 generic-all
+vmTestbase/nsk/jdi/ThreadReference/forceEarlyReturn/forceEarlyReturn003/forceEarlyReturn003.java    8308411 generic-all
+vmTestbase/nsk/jdi/ThreadReference/ownedMonitorsAndFrames/ownedMonitorsAndFrames001/ownedMonitorsAndFrames001.java 8308411 generic-all
+vmTestbase/nsk/jdi/VirtualMachine/instanceCounts/instancecounts001/instancecounts001.java           8308411 generic-all
+vmTestbase/nsk/jdi/VirtualMachine/instanceCounts/instancecounts002/TestDescription.java             8308411 generic-all
+vmTestbase/nsk/jdi/stress/MonitorEvents/MonitorEvents001/TestDescription.java                       8308411 generic-all
+vmTestbase/nsk/jdi/stress/MonitorEvents/MonitorEvents002/TestDescription.java                       8308411 generic-all
+vmTestbase/nsk/jdi/stress/serial/forceEarlyReturn001/TestDescription.java                           8308411 generic-all
+vmTestbase/nsk/jdi/stress/serial/forceEarlyReturn002/TestDescription.java                           8308411 generic-all
+vmTestbase/nsk/jdi/stress/serial/heapwalking001/TestDescription.java                                8308411 generic-all
+vmTestbase/nsk/jdi/stress/serial/heapwalking002/TestDescription.java                                8308411 generic-all
+vmTestbase/nsk/jdi/stress/serial/mixed001/TestDescription.java                                      8308411 generic-all
+vmTestbase/nsk/jdi/stress/serial/mixed002/TestDescription.java                                      8308411 generic-all
+vmTestbase/nsk/jdi/stress/serial/monitorEvents001/TestDescription.java                              8308411 generic-all
+vmTestbase/nsk/jdi/stress/serial/monitorEvents002/TestDescription.java                              8308411 generic-all
+vmTestbase/nsk/jdi/stress/serial/ownedMonitorsAndFrames001/TestDescription.java                     8308411 generic-all
+vmTestbase/nsk/jdi/stress/serial/ownedMonitorsAndFrames002/TestDescription.java                     8308411 generic-all
+vmTestbase/nsk/jdwp/ObjectReference/ReferringObjects/referringObjects001/referringObjects001.java   8308411 generic-all
+vmTestbase/nsk/jdwp/ObjectReference/ReferringObjects/referringObjects002/referringObjects002.java   8308411 generic-all
+vmTestbase/nsk/jdwp/ReferenceType/Instances/instances001/instances001.java                          8308411 generic-all
+vmTestbase/nsk/jdwp/ReferenceType/Instances/instances002/instances002.java                          8308411 generic-all
+vmTestbase/nsk/jdwp/VirtualMachine/InstanceCounts/instanceCounts001/instanceCounts001.java          8308411 generic-all
 vmTestbase/nsk/jvmti/IterateOverObjectsReachableFromObject/iterobjreachobj001/TestDescription.java  8308411 generic-all
 vmTestbase/nsk/jvmti/IterateOverObjectsReachableFromObject/iterobjreachobj002/TestDescription.java  8308411 generic-all
 vmTestbase/nsk/jvmti/IterateOverObjectsReachableFromObject/iterobjreachobj003/TestDescription.java  8308411 generic-all
