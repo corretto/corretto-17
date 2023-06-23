@@ -872,7 +872,7 @@ void HeapRegion::object_iterate_impl(ObjectClosure* blk) {
 }
 
 void HeapRegion::object_iterate(ObjectClosure* blk) {
-  if (G1CollectedHeap::heap()->collector_state()->in_full_gc()) {
+  if (!UseCompactObjectHeaders || G1CollectedHeap::heap()->collector_state()->in_full_gc()) {
     object_iterate_impl<false>(blk);
   } else {
     object_iterate_impl<true>(blk);
