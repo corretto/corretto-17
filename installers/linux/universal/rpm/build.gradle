@@ -120,6 +120,11 @@ task generateJdkRpm(type: Rpm) {
     provides('java-17-openjdk-devel', "${epoch}:${version}-${release}", EQUAL)
     provides('java-sdk-17', "${epoch}:${version}", EQUAL)
     provides('java-sdk-17-openjdk ', "${epoch}:${version}-${release}", EQUAL)
+    provides('java-17', "${epoch}:${version}", EQUAL)
+    provides('java-17-openjdk', "${epoch}:${version}", EQUAL)
+    provides('jre', "${epoch}:${version}", EQUAL)
+    provides('jre-17', "${epoch}:${version}", EQUAL)
+    provides('jre-17-openjdk', "${epoch}:${version}", EQUAL)
 
     from(jdkBinaryDir) {
         include(project.configurationFiles)
