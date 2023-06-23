@@ -310,7 +310,7 @@ if [ \$1 -eq 1 ] ; then
                --slave %{_mandir}/man1/rmiregistry.1 rmiregistry.1 %{java_home}/man/man1/rmiregistry.1
 
   # Need to setup the jre alternatives separately when there is a higher priority jre java these don't get created above.
-  alternatives --install %{_jvmdir}/jre-%{java_major_version} jre_%{java_major_version} %{java_home}/jre %{alternatives_priority} \
+  alternatives --install %{_jvmdir}/jre-%{java_major_version} jre_%{java_major_version} %{java_home} %{alternatives_priority} \
                --slave %{_jvmdir}/jre-%{java_major_version}-openjdk jre_%{java_major_version}_openjdk %{java_home}/jre
 fi
 
