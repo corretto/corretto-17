@@ -265,6 +265,7 @@
   volatile_nonstatic_field(ObjectMonitor,      _succ,                                         JavaThread*)                           \
                                                                                                                                      \
   volatile_nonstatic_field(oopDesc,            _mark,                                         markWord)                              \
+  volatile_nonstatic_field(oopDesc,            _metadata._klass,                              Klass*)                                \
                                                                                                                                      \
   static_field(os,                             _polling_page,                                 address)                               \
                                                                                                                                      \

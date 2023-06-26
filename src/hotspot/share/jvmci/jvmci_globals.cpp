@@ -101,6 +101,10 @@ bool JVMCIGlobals::check_jvmci_flags_are_consistent() {
           "-XX:+BootstrapJVMCI is not compatible with -XX:TieredStopAtLevel=%d\n", TieredStopAtLevel);
       return false;
     }
+    if (UseCompactObjectHeaders) {
+      log_warning(jvmci)("-XX:+UseCompactObjectHeaders not supported by JVMCI, disabling UseCompactObjectHeaders");
+      FLAG_SET_DEFAULT(UseCompactObjectHeaders, false);
+    }
   }
 
   if (!EnableJVMCI) {
