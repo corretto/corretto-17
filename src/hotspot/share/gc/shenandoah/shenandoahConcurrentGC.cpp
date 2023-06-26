@@ -127,11 +127,15 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
 
     // Concurrent mark roots
     entry_mark_roots();
-    if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_roots)) return false;
+    if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_roots)) {
+      return false;
+    }
 
     // Continue concurrent mark
     entry_mark();
-    if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_mark)) return false;
+    if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_mark)) {
+      return false;
+    }
   }
 
   // Complete marking under STW, and start evacuation
@@ -196,16 +200,24 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
   if (heap->is_evacuation_in_progress()) {
     // Concurrently evacuate
     entry_evacuate();
-    if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_evac)) return false;
+    if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_evac)) {
+      return false;
+    }
+  }
 
+  if (heap->has_forwarded_objects()) {
     // Perform update-refs phase.
     vmop_entry_init_updaterefs();
     entry_updaterefs();
-    if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_updaterefs)) return false;
+    if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_updaterefs)) {
+      return false;
+    }
 
     // Concurrent update thread roots
     entry_update_thread_roots();
-    if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_updaterefs)) return false;
+    if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_updaterefs)) {
+      return false;
+    }
 
     vmop_entry_final_updaterefs();
 
@@ -824,15 +836,15 @@ void ShenandoahConcurrentGC::op_final_mark() {
     //  equals the entire amount of live young-gen memory within the collection set, even though some of this memory
     //  will likely be promoted.
 
-    // Has to be done after cset selection
-    heap->prepare_concurrent_roots();
-
     if (heap->mode()->is_generational()) {
       size_t humongous_regions_promoted = heap->get_promotable_humongous_regions();
       size_t regular_regions_promoted_in_place = heap->get_regular_regions_promoted_in_place();
       if (!heap->collection_set()->is_empty() || (humongous_regions_promoted + regular_regions_promoted_in_place > 0)) {
         // Even if the collection set is empty, we need to do evacuation if there are regions to be promoted in place.
         // Concurrent evacuation takes responsibility for registering objects and setting the remembered set cards to dirty.
+
+        // Has to be done after cset selection
+        heap->prepare_concurrent_roots(true);
 
         LogTarget(Debug, gc, cset) lt;
         if (lt.is_enabled()) {
@@ -844,11 +856,8 @@ void ShenandoahConcurrentGC::op_final_mark() {
         if (ShenandoahVerify) {
           heap->verifier()->verify_before_evacuation();
         }
-        // TODO: we do not need to run update-references following evacuation if collection_set->is_empty().
 
         heap->set_evacuation_in_progress(true);
-        // From here on, we need to update references.
-        heap->set_has_forwarded_objects(true);
 
         // Verify before arming for concurrent processing.
         // Otherwise, verification can trigger stack processing.
@@ -856,6 +865,12 @@ void ShenandoahConcurrentGC::op_final_mark() {
           heap->verifier()->verify_during_evacuation();
         }
 
+        // Generational mode may promote objects in place during the evacuation phase.
+        // If that is the only reason we are evacuating, we don't need to update references
+        // and there will be no forwarded objects on the heap.
+        heap->set_has_forwarded_objects(!heap->collection_set()->is_empty());
+
+        // Arm nmethods/stack for concurrent processing
         if (!heap->collection_set()->is_empty()) {
           // Iff objects will be evaluated, arm the nmethod barriers. These will be disarmed
           // under the same condition (established in preprare_concurrent_roots) after strong
@@ -871,6 +886,8 @@ void ShenandoahConcurrentGC::op_final_mark() {
           heap->pacer()->setup_for_evac();
         }
       } else {
+        heap->prepare_concurrent_roots(false);
+
         if (ShenandoahVerify) {
           heap->verifier()->verify_after_concmark();
         }
@@ -889,19 +906,22 @@ void ShenandoahConcurrentGC::op_final_mark() {
           heap->collection_set()->print_on(&ls);
         }
 
+        heap->prepare_concurrent_roots(true);
+
         if (ShenandoahVerify) {
           heap->verifier()->verify_before_evacuation();
         }
 
         heap->set_evacuation_in_progress(true);
-        // From here on, we need to update references.
-        heap->set_has_forwarded_objects(true);
 
         // Verify before arming for concurrent processing.
         // Otherwise, verification can trigger stack processing.
         if (ShenandoahVerify) {
           heap->verifier()->verify_during_evacuation();
         }
+
+        // From here on, we need to update references.
+        heap->set_has_forwarded_objects(true);
 
         // Arm nmethods/stack for concurrent processing
         ShenandoahCodeRoots::arm_nmethods();
@@ -914,6 +934,8 @@ void ShenandoahConcurrentGC::op_final_mark() {
           heap->pacer()->setup_for_evac();
         }
       } else {
+        heap->prepare_concurrent_roots(false);
+
         if (ShenandoahVerify) {
           heap->verifier()->verify_after_concmark();
         }
@@ -1332,6 +1354,7 @@ void ShenandoahConcurrentGC::op_final_roots() {
 
   ShenandoahHeap *heap = ShenandoahHeap::heap();
   heap->set_concurrent_weak_root_in_progress(false);
+  heap->set_evacuation_in_progress(false);
 
   if (heap->mode()->is_generational()) {
     ShenandoahMarkingContext *ctx = heap->complete_marking_context();
