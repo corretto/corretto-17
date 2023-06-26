@@ -1330,9 +1330,11 @@ void ShenandoahConcurrentGC::op_final_updaterefs() {
 
 void ShenandoahConcurrentGC::op_final_roots() {
 
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
-  if (heap->is_aging_cycle()) {
-    ShenandoahMarkingContext* ctx = heap->complete_marking_context();
+  ShenandoahHeap *heap = ShenandoahHeap::heap();
+  heap->set_concurrent_weak_root_in_progress(false);
+
+  if (heap->mode()->is_generational()) {
+    ShenandoahMarkingContext *ctx = heap->complete_marking_context();
 
     for (size_t i = 0; i < heap->num_regions(); i++) {
       ShenandoahHeapRegion *r = heap->get_region(i);
@@ -1341,14 +1343,12 @@ void ShenandoahConcurrentGC::op_final_roots() {
         HeapWord* top = r->top();
         if (top > tams) {
           r->reset_age();
-        } else {
+        } else if (heap->is_aging_cycle()) {
           r->increment_age();
         }
       }
     }
   }
-
-  ShenandoahHeap::heap()->set_concurrent_weak_root_in_progress(false);
 }
 
 void ShenandoahConcurrentGC::op_cleanup_complete() {
