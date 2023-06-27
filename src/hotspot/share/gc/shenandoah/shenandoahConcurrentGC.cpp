@@ -836,15 +836,15 @@ void ShenandoahConcurrentGC::op_final_mark() {
     //  equals the entire amount of live young-gen memory within the collection set, even though some of this memory
     //  will likely be promoted.
 
+    // Has to be done after cset selection
+    heap->prepare_concurrent_roots();
+
     if (heap->mode()->is_generational()) {
       size_t humongous_regions_promoted = heap->get_promotable_humongous_regions();
       size_t regular_regions_promoted_in_place = heap->get_regular_regions_promoted_in_place();
       if (!heap->collection_set()->is_empty() || (humongous_regions_promoted + regular_regions_promoted_in_place > 0)) {
         // Even if the collection set is empty, we need to do evacuation if there are regions to be promoted in place.
         // Concurrent evacuation takes responsibility for registering objects and setting the remembered set cards to dirty.
-
-        // Has to be done after cset selection
-        heap->prepare_concurrent_roots(true);
 
         LogTarget(Debug, gc, cset) lt;
         if (lt.is_enabled()) {
@@ -886,8 +886,6 @@ void ShenandoahConcurrentGC::op_final_mark() {
           heap->pacer()->setup_for_evac();
         }
       } else {
-        heap->prepare_concurrent_roots(false);
-
         if (ShenandoahVerify) {
           heap->verifier()->verify_after_concmark();
         }
@@ -905,8 +903,6 @@ void ShenandoahConcurrentGC::op_final_mark() {
           LogStream ls(lt);
           heap->collection_set()->print_on(&ls);
         }
-
-        heap->prepare_concurrent_roots(true);
 
         if (ShenandoahVerify) {
           heap->verifier()->verify_before_evacuation();
@@ -934,8 +930,6 @@ void ShenandoahConcurrentGC::op_final_mark() {
           heap->pacer()->setup_for_evac();
         }
       } else {
-        heap->prepare_concurrent_roots(false);
-
         if (ShenandoahVerify) {
           heap->verifier()->verify_after_concmark();
         }
