@@ -1,6 +1,5 @@
-
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2004, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +21,35 @@
  * questions.
  */
 
-package gc;
-
 /*
- * @test TestMemoryInitializationWithSerial
- * @bug 4668531
- * @library /
- * @requires vm.debug & vm.gc.Serial
- * @summary Simple test for -XX:+CheckMemoryInitialization doesn't crash VM
- * @run main/othervm -XX:+UseSerialGC -XX:+CheckMemoryInitialization gc.TestMemoryInitializationWithSerial
- */
+  @test
+  @bug 4994151
+  @summary REGRESSION: Bug when setting the foreground of a JWindow
+  @key headful
+*/
 
-public class TestMemoryInitializationWithSerial {
+import java.awt.EventQueue;
+import java.awt.Color;
 
-    public static void main(String args[]) {
-        TestMemoryInitialization.main(args);
+import javax.swing.JWindow;
+
+public class SetForegroundTest {
+    static JWindow jwindow;
+
+    public static void main(String[] args) throws Exception {
+        try {
+            EventQueue.invokeAndWait(() -> {
+                jwindow = new JWindow();
+                jwindow.pack();
+                jwindow.setForeground(Color.BLACK);
+                System.out.println("TEST PASSED");
+            });
+        } finally {
+            EventQueue.invokeAndWait(() -> {
+                if (jwindow != null) {
+                    jwindow.dispose();
+                }
+            });
+        }
     }
 }
