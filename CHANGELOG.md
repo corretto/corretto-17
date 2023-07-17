@@ -22,9 +22,12 @@ in the Amazon Corretto FAQ for supported platforms
 
 The following issues are addressed in 17.0.8.7.1:
 
-| Issue Name                          | Platform | Description                                                                          | Link                                                                          |
-|-------------------------------------|----------|--------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| Import jdk-17.0.8+7                | All    | Updates Corretto baseline to OpenJDK 17.0.8+7   | [jdk-17.0.8+7](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.8+7)                                                                                                 |
+| Issue Name                          | Platform | Description                                                                          | Link                                                                        |
+|-------------------------------------|----------|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| Import jdk-17.0.8+7                | All    | Updates Corretto baseline to OpenJDK 17.0.8+7   | [jdk-17.0.8+7](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.8+7) |
+| Dynamic linking zlib               | All      | Dynamic linking zlib         | [#125](https://github.com/corretto/corretto-17/pull/125)                    |
+| 8302483: Enhance ZIP performance          | All      | This release of OpenJDK includes stronger checks on the Zip64 fields of zip files. In the event that these checks cause failures on trusted zip files, the checks can be disabled by setting the new system property 'jdk.util.zip.disableZip64ExtraFieldValidation' to 'true'. |                                                                             |
+| 8300596: Enhance Jar Signature validation | All      | A System property "jdk.jar.maxSignatureFileSize" is introduced to configure the maximum number of bytes allowed for the signature-related files in a JAR file during verification. The default value is 8000000 bytes (8 MB). |                                                                             |
 
 The following CVEs are addressed in 17.0.8.7.1:
 
