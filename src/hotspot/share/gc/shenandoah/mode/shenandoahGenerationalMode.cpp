@@ -23,7 +23,6 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/shenandoah/heuristics/shenandoahAdaptiveHeuristics.hpp"
 #include "gc/shenandoah/heuristics/shenandoahHeuristics.hpp"
 #include "gc/shenandoah/mode/shenandoahGenerationalMode.hpp"
 #include "logging/log.hpp"
@@ -31,6 +30,11 @@
 #include "runtime/globals_extension.hpp"
 
 void ShenandoahGenerationalMode::initialize_flags() const {
+
+#if !(defined AARCH64 || defined AMD64 || defined IA32 || defined PPC64)
+  vm_exit_during_initialization("Shenandoah Generational GC is not supported on this platform.");
+#endif
+
   if (ClassUnloading) {
     FLAG_SET_DEFAULT(ShenandoahSuspendibleWorkers, true);
     FLAG_SET_DEFAULT(VerifyBeforeExit, false);
@@ -51,16 +55,3 @@ void ShenandoahGenerationalMode::initialize_flags() const {
   SHENANDOAH_CHECK_FLAG_SET(ShenandoahCASBarrier);
   SHENANDOAH_CHECK_FLAG_SET(ShenandoahCloneBarrier);
 }
-
-ShenandoahHeuristics* ShenandoahGenerationalMode::initialize_heuristics(ShenandoahGeneration* generation) const {
-  if (ShenandoahGCHeuristics == nullptr) {
-    vm_exit_during_initialization("Unknown -XX:ShenandoahGCHeuristics option (null)");
-  }
-
-  if (strcmp(ShenandoahGCHeuristics, "adaptive") != 0) {
-    vm_exit_during_initialization("Generational mode requires the (default) adaptive heuristic");
-  }
-
-  return new ShenandoahAdaptiveHeuristics(generation);
-}
-

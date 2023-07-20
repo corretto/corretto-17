@@ -27,25 +27,27 @@
 #include "gc/shenandoah/heuristics/shenandoahAdaptiveHeuristics.hpp"
 #include "gc/shenandoah/heuristics/shenandoahAggressiveHeuristics.hpp"
 #include "gc/shenandoah/heuristics/shenandoahCompactHeuristics.hpp"
+#include "gc/shenandoah/heuristics/shenandoahHeapStats.hpp"
 #include "gc/shenandoah/heuristics/shenandoahStaticHeuristics.hpp"
-#include "gc/shenandoah/shenandoahGeneration.hpp"
 #include "gc/shenandoah/mode/shenandoahMode.hpp"
 
-ShenandoahHeuristics* ShenandoahMode::initialize_heuristics(ShenandoahGeneration* generation) const {
-
-  if (ShenandoahGCHeuristics != NULL) {
-    if (strcmp(ShenandoahGCHeuristics, "aggressive") == 0) {
-      return new ShenandoahAggressiveHeuristics(generation);
-    } else if (strcmp(ShenandoahGCHeuristics, "static") == 0) {
-      return new ShenandoahStaticHeuristics(generation);
-    } else if (strcmp(ShenandoahGCHeuristics, "adaptive") == 0) {
-      return new ShenandoahAdaptiveHeuristics(generation);
-    } else if (strcmp(ShenandoahGCHeuristics, "compact") == 0) {
-      return new ShenandoahCompactHeuristics(generation);
-    } else {
-      vm_exit_during_initialization("Unknown -XX:ShenandoahGCHeuristics option");
-    }
+ShenandoahHeuristics* ShenandoahMode::initialize_heuristics(ShenandoahHeapStats* heap_info) const {
+  if (ShenandoahGCHeuristics == NULL) {
+    vm_exit_during_initialization("Unknown -XX:ShenandoahGCHeuristics option (null)");
   }
+
+  if (strcmp(ShenandoahGCHeuristics, "aggressive") == 0) {
+    return new ShenandoahAggressiveHeuristics();
+  } else if (strcmp(ShenandoahGCHeuristics, "static") == 0) {
+    return new ShenandoahStaticHeuristics();
+  } else if (strcmp(ShenandoahGCHeuristics, "adaptive") == 0) {
+    return new ShenandoahAdaptiveHeuristics(heap_info);
+  } else if (strcmp(ShenandoahGCHeuristics, "compact") == 0) {
+    return new ShenandoahCompactHeuristics();
+  } else {
+    vm_exit_during_initialization("Unknown -XX:ShenandoahGCHeuristics option");
+  }
+
   ShouldNotReachHere();
   return NULL;
 }
