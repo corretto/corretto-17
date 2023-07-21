@@ -29,6 +29,7 @@
 #include "gc/shared/markBitMap.hpp"
 #include "gc/shared/softRefPolicy.hpp"
 #include "gc/shared/collectedHeap.hpp"
+#include "gc/shenandoah/heuristics/shenandoahSpaceInfo.hpp"
 #include "gc/shenandoah/shenandoahAsserts.hpp"
 #include "gc/shenandoah/shenandoahAllocRequest.hpp"
 #include "gc/shenandoah/shenandoahLock.hpp"
@@ -244,7 +245,7 @@ public:
   void increase_committed(size_t bytes);
   void decrease_committed(size_t bytes);
 
-  size_t bytes_allocated_since_gc_start();
+  size_t bytes_allocated_since_gc_start() const;
   void reset_bytes_allocated_since_gc_start();
 
   size_t min_capacity()      const;
@@ -254,6 +255,7 @@ public:
   size_t capacity()          const;
   size_t used()              const;
   size_t committed()         const;
+  size_t available()         const;
 
   void set_soft_max_capacity(size_t v);
 

@@ -22,12 +22,19 @@
  *
  */
 
-#ifndef SHARE_GC_SHENANDOAH_HEURISTICS_SHENANDOAHHEAPCHARACTERISTICS_HPP
-#define SHARE_GC_SHENANDOAH_HEURISTICS_SHENANDOAHHEAPCHARACTERISTICS_HPP
+#ifndef SHARE_GC_SHENANDOAH_HEURISTICS_SHENANDOAHSPACEINFO_HPP
+#define SHARE_GC_SHENANDOAH_HEURISTICS_SHENANDOAHSPACEINFO_HPP
 
 #include "utilities/globalDefinitions.hpp"
 
-class ShenandoahHeapStats {
+/*
+ * The purpose of this interface is to decouple the heuristics from a
+ * direct dependency on the ShenandoahHeap singleton instance. This is
+ * done to facilitate future unit testing of the heuristics and to support
+ * future operational modes of Shenandoah in which the heap may be split
+ * into generations.
+ */
+class ShenandoahSpaceInfo {
 public:
   virtual const char* name() const = 0;
   virtual size_t soft_max_capacity() const = 0;
@@ -38,4 +45,4 @@ public:
   virtual size_t bytes_allocated_since_gc_start() const = 0;
 };
 
-#endif //SHARE_GC_SHENANDOAH_HEURISTICS_SHENANDOAHHEAPCHARACTERISTICS_HPP
+#endif //SHARE_GC_SHENANDOAH_HEURISTICS_SHENANDOAHSPACEINFO_HPP

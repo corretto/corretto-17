@@ -26,9 +26,10 @@
 #ifndef SHARE_GC_SHENANDOAH_HEURISTICS_SHENANDOAHHEURISTICS_HPP
 #define SHARE_GC_SHENANDOAH_HEURISTICS_SHENANDOAHHEURISTICS_HPP
 
+#include "gc/shenandoah/heuristics/shenandoahSpaceInfo.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
-#include "gc/shenandoah/heuristics/shenandoahHeapStats.hpp"
+#include "gc/shenandoah/heuristics/shenandoahSpaceInfo.hpp"
 #include "memory/allocation.hpp"
 #include "runtime/globals_extension.hpp"
 
@@ -59,6 +60,11 @@
 class ShenandoahCollectionSet;
 class ShenandoahHeapRegion;
 
+/*
+ * Shenandoah heuristics are primarily responsible for deciding when to start
+ * a collection cycle and choosing which regions will be evacuated during the
+ * cycle.
+ */
 class ShenandoahHeuristics : public CHeapObj<mtGC> {
   static const intx Concurrent_Adjust   = -1; // recover from penalties
   static const intx Degenerated_Penalty = 10; // how much to penalize average GC duration history on Degenerated GC
@@ -75,18 +81,9 @@ protected:
     } _u;
   } RegionData;
 
-  // Depending on generation mode, region data represents the results of the relevant
-  // most recently completed marking pass:
-  //   - in GLOBAL mode, global marking pass
-  //   - in OLD mode,    old-gen marking pass
-  //   - in YOUNG mode,  young-gen marking pass
-  //
-  // Note that there is some redundancy represented in region data because
-  // each instance is an array large enough to hold all regions. However,
-  // any region in young-gen is not in old-gen. And any time we are
-  // making use of the GLOBAL data, there is no need to maintain the
-  // YOUNG or OLD data. Consider this redundancy of data structure to
-  // have negligible cost unless proven otherwise.
+  // Source of information about the memory space managed by this heuristic
+  ShenandoahSpaceInfo* _space_info;
+
   RegionData* _region_data;
 
   uint _degenerated_cycles_in_a_row;
@@ -117,7 +114,7 @@ protected:
   void adjust_penalty(intx step);
 
 public:
-  ShenandoahHeuristics();
+  ShenandoahHeuristics(ShenandoahSpaceInfo* space_info);
   virtual ~ShenandoahHeuristics();
 
   void record_metaspace_oom()     { _metaspace_oom.set(); }
