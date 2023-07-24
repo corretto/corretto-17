@@ -82,10 +82,6 @@ public:
   // the performance impact would be too severe.
   void transfer_pointers_from_satb();
 
-  // In order to track amount that is promoted during a collection, we need
-  // to notify the global and young memory managers of the reset
-  void reset_bytes_allocated_since_gc_start() override;
-
 public:
   enum State {
     IDLE, FILLING, BOOTSTRAPPING, MARKING, WAITING_FOR_EVAC, WAITING_FOR_FILL

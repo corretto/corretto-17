@@ -40,7 +40,6 @@
 #include "gc/shenandoah/shenandoahMarkClosures.hpp"
 #include "gc/shenandoah/shenandoahMark.inline.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
-#include "gc/shenandoah/shenandoahMemoryManager.hpp"
 #include "gc/shenandoah/shenandoahOldGeneration.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahReferenceProcessor.hpp"
@@ -251,7 +250,7 @@ void ShenandoahOldGeneration::prepare_gc() {
     // Now that we have made the old generation parseable, it is safe to reset the mark bitmap.
     static const char* msg = "Concurrent reset (OLD)";
     uint workers_count = ShenandoahWorkerPolicy::calc_workers_for_conc_reset();
-    ShenandoahConcurrentPhase gc_phase(msg, ShenandoahPhaseTimings::conc_reset_old, ShenandoahGenerationType::OLD, workers_count);
+    ShenandoahConcurrentPhase gc_phase(msg, ShenandoahPhaseTimings::conc_reset_old);
     ShenandoahWorkerScope scope(ShenandoahHeap::heap()->workers(), workers_count, msg);
     ShenandoahGeneration::prepare_gc();
   }
@@ -268,7 +267,7 @@ bool ShenandoahOldGeneration::entry_coalesce_and_fill() {
   // TODO: I don't think we're using these concurrent collection counters correctly.
   TraceCollectorStats tcs(heap->monitoring_support()->concurrent_collection_counters());
   uint workers_count = ShenandoahWorkerPolicy::calc_workers_for_conc_marking();
-  ShenandoahConcurrentPhase gc_phase("Coalescing and filling (OLD)", ShenandoahPhaseTimings::coalesce_and_fill, ShenandoahGenerationType::OLD, workers_count);
+  ShenandoahConcurrentPhase gc_phase("Coalescing and filling (OLD)", ShenandoahPhaseTimings::coalesce_and_fill);
   ShenandoahWorkerScope scope(heap->workers(), workers_count, msg);
 
   return coalesce_and_fill();
@@ -315,12 +314,6 @@ void ShenandoahOldGeneration::transfer_pointers_from_satb() {
 
   ShenandoahPurgeSATBTask purge_satb_task(task_queues());
   heap->workers()->run_task(&purge_satb_task);
-}
-
-void ShenandoahOldGeneration::reset_bytes_allocated_since_gc_start() {
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
-  heap->young_gen_memory_manager()->update_copied_between_pools(bytes_allocated_since_gc_start());
-  heap->memory_manager()->update_copied_between_pools(bytes_allocated_since_gc_start());
 }
 
 bool ShenandoahOldGeneration::contains(oop obj) const {

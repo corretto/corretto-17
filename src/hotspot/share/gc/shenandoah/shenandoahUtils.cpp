@@ -35,7 +35,6 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahOldGeneration.hpp"
 #include "gc/shenandoah/shenandoahReferenceProcessor.hpp"
-#include "gc/shenandoah/shenandoahMemoryManager.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahYoungGeneration.hpp"
 #include "utilities/debug.hpp"
@@ -66,17 +65,6 @@ ShenandoahGCSession::ShenandoahGCSession(GCCause::Cause cause, ShenandoahGenerat
           /* recordGCEndTime = */         true,
           /* countCollection = */         true
   );
-  _trace_memory_manager_stats.initialize(_heap->memory_manager(generation->type()), cause,
-          "end of GC cycle",
-          /* allMemoryPoolsAffected */    true,
-          /* recordGCBeginTime = */       true,
-          /* recordPreGCUsage = */        true,
-          /* recordPeakUsage = */         true,
-          /* recordPostGCUsage = */       true,
-          /* recordAccumulatedGCTime = */ true,
-          /* recordGCEndTime = */         true,
-          /* countCollection = */         true
-  );
 }
 
 ShenandoahGCSession::~ShenandoahGCSession() {
@@ -89,7 +77,7 @@ ShenandoahGCSession::~ShenandoahGCSession() {
 
 }
 
-ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, const char* notification_message, SvcGCMarker::reason_type type, ShenandoahGenerationType generation_mode) :
+ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, const char* notification_message, SvcGCMarker::reason_type type) :
   _heap(ShenandoahHeap::heap()), _gc_id_mark(gc_id), _svc_gc_mark(type), _is_gc_active_mark() {
   _trace_pause.initialize(_heap->stw_memory_manager(), _heap->gc_cause(),
           notification_message,
@@ -102,56 +90,24 @@ ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, const char* notificatio
           /* recordGCEndTime = */         true,
           /* countCollection = */         true
   );
-  _trace_gc_pause_stats.initialize(_heap->memory_manager(generation_mode),
-          /* phase_cause = */                   NULL,
-          /* phase_threads = */                 0L,
-          /* record_accumulated_pause_time = */ true,
-          /* count_pauses = */                  true,
-          /* record_individual_pauses = */      true,
-          /* record_duration = */               false,
-          /* record_operation_time = */         true,
-          /* record_phase_cause = */            false,
-          /* record_phase_threads = */          false,
-          /* cycle_pause = */                   false);
 }
 
-ShenandoahPausePhase::ShenandoahPausePhase(const char* title, ShenandoahPhaseTimings::Phase phase, ShenandoahGenerationType generation_mode, size_t num_workers, bool log_heap_usage) :
+ShenandoahPausePhase::ShenandoahPausePhase(const char* title, ShenandoahPhaseTimings::Phase phase, bool log_heap_usage) :
   ShenandoahTimingsTracker(phase),
   _tracer(title, NULL, GCCause::_no_gc, log_heap_usage),
   _timer(ShenandoahHeap::heap()->gc_timer()) {
   _timer->register_gc_pause_start(title);
-  ShenandoahHeap::heap()->memory_manager(generation_mode)->pause_begin(
-          /* phase_cause = */                   NULL,
-          /* phase_threads = */                 num_workers,
-          /* record_accumulated_pause_time = */ false,
-          /* count_pauses = */                  false,
-          /* record_individual_pauses = */      true,
-          /* record_duration = */               false,
-          /* record_operation_time = */         false,
-          /* record_phase_cause = */            false,
-          /* record_phase_threads = */          true);
 }
 
 ShenandoahPausePhase::~ShenandoahPausePhase() {
   _timer->register_gc_pause_end();
 }
 
-ShenandoahConcurrentPhase::ShenandoahConcurrentPhase(const char* title, ShenandoahPhaseTimings::Phase phase, ShenandoahGenerationType generation_mode, size_t num_workers, bool log_heap_usage) :
+ShenandoahConcurrentPhase::ShenandoahConcurrentPhase(const char* title, ShenandoahPhaseTimings::Phase phase, bool log_heap_usage) :
   ShenandoahTimingsTracker(phase),
   _tracer(title, NULL, GCCause::_no_gc, log_heap_usage),
   _timer(ShenandoahHeap::heap()->gc_timer()) {
-  ShenandoahHeap* const heap = ShenandoahHeap::heap();
   _timer->register_gc_concurrent_start(title);
-  // Concurrent uncommit is excluded as it happens outside any GC cycle
-  if (phase != ShenandoahPhaseTimings::conc_uncommit) {
-    _trace_gc_concurrent_stats.initialize(heap->memory_manager(generation_mode),
-            /* phase_cause = */               ShenandoahPhaseTimings::phase_name(phase), 
-            /* phase_threads = */             num_workers,
-            /* record_individual_phases = */  true,
-            /* record_duration = */           true,
-            /* record_phase_cause */          true,
-            /* record_phase_threads = */      true);
-  }
 }
 
 ShenandoahConcurrentPhase::~ShenandoahConcurrentPhase() {

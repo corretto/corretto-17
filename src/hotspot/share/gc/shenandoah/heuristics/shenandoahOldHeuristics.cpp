@@ -24,7 +24,6 @@
 
 #include "precompiled.hpp"
 
-#include "gc/shenandoah/shenandoahMemoryManager.hpp"
 #include "gc/shenandoah/heuristics/shenandoahOldHeuristics.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
@@ -344,7 +343,6 @@ void ShenandoahOldHeuristics::prepare_for_old_collections() {
       immediate_regions++;
       immediate_garbage += garbage;
     }
-    heap->old_gen_memory_manager()->report_garbage(total_garbage, total_garbage);
   }
 
   _old_generation->set_live_bytes_after_last_mark(live_data);

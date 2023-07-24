@@ -48,8 +48,6 @@ private:
   static InstanceKlass*     _garbageCollectorExtImpl_klass;
   static InstanceKlass*     _garbageCollectorMXBean_klass;
   static InstanceKlass*     _gcInfo_klass;
-  static InstanceKlass*     _pauseInfo_klass;
-  static InstanceKlass*     _concurrentInfo_klass;
   static InstanceKlass*     _managementFactoryHelper_klass;
   static InstanceKlass*     _memoryManagerMXBean_klass;
   static InstanceKlass*     _memoryPoolMXBean_klass;
@@ -65,7 +63,6 @@ public:
   static void initialize(TRAPS);
 
   static jlong ticks_to_ms(jlong ticks) NOT_MANAGEMENT_RETURN_(0L);
-  static jlong ticks_to_ns(jlong ticks) NOT_MANAGEMENT_RETURN_(0L);
   static jlong timestamp() NOT_MANAGEMENT_RETURN_(0L);
 
   static void* get_jmm_interface(int version);
@@ -103,10 +100,6 @@ public:
       NOT_MANAGEMENT_RETURN_(NULL);
   static InstanceKlass* com_sun_management_GcInfo_klass(TRAPS)
       NOT_MANAGEMENT_RETURN_(NULL);
-  static InstanceKlass* com_sun_management_PauseInfo_klass(TRAPS)
-      NOT_MANAGEMENT_RETURN_(NULL);
-  static InstanceKlass* com_sun_management_ConcurrentInfo_klass(TRAPS)
-      NOT_MANAGEMENT_RETURN_(NULL);      
   static InstanceKlass* com_sun_management_internal_DiagnosticCommandImpl_klass(TRAPS)
       NOT_MANAGEMENT_RETURN_(NULL);
 

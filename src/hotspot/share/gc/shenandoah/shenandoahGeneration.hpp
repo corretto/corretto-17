@@ -118,7 +118,7 @@ private:
   size_t soft_available() const;
 
   size_t bytes_allocated_since_gc_start();
-  virtual void reset_bytes_allocated_since_gc_start();
+  void reset_bytes_allocated_since_gc_start();
   void increase_allocated(size_t bytes);
 
   // These methods change the capacity of the region by adding or subtracting the given number of bytes from the current
