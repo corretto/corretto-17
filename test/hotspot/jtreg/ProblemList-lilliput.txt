@@ -53,40 +53,6 @@ testlibrary_tests/ir_framework/tests/TestIRMatching.java                        
 
 
 #
-# JFR heap iteration is unsafe, disabled and prints warnings
-#
-jdk/jfr/event/oldobject/TestAllocationTime.java                                     8308296 generic-all
-jdk/jfr/event/oldobject/TestArrayInformation.java                                   8308296 generic-all
-jdk/jfr/event/oldobject/TestCircularReference.java                                  8308296 generic-all
-jdk/jfr/event/oldobject/TestClassLoaderLeak.java                                    8308296 generic-all
-jdk/jfr/event/oldobject/TestFieldInformation.java                                   8308296 generic-all
-jdk/jfr/event/oldobject/TestG1.java                                                 8308296 generic-all
-jdk/jfr/event/oldobject/TestObjectDescription.java                                  8308296 generic-all
-jdk/jfr/event/oldobject/TestHeapDeep.java                                           8308296 generic-all
-jdk/jfr/event/oldobject/TestHeapShallow.java                                        8308296 generic-all
-jdk/jfr/event/oldobject/TestLastKnownHeapUsage.java                                 8308296 generic-all
-jdk/jfr/event/oldobject/TestListenerLeak.java                                       8308296 generic-all
-jdk/jfr/event/oldobject/TestLargeRootSet.java                                       8308296 generic-all
-jdk/jfr/event/oldobject/TestMetadataRetention.java                                  8308296 generic-all
-jdk/jfr/event/oldobject/TestParallel.java                                           8308296 generic-all
-jdk/jfr/event/oldobject/TestReferenceChainLimit.java                                8308296 generic-all
-jdk/jfr/event/oldobject/TestSanityDefault.java                                      8308296 generic-all
-jdk/jfr/event/oldobject/TestSerial.java                                             8308296 generic-all
-jdk/jfr/event/oldobject/TestShenandoah.java                                         8308296 generic-all
-jdk/jfr/event/oldobject/TestThreadLocalLeak.java                                    8308296 generic-all
-jdk/jfr/event/oldobject/TestZ.java                                                  8308296 generic-all
-jdk/jfr/event/gc/objectcount/TestObjectCountAfterGCEventWithG1ConcurrentMark.java   8308296 generic-all
-jdk/jfr/event/gc/objectcount/TestObjectCountAfterGCEventWithG1FullCollection.java   8308296 generic-all
-jdk/jfr/event/gc/objectcount/TestObjectCountAfterGCEventWithSerial.java             8308296 generic-all
-jdk/jfr/event/gc/objectcount/TestObjectCountEvent.java                              8308296 generic-all
-jdk/jfr/event/gc/objectcount/TestObjectCountAfterGCEventWithParallelOld.java        8308296 generic-all
-jdk/jfr/jcmd/TestJcmdDump.java                                                      8308296 generic-all
-jdk/jfr/jcmd/TestJcmdDumpPathToGCRoots.java                                         8308296 generic-all
-jdk/jfr/startupargs/TestOldObjectQueueSize.java                                     8308296 generic-all
-jdk/jfr/startupargs/TestStartupMessage.java                                         8308296 generic-all
-
-
-#
 # JVMTI heap iteration is unsafe, disabled and prints warnings
 #
 com/sun/jdi/EATests.java#id0                                                                        8308411 generic-all
