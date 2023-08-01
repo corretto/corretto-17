@@ -961,8 +961,15 @@ void ShenandoahEvacUpdateCleanupOopStorageRootsClosure::do_oop(oop* p) {
   const oop obj = RawAccess<>::oop_load(p);
   if (!CompressedOops::is_null(obj)) {
     if (!_mark_context->is_marked(obj)) {
-      shenandoah_assert_correct(p, obj);
-      ShenandoahHeap::atomic_clear_oop(p, obj);
+      if (_heap->is_in_active_generation(obj)) {
+        // TODO: This worries me. Here we are asserting that an unmarked from-space object is 'correct'.
+        // Normally, I would call this a bogus assert, but there seems to be a legitimate use-case for
+        // accessing from-space objects during class unloading. However, the from-space object may have
+        // been "filled". We've made no effort to prevent old generation classes being unloaded by young
+        // gen (and vice-versa).
+        shenandoah_assert_correct(p, obj);
+        ShenandoahHeap::atomic_clear_oop(p, obj);
+      }
     } else if (_evac_in_progress && _heap->in_collection_set(obj)) {
       oop resolved = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       if (resolved == obj) {
@@ -1030,6 +1037,7 @@ public:
 
   void work(uint worker_id) {
     ShenandoahConcurrentWorkerSession worker_session(worker_id);
+    ShenandoahSuspendibleThreadSetJoiner sts_join;
     {
       ShenandoahEvacOOMScope oom;
       // jni_roots and weak_roots are OopStorage backed roots, concurrent iteration
