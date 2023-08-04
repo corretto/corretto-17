@@ -72,7 +72,7 @@ void ShenandoahScanRememberedTask::do_work(uint worker_id) {
 
   ShenandoahObjToScanQueue* q = _queue_set->queue(worker_id);
   ShenandoahObjToScanQueue* old = _old_queue_set == NULL ? NULL : _old_queue_set->queue(worker_id);
-  ShenandoahMarkRefsClosure<YOUNG, NO_DEDUP> cl(q, _rp, old);
+  ShenandoahMarkRefsClosure<YOUNG> cl(q, _rp, old);
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   RememberedScanner* scanner = heap->card_scan();
 

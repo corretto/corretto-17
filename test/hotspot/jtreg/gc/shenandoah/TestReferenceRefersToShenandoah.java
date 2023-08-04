@@ -26,8 +26,8 @@ package gc.shenandoah;
 /* @test id=satb
  * @requires vm.gc.Shenandoah
  * @library /test/lib
- * @build sun.hotspot.WhiteBox
- * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @build jdk.test.whitebox.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
  * @run main/othervm
  *      -Xbootclasspath/a:.
  *      -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
@@ -51,8 +51,8 @@ package gc.shenandoah;
 /* @test id=generational
  * @requires vm.gc.Shenandoah
  * @library /test/lib
- * @build sun.hotspot.WhiteBox
- * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @build jdk.test.whitebox.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
  * @run main/othervm
  *      -Xbootclasspath/a:.
  *      -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
@@ -63,9 +63,9 @@ package gc.shenandoah;
 /* @test id=generational-100
  * @requires vm.gc.Shenandoah
  * @library /test/lib
- * @build sun.hotspot.WhiteBox
+ * @build jdk.test.whitebox.WhiteBox
  * @modules java.base
- * @run main jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @run main jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
  * @run main/othervm
  *      -Xbootclasspath/a:.
  *      -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
@@ -88,9 +88,9 @@ package gc.shenandoah;
 /* @test id=iu-100
  * @requires vm.gc.Shenandoah
  * @library /test/lib
- * @build sun.hotspot.WhiteBox
+ * @build jdk.test.whitebox.WhiteBox
  * @modules java.base
- * @run main jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @run main jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
  * @run main/othervm
  *      -Xbootclasspath/a:.
  *      -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
@@ -102,7 +102,7 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
-import sun.hotspot.WhiteBox;
+import jdk.test.whitebox.WhiteBox;
 
 public class TestReferenceRefersToShenandoah {
     private static final WhiteBox WB = WhiteBox.getWhiteBox();

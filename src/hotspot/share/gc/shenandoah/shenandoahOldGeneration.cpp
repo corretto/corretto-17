@@ -69,10 +69,9 @@ public:
 };
 
 class ShenandoahProcessOldSATB : public SATBBufferClosure {
- private:
-  StringDedup::Requests     _stringdedup_requests;
-  ShenandoahObjToScanQueue* _queue;
-  ShenandoahHeap* _heap;
+private:
+  ShenandoahObjToScanQueue*       _queue;
+  ShenandoahHeap*                 _heap;
   ShenandoahMarkingContext* const _mark_context;
   size_t                          _trashed_oops;
 
@@ -85,20 +84,11 @@ public:
 
   void do_buffer(void** buffer, size_t size) {
     assert(size == 0 || !_heap->has_forwarded_objects() || _heap->is_concurrent_old_mark_in_progress(), "Forwarded objects are not expected here");
-    if (ShenandoahStringDedup::is_enabled()) {
-      do_buffer_impl<ENQUEUE_DEDUP>(buffer, size);
-    } else {
-      do_buffer_impl<NO_DEDUP>(buffer, size);
-    }
-  }
-
-  template<StringDedupMode STRING_DEDUP>
-  void do_buffer_impl(void **buffer, size_t size) {
     for (size_t i = 0; i < size; ++i) {
       oop *p = (oop *) &buffer[i];
       ShenandoahHeapRegion* region = _heap->heap_region_containing(*p);
       if (region->is_old() && region->is_active()) {
-          ShenandoahMark::mark_through_ref<oop, OLD, STRING_DEDUP>(p, _queue, NULL, _mark_context, &_stringdedup_requests, false);
+          ShenandoahMark::mark_through_ref<oop, OLD>(p, _queue, NULL, _mark_context, false);
       } else {
         _trashed_oops++;
       }
