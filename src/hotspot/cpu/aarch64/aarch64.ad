@@ -7488,7 +7488,7 @@ instruct loadNKlass(iRegNNoSp dst, memory4 mem)
 instruct loadNKlassLilliput(iRegNNoSp dst, memory4 mem, rFlagsReg cr)
 %{
   match(Set dst (LoadNKlass mem));
-  effect(TEMP_DEF dst, KILL cr);
+  effect(KILL cr);
   predicate(!needs_acquiring_load(n) && UseCompactObjectHeaders);
 
   ins_cost(4 * INSN_COST);

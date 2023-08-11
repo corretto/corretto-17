@@ -5207,7 +5207,7 @@ instruct loadNKlassLilliput(rRegN dst, indOffset8 mem, rFlagsReg cr)
 %{
   predicate(UseCompactObjectHeaders);
   match(Set dst (LoadNKlass mem));
-  effect(TEMP_DEF dst, KILL cr);
+  effect(KILL cr);
   ins_cost(125); // XXX
   format %{ "movl    $dst, $mem\t# compressed klass ptr" %}
   ins_encode %{
