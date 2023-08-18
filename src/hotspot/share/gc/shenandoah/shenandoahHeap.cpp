@@ -583,6 +583,8 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _generation_sizer(&_mmu_tracker),
   _monitoring_support(NULL),
   _memory_pool(NULL),
+  _young_gen_memory_pool(NULL),
+  _old_gen_memory_pool(NULL),
   _stw_memory_manager("Shenandoah Pauses"),
   _cycle_memory_manager("Shenandoah Cycles"),
   _gc_timer(new (ResourceObj::C_HEAP, mtGC) ConcurrentGCTimer()),
@@ -2630,11 +2632,6 @@ address ShenandoahHeap::gc_state_addr() {
   return (address) ShenandoahHeap::heap()->_gc_state.addr_of();
 }
 
-size_t ShenandoahHeap::bytes_allocated_since_gc_start() const {
-  assert(!mode()->is_generational(), "This is used for heuristics that are not compatible with generational mode");
-  return global_generation()->bytes_allocated_since_gc_start();
-}
-
 void ShenandoahHeap::reset_bytes_allocated_since_gc_start() {
   if (mode()->is_generational()) {
     young_generation()->reset_bytes_allocated_since_gc_start();
@@ -3238,9 +3235,18 @@ bool ShenandoahHeap::should_inject_alloc_failure() {
 }
 
 void ShenandoahHeap::initialize_serviceability() {
-  _memory_pool = new ShenandoahMemoryPool(this);
-  _cycle_memory_manager.add_pool(_memory_pool);
-  _stw_memory_manager.add_pool(_memory_pool);
+  if (mode()->is_generational()) {
+    _young_gen_memory_pool = new ShenandoahYoungGenMemoryPool(this);
+    _old_gen_memory_pool = new ShenandoahOldGenMemoryPool(this);
+    _cycle_memory_manager.add_pool(_young_gen_memory_pool);
+    _cycle_memory_manager.add_pool(_old_gen_memory_pool);
+    _stw_memory_manager.add_pool(_young_gen_memory_pool);
+    _stw_memory_manager.add_pool(_old_gen_memory_pool);
+  } else {
+    _memory_pool = new ShenandoahMemoryPool(this);
+    _cycle_memory_manager.add_pool(_memory_pool);
+    _stw_memory_manager.add_pool(_memory_pool);
+  }
 }
 
 GrowableArray<GCMemoryManager*> ShenandoahHeap::memory_managers() {
@@ -3252,12 +3258,17 @@ GrowableArray<GCMemoryManager*> ShenandoahHeap::memory_managers() {
 
 GrowableArray<MemoryPool*> ShenandoahHeap::memory_pools() {
   GrowableArray<MemoryPool*> memory_pools(1);
-  memory_pools.append(_memory_pool);
+  if (mode()->is_generational()) {
+    memory_pools.append(_young_gen_memory_pool);
+    memory_pools.append(_old_gen_memory_pool);
+  } else {
+    memory_pools.append(_memory_pool);
+  }
   return memory_pools;
 }
 
 MemoryUsage ShenandoahHeap::memory_usage() {
-  return _memory_pool->get_memory_usage();
+  return MemoryUsage(_initial_size, used(), committed(), max_capacity());
 }
 
 ShenandoahRegionIterator::ShenandoahRegionIterator() :
