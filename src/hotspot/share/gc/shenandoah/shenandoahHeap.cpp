@@ -1995,8 +1995,8 @@ void ShenandoahHeap::gc_threads_do(ThreadClosure* tcl) const {
     return;
   }
 
-  tcl->do_thread(_regulator_thread);
   tcl->do_thread(_control_thread);
+  tcl->do_thread(_regulator_thread);
   workers()->threads_do(tcl);
   if (_safepoint_workers != NULL) {
     _safepoint_workers->threads_do(tcl);

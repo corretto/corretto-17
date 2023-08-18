@@ -44,7 +44,6 @@
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahScanRemembered.inline.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
-#include "gc/shenandoah/shenandoahScanRemembered.inline.hpp"
 #include "gc/shenandoah/mode/shenandoahMode.hpp"
 #include "oops/compressedOops.inline.hpp"
 #include "oops/oop.inline.hpp"
@@ -331,8 +330,7 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
   assert(!r->is_humongous(), "never evacuate humongous objects");
 
   ShenandoahAffiliation target_gen = r->affiliation();
-  if (mode()->is_generational() && ShenandoahHeap::heap()->is_gc_generation_young() &&
-      target_gen == YOUNG_GENERATION) {
+  if (mode()->is_generational() && is_gc_generation_young() && target_gen == YOUNG_GENERATION) {
     markWord mark = p->mark();
     if (mark.is_marked()) {
       // Already forwarded.

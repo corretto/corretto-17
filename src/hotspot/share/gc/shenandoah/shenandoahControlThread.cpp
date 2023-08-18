@@ -119,7 +119,7 @@ void ShenandoahControlThread::run_service() {
     bool is_gc_requested = _gc_requested.is_set();
     GCCause::Cause requested_gc_cause = _requested_gc_cause;
     bool explicit_gc_requested = is_gc_requested && is_explicit_gc(requested_gc_cause);
-    bool implicit_gc_requested = is_gc_requested && !is_explicit_gc(requested_gc_cause);
+    bool implicit_gc_requested = is_gc_requested && is_implicit_gc(requested_gc_cause);
 
     // This control loop iteration have seen this much allocations.
     size_t allocs_seen = Atomic::xchg(&_allocs_seen, (size_t)0, memory_order_relaxed);
@@ -939,9 +939,8 @@ void ShenandoahControlThread::handle_requested_gc(GCCause::Cause cause) {
     // does not take the lock. We need to enforce following order, so that read side sees
     // latest requested gc cause when the flag is set.
     _requested_gc_cause = cause;
-    notify_control_thread();
     _gc_requested.set();
-
+    notify_control_thread();
     if (cause != GCCause::_wb_breakpoint) {
       ml.wait();
     }

@@ -153,7 +153,7 @@ public:
       while (satb_mq_set.apply_closure_to_completed_buffer(&cl)) {}
       assert(!heap->has_forwarded_objects(), "Not expected");
 
-      ShenandoahMarkRefsClosure<GENERATION> mark_cl(q, rp);
+      ShenandoahMarkRefsClosure<GENERATION> mark_cl(q, rp, old_q);
       ShenandoahSATBAndRemarkThreadsClosure tc(satb_mq_set,
                                                ShenandoahIUBarrier ? &mark_cl : NULL);
       Threads::threads_do(&tc);
@@ -207,7 +207,7 @@ void ShenandoahMarkConcurrentRootsTask<GENERATION>::work(uint worker_id) {
   ShenandoahConcurrentWorkerSession worker_session(worker_id);
   ShenandoahObjToScanQueue* q = _queue_set->queue(worker_id);
   ShenandoahObjToScanQueue* old_q = _old_queue_set == NULL ? NULL : _old_queue_set->queue(worker_id);
-  ShenandoahMarkRefsClosure<GENERATION> cl(q, _rp);
+  ShenandoahMarkRefsClosure<GENERATION> cl(q, _rp, old_q);
   _root_scanner.roots_do(&cl, worker_id);
 }
 
