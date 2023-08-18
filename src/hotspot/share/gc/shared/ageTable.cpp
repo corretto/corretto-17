@@ -71,6 +71,16 @@ void AgeTable::clear() {
   }
 }
 
+#ifndef PRODUCT
+bool AgeTable::is_clear() {
+  size_t total = 0;
+  for (size_t* p = sizes; p < sizes + table_size; ++p) {
+    total += *p;
+  }
+  return total == 0;
+}
+#endif // !PRODUCT
+
 void AgeTable::merge(const AgeTable* subTable) {
   for (int i = 0; i < table_size; i++) {
     sizes[i]+= subTable->sizes[i];
@@ -109,11 +119,11 @@ void AgeTable::print_age_table(uint tenuring_threshold) {
   LogTarget(Trace, gc, age) lt;
   if (lt.is_enabled() || _use_perf_data || AgeTableTracer::is_tenuring_distribution_event_enabled()) {
     LogStream st(lt);
-    print_on(&st, tenuring_threshold);
+    print_age_table(&st, tenuring_threshold);
   }
 }
 
-void AgeTable::print_on(outputStream* st, uint tenuring_threshold) {
+void AgeTable::print_age_table(outputStream* st, uint tenuring_threshold) {
   st->print_cr("Age table with threshold %u (max threshold " UINTX_FORMAT ")",
            tenuring_threshold, MaxTenuringThreshold);
 

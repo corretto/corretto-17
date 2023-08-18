@@ -35,6 +35,7 @@
 #include "gc/shared/plab.hpp"
 #include "gc/shared/tlab_globals.hpp"
 
+#include "gc/shenandoah/shenandoahAgeCensus.hpp"
 #include "gc/shenandoah/heuristics/shenandoahOldHeuristics.hpp"
 #include "gc/shenandoah/heuristics/shenandoahYoungHeuristics.hpp"
 #include "gc/shenandoah/shenandoahAllocRequest.hpp"
@@ -187,9 +188,9 @@ jint ShenandoahHeap::initialize() {
   // Now we know the number of regions and heap sizes, initialize the heuristics.
   initialize_heuristics_generations();
 
-  size_t heap_page_size   = UseLargePages ? (size_t)os::large_page_size() : (size_t)os::vm_page_size();
-  size_t bitmap_page_size = UseLargePages ? (size_t)os::large_page_size() : (size_t)os::vm_page_size();
-  size_t region_page_size = UseLargePages ? (size_t)os::large_page_size() : (size_t)os::vm_page_size();
+  size_t heap_page_size   = UseLargePages ? os::large_page_size() : os::vm_page_size();
+  size_t bitmap_page_size = UseLargePages ? os::large_page_size() : os::vm_page_size();
+  size_t region_page_size = UseLargePages ? os::large_page_size() : os::vm_page_size();
 
   //
   // Reserve and commit memory for heap
@@ -232,6 +233,9 @@ jint ShenandoahHeap::initialize() {
     size_t card_count = card_table->cards_required(heap_rs.size() / HeapWordSize) - 1;
     rs = new ShenandoahDirectCardMarkRememberedSet(ShenandoahBarrierSet::barrier_set()->card_table(), card_count);
     _card_scan = new ShenandoahScanRemembered<ShenandoahDirectCardMarkRememberedSet>(rs);
+
+    // Age census structure
+    _age_census = new ShenandoahAgeCensus();
   }
 
   _workers = new ShenandoahWorkGang("Shenandoah GC Threads", _max_workers,
@@ -255,8 +259,8 @@ jint ShenandoahHeap::initialize() {
   // Reserve and commit memory for bitmap(s)
   //
 
-  _bitmap_size = ShenandoahMarkBitMap::compute_size(heap_rs.size());
-  _bitmap_size = align_up(_bitmap_size, bitmap_page_size);
+  size_t bitmap_size_orig = ShenandoahMarkBitMap::compute_size(heap_rs.size());
+  _bitmap_size = align_up(bitmap_size_orig, bitmap_page_size);
 
   size_t bitmap_bytes_per_region = reg_size_bytes / ShenandoahMarkBitMap::heap_map_factor();
 
@@ -526,8 +530,11 @@ void ShenandoahHeap::initialize_heuristics_generations() {
   _old_generation = new ShenandoahOldGeneration(_max_workers, max_capacity_old, initial_capacity_old);
   _global_generation = new ShenandoahGlobalGeneration(_gc_mode->is_generational(), _max_workers, max_capacity(), max_capacity());
   _global_generation->initialize_heuristics(_gc_mode);
-  _young_generation->initialize_heuristics(_gc_mode);
-  _old_generation->initialize_heuristics(_gc_mode);
+  if (mode()->is_generational()) {
+    _young_generation->initialize_heuristics(_gc_mode);
+    _old_generation->initialize_heuristics(_gc_mode);
+  }
+  _evac_tracker = new ShenandoahEvacuationTracker(mode()->is_generational());
 }
 
 #ifdef _MSC_VER
@@ -558,6 +565,7 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _captured_old_usage(0),
   _previous_promotion(0),
   _upgraded_to_full(false),
+  _age_census(NULL),
   _has_evacuation_reserve_quantities(false),
   _cancel_requested_time(0),
   _young_generation(NULL),
@@ -570,7 +578,7 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _pacer(NULL),
   _verifier(NULL),
   _phase_timings(NULL),
-  _evac_tracker(new ShenandoahEvacuationTracker()),
+  _evac_tracker(NULL),
   _mmu_tracker(),
   _generation_sizer(&_mmu_tracker),
   _monitoring_support(NULL),
@@ -1257,14 +1265,11 @@ HeapWord* ShenandoahHeap::allocate_new_gclab(size_t min_size,
 HeapWord* ShenandoahHeap::allocate_new_plab(size_t min_size,
                                             size_t word_size,
                                             size_t* actual_size) {
-  size_t unalignment = min_size % CardTable::card_size_in_words;
-  if (unalignment != 0) {
-    min_size = min_size - unalignment + CardTable::card_size_in_words;
-  }
-  unalignment = word_size % CardTable::card_size_in_words;
-  if (unalignment != 0) {
-    word_size = word_size - unalignment + CardTable::card_size_in_words;
-  }
+  // Align requested sizes to card sized multiples
+  size_t words_in_card = CardTable::card_size_in_words;
+  size_t align_mask = ~(words_in_card - 1);
+  min_size = (min_size + words_in_card - 1) & align_mask;
+  word_size = (word_size + words_in_card - 1) & align_mask;
   ShenandoahAllocRequest req = ShenandoahAllocRequest::for_plab(min_size, word_size);
   // Note that allocate_memory() sets a thread-local flag to prohibit further promotions by this thread
   // if we are at risk of infringing on the old-gen evacuation budget.
@@ -1653,6 +1658,8 @@ private:
   ShenandoahHeap* const _sh;
   ShenandoahRegionIterator *_regions;
   bool _concurrent;
+  uint _tenuring_threshold;
+
 public:
   ShenandoahGenerationalEvacuationTask(ShenandoahHeap* sh,
                                        ShenandoahRegionIterator* iterator,
@@ -1660,8 +1667,13 @@ public:
     AbstractGangTask("Shenandoah Evacuation"),
     _sh(sh),
     _regions(iterator),
-    _concurrent(concurrent)
-  {}
+    _concurrent(concurrent),
+    _tenuring_threshold(0)
+  {
+    if (_sh->mode()->is_generational()) {
+      _tenuring_threshold = _sh->age_census()->tenuring_threshold();
+    }
+  }
 
   void work(uint worker_id) {
     if (_concurrent) {
@@ -1696,7 +1708,7 @@ private:
         if (ShenandoahPacing) {
           _sh->pacer()->report_evac(r->used() >> LogHeapWordSize);
         }
-      } else if (r->is_young() && r->is_active() && (r->age() >= InitialTenuringThreshold)) {
+      } else if (r->is_young() && r->is_active() && (r->age() >= _tenuring_threshold)) {
         HeapWord* tams = ctx->top_at_mark_start(r);
         if (r->is_humongous_start()) {
           // We promote humongous_start regions along with their affiliated continuations during evacuation rather than

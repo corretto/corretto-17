@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2018, 2022, Red Hat, Inc. All rights reserved.
  * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -54,6 +54,9 @@ private:
   PLAB* _gclab;
   size_t _gclab_size;
 
+  uint  _worker_id;
+  int  _disarmed_value;
+  double _paced_time;
 
   // Thread-local allocation buffer only used in generational mode.
   // Used both by mutator threads and by GC worker threads
@@ -61,10 +64,6 @@ private:
   // for promotions from the young generation into the old generation.
   PLAB* _plab;
   size_t _plab_size;
-
-  uint  _worker_id;
-  int  _disarmed_value;
-  double _paced_time;
 
   size_t _plab_evacuated;
   size_t _plab_promoted;
@@ -74,42 +73,8 @@ private:
 
   ShenandoahEvacuationStats* _evacuation_stats;
 
-  ShenandoahThreadLocalData() :
-    _gc_state(0),
-    _oom_scope_nesting_level(0),
-    _oom_during_evac(false),
-    _satb_mark_queue(&ShenandoahBarrierSet::satb_mark_queue_set()),
-    _gclab(NULL),
-    _gclab_size(0),
-    _plab(NULL),
-    _plab_size(0),
-    _worker_id(INVALID_WORKER_ID),
-    _disarmed_value(0),
-    _paced_time(0),
-    _plab_evacuated(0),
-    _plab_promoted(0),
-    _plab_preallocated_promoted(0),
-    _plab_allows_promotion(true),
-    _plab_retries_enabled(true),
-    _evacuation_stats(new ShenandoahEvacuationStats()) {
-
-    // At least on x86_64, nmethod entry barrier encodes _disarmed_value offset
-    // in instruction as disp8 immed
-    assert(in_bytes(disarmed_value_offset()) < 128, "Offset range check");
-  }
-
-  ~ShenandoahThreadLocalData() {
-    if (_gclab != NULL) {
-      delete _gclab;
-    }
-    if (_plab != NULL) {
-      ShenandoahHeap::heap()->retire_plab(_plab);
-      delete _plab;
-    }
-
-    // TODO: Preserve these stats somewhere for mutator threads.
-    delete _evacuation_stats;
-  }
+  ShenandoahThreadLocalData();
+  ~ShenandoahThreadLocalData();
 
   static ShenandoahThreadLocalData* data(Thread* thread) {
     assert(UseShenandoahGC, "Sanity");
@@ -176,8 +141,12 @@ public:
     data(thread)->_evacuation_stats->begin_evacuation(bytes);
   }
 
-  static void end_evacuation(Thread* thread, size_t bytes, uint age) {
-    data(thread)->_evacuation_stats->end_evacuation(bytes, age);
+  static void end_evacuation(Thread* thread, size_t bytes) {
+    data(thread)->_evacuation_stats->end_evacuation(bytes);
+  }
+
+  static void record_age(Thread* thread, size_t bytes, uint age) {
+    data(thread)->_evacuation_stats->record_age(bytes, age);
   }
 
   static ShenandoahEvacuationStats* evacuation_stats(Thread* thread) {
