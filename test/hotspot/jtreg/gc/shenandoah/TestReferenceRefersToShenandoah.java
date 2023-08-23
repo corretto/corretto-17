@@ -38,9 +38,9 @@ package gc.shenandoah;
 /* @test id=satb-100
  * @requires vm.gc.Shenandoah
  * @library /test/lib
- * @build sun.hotspot.WhiteBox
+ * @build jdk.test.whitebox.WhiteBox
  * @modules java.base
- * @run main jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @run main jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
  * @run main/othervm
  *      -Xbootclasspath/a:.
  *      -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
@@ -76,8 +76,8 @@ package gc.shenandoah;
 /* @test id=iu
  * @requires vm.gc.Shenandoah
  * @library /test/lib
- * @build sun.hotspot.WhiteBox
- * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @build jdk.test.whitebox.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
  * @run main/othervm
  *      -Xbootclasspath/a:.
  *      -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
