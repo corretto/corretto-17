@@ -3170,6 +3170,11 @@ jint Arguments::finalize_vm_init_args(bool patch_mod_javabase) {
 #endif // CAN_SHOW_REGISTERS_ON_ASSERT
 
 #ifdef _LP64
+  if (UseCompactObjectHeaders && UseZGC) {
+    warning("ZGC does not work with compact object headers, disabling UseCompactObjectHeaders");
+    FLAG_SET_DEFAULT(UseCompactObjectHeaders, false);
+  }
+
   if (UseCompactObjectHeaders && FLAG_IS_CMDLINE(UseCompressedClassPointers) && !UseCompressedClassPointers) {
     // If user specifies -UseCompressedClassPointers, disable compact headers with a warning.
     warning("Compact object headers require compressed class pointers. Disabling compact object headers.");
