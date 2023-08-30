@@ -473,9 +473,7 @@ void ShenandoahBarrierSetC2::post_barrier(GraphKit* kit,
                                           Node* val,
                                           BasicType bt,
                                           bool use_precise) const {
-  if (!ShenandoahHeap::heap()->mode()->is_generational()) {
-    return;
-  }
+  assert(ShenandoahCardBarrier, "Did you mean to enable ShenandoahCardBarrier?");
 
   // No store check needed if we're storing a null.
   if (val != NULL && val->is_Con()) {
@@ -607,10 +605,12 @@ Node* ShenandoahBarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue&
                                  static_cast<const TypeOopPtr*>(val.type()), NULL /* pre_val */, access.type());
 
     Node* result = BarrierSetC2::store_at_resolved(access, val);
-    bool is_array = (decorators & IS_ARRAY) != 0;
-    bool use_precise = is_array || anonymous;
-    post_barrier(kit, kit->control(), access.raw_access(), access.base(),
-                 adr, adr_idx, val.node(), access.type(), use_precise);
+    if (ShenandoahCardBarrier) {
+      bool is_array = (decorators & IS_ARRAY) != 0;
+      bool use_precise = is_array || anonymous;
+      post_barrier(kit, kit->control(), access.raw_access(), access.base(),
+                   adr, adr_idx, val.node(), access.type(), use_precise);
+    }
     return result;
   } else {
     assert(access.is_opt_access(), "only for optimization passes");
@@ -736,8 +736,10 @@ Node* ShenandoahBarrierSetC2::atomic_cmpxchg_val_at_resolved(C2AtomicParseAccess
     }
 #endif
     load_store = kit->gvn().transform(new ShenandoahLoadReferenceBarrierNode(NULL, load_store, access.decorators()));
-    post_barrier(kit, kit->control(), access.raw_access(), access.base(),
-                 access.addr().node(), access.alias_idx(), new_val, T_OBJECT, true);
+    if (ShenandoahCardBarrier) {
+      post_barrier(kit, kit->control(), access.raw_access(), access.base(),
+                   access.addr().node(), access.alias_idx(), new_val, T_OBJECT, true);
+    }
     return load_store;
   }
   return BarrierSetC2::atomic_cmpxchg_val_at_resolved(access, expected_val, new_val, value_type);
@@ -793,8 +795,10 @@ Node* ShenandoahBarrierSetC2::atomic_cmpxchg_bool_at_resolved(C2AtomicParseAcces
     }
     access.set_raw_access(load_store);
     pin_atomic_op(access);
-    post_barrier(kit, kit->control(), access.raw_access(), access.base(),
-                 access.addr().node(), access.alias_idx(), new_val, T_OBJECT, true);
+    if (ShenandoahCardBarrier) {
+      post_barrier(kit, kit->control(), access.raw_access(), access.base(),
+                   access.addr().node(), access.alias_idx(), new_val, T_OBJECT, true);
+    }
     return load_store;
   }
   return BarrierSetC2::atomic_cmpxchg_bool_at_resolved(access, expected_val, new_val, value_type);
@@ -811,8 +815,10 @@ Node* ShenandoahBarrierSetC2::atomic_xchg_at_resolved(C2AtomicParseAccess& acces
     shenandoah_write_barrier_pre(kit, false /* do_load */,
                                  NULL, NULL, max_juint, NULL, NULL,
                                  result /* pre_val */, T_OBJECT);
-    post_barrier(kit, kit->control(), access.raw_access(), access.base(),
-                 access.addr().node(), access.alias_idx(), val, T_OBJECT, true);
+    if (ShenandoahCardBarrier) {
+      post_barrier(kit, kit->control(), access.raw_access(), access.base(),
+                   access.addr().node(), access.alias_idx(), val, T_OBJECT, true);
+    }
   }
   return result;
 }
@@ -1015,7 +1021,7 @@ void ShenandoahBarrierSetC2::eliminate_gc_barrier(PhaseMacroExpand* macro, Node*
   if (is_shenandoah_wb_pre_call(node)) {
     shenandoah_eliminate_wb_pre(node, &macro->igvn());
   }
-  if (node->Opcode() == Op_CastP2X && ShenandoahHeap::heap()->mode()->is_generational()) {
+  if (ShenandoahCardBarrier && node->Opcode() == Op_CastP2X) {
     Node* shift = node->unique_out();
     Node* addp = shift->unique_out();
     for (DUIterator_Last jmin, j = addp->last_outs(jmin); j >= jmin; --j) {
