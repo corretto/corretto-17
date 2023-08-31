@@ -1101,9 +1101,9 @@ void ShenandoahHeapRegion::promote_humongous() {
   // it becomes garbage.  Better to not make this change until sizes of young-gen and old-gen are completely
   // adaptive, as leaving primitive arrays in young-gen might be perceived as an "astonishing result" by someone
   // has carefully analyzed the required sizes of an application's young-gen and old-gen.
-  size_t used_bytes = obj->size() * HeapWordSize;
+  size_t used_bytes = size_t(obj->size()) * HeapWordSize;
   size_t spanned_regions = ShenandoahHeapRegion::required_regions(used_bytes);
-  size_t humongous_waste = spanned_regions * ShenandoahHeapRegion::region_size_bytes() - obj->size() * HeapWordSize;
+  size_t humongous_waste = spanned_regions * ShenandoahHeapRegion::region_size_bytes() - used_bytes;
   size_t index_limit = index() + spanned_regions;
   {
     // We need to grab the heap lock in order to avoid a race when changing the affiliations of spanned_regions from

@@ -139,9 +139,10 @@ void ShenandoahGenerationalHeuristics::choose_collection_set(ShenandoahCollectio
       } else {
         if (region->is_young() && region->age() >= tenuring_threshold) {
           oop obj = cast_to_oop(region->bottom());
-          size_t humongous_regions = ShenandoahHeapRegion::required_regions(obj->size() * HeapWordSize);
+          size_t object_bytes = size_t(obj->size()) * HeapWordSize;
+          size_t humongous_regions = ShenandoahHeapRegion::required_regions(object_bytes);
           humongous_regions_promoted += humongous_regions;
-          humongous_bytes_promoted += obj->size() * HeapWordSize;
+          humongous_bytes_promoted += object_bytes;
         }
       }
     } else if (region->is_trash()) {
