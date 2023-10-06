@@ -457,6 +457,7 @@ java/awt/Modal/OnTop/OnTopTKModal6Test.java 8198666 macosx-all
 java/awt/List/SingleModeDeselect/SingleModeDeselect.java 8196367 windows-all
 java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java 8061235 macosx-all
 javax/print/PrintSEUmlauts/PrintSEUmlauts.java 8135174 generic-all
+java/awt/font/Rotate/RotatedTextTest.java 8219641 linux-all
 java/awt/font/TextLayout/LigatureCaretTest.java 8266312  generic-all
 java/awt/image/VolatileImage/CustomCompositeTest.java 8199002 windows-all,linux-all
 java/awt/image/VolatileImage/GradientPaints.java 8199003 linux-all
@@ -635,9 +636,7 @@ sun/security/pkcs11/sslecc/ClientJSSEServerJSSE.java            8161536 generic-
 
 javax/net/ssl/DTLS/CipherSuite.java                             8202059 macosx-x64
 
-javax/net/ssl/SSLEngine/TestAllSuites.java                      8298874 generic-all
 javax/net/ssl/SSLEngine/EngineCloseOnAlert.java                 8298868 generic-all
-javax/net/ssl/SSLEngine/CheckStatus.java                        8298872 generic-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
 sun/security/smartcardio/TestConnect.java                       8039280 generic-all
