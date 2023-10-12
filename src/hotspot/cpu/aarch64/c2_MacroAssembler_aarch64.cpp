@@ -25,7 +25,10 @@
 #include "precompiled.hpp"
 #include "asm/assembler.hpp"
 #include "asm/assembler.inline.hpp"
+#include "opto/c2_CodeStubs.hpp"
 #include "opto/c2_MacroAssembler.hpp"
+#include "opto/compile.hpp"
+#include "opto/output.hpp"
 #include "opto/intrinsicnode.hpp"
 #include "opto/subnode.hpp"
 #include "runtime/stubRoutines.hpp"
@@ -875,4 +878,31 @@ void C2_MacroAssembler::neon_compare(FloatRegister dst, BasicType bt, FloatRegis
         ShouldNotReachHere();
     }
   }
+}
+
+void C2_MacroAssembler::load_nklass_compact(Register dst, Register obj, Register index, int scale, int disp) {
+  C2LoadNKlassStub* stub = new (Compile::current()->comp_arena()) C2LoadNKlassStub(dst);
+  Compile::current()->output()->add_stub(stub);
+
+  // Note: Don't clobber obj anywhere in that method!
+
+  // The incoming address is pointing into obj-start + klass_offset_in_bytes. We need to extract
+  // obj-start, so that we can load from the object's mark-word instead. Usually the address
+  // comes as obj-start in obj and klass_offset_in_bytes in disp. However, sometimes C2
+  // emits code that pre-computes obj-start + klass_offset_in_bytes into a register, and
+  // then passes that register as obj and 0 in disp. The following code extracts the base
+  // and offset to load the mark-word.
+  int offset = oopDesc::mark_offset_in_bytes() + disp - oopDesc::klass_offset_in_bytes();
+  if (index == noreg) {
+    ldr(dst, Address(obj, offset));
+  } else {
+    lea(dst, Address(obj, index, Address::lsl(scale)));
+    ldr(dst, Address(dst, offset));
+  }
+  // NOTE: We can't use tbnz here, because the target is sometimes too far away
+  // and cannot be encoded.
+  tst(dst, markWord::monitor_value);
+  br(Assembler::NE, stub->entry());
+  bind(stub->continuation());
+  lsr(dst, dst, markWord::klass_shift);
 }

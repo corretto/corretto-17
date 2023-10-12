@@ -53,4 +53,6 @@
   void neon_compare(FloatRegister dst, BasicType bt, FloatRegister src1,
                     FloatRegister src2, int cond, bool isQ);
 
+  void load_nklass_compact(Register dst, Register obj, Register index, int scale, int disp);
+
 #endif // CPU_AARCH64_C2_MACROASSEMBLER_AARCH64_HPP
