@@ -68,8 +68,6 @@ void ShenandoahGenerationalHeuristics::choose_collection_set(ShenandoahCollectio
 
   // This counts number of humongous regions that we intend to promote in this cycle.
   size_t humongous_regions_promoted = 0;
-  // This counts bytes of memory used by humongous regions to be promoted in place.
-  size_t humongous_bytes_promoted = 0;
   // This counts number of regular regions that will be promoted in place.
   size_t regular_regions_promoted_in_place = 0;
   // This counts bytes of memory used by regular regions to be promoted in place.
@@ -142,7 +140,6 @@ void ShenandoahGenerationalHeuristics::choose_collection_set(ShenandoahCollectio
           size_t object_bytes = size_t(obj->size()) * HeapWordSize;
           size_t humongous_regions = ShenandoahHeapRegion::required_regions(object_bytes);
           humongous_regions_promoted += humongous_regions;
-          humongous_bytes_promoted += object_bytes;
         }
       }
     } else if (region->is_trash()) {
@@ -152,9 +149,7 @@ void ShenandoahGenerationalHeuristics::choose_collection_set(ShenandoahCollectio
     }
   }
   heap->reserve_promotable_humongous_regions(humongous_regions_promoted);
-  heap->reserve_promotable_humongous_usage(humongous_bytes_promoted);
   heap->reserve_promotable_regular_regions(regular_regions_promoted_in_place);
-  heap->reserve_promotable_regular_usage(regular_regions_promoted_usage);
   log_info(gc, ergo)("Planning to promote in place " SIZE_FORMAT " humongous regions and " SIZE_FORMAT
                      " regular regions, spanning a total of " SIZE_FORMAT " used bytes",
                      humongous_regions_promoted, regular_regions_promoted_in_place,
