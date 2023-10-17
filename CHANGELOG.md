@@ -2,6 +2,37 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.9.8.1
+Release Date: October 17, 2023
+
+**Target Platforms <sup>1</sup>**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Alpine-based Linux, x86_64
++ Alpine-based Linux, aarch64
++ Windows 10 or later, x86_64
++ macos 11.0 and later, x86_64
++ macos 11.0 and later, aarch64
+
+**1.** This is the platform targeted by the build. See [Using Amazon Corretto](https://aws.amazon.com/corretto/faqs/#Using_Amazon_Corretto)
+in the Amazon Corretto FAQ for supported platforms
+
+The following issues are addressed in 17.0.9.8.1:
+
+| Issue Name                          | Platform | Description                                                                          | Link                                                                        |
+|-------------------------------------|----------|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| Import jdk-17.0.9+8                | All    | Updates Corretto baseline to OpenJDK 17.0.9+8   | [jdk-17.0.9+8](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.9+8) |
+
+The following CVEs are addressed in 17.0.9.8.1:
+
+| CVE            | CVSS | Component                   |
+|----------------|------|-----------------------------|
+| CVE-2023-22081 | 5.3  | security-libs/javax.net.ssl |
+| CVE-2023-22025 | 3.7  | hotspot/compiler            |
+
 ## Corretto version: 17.0.8.8.1
 Release Date: August 22, 2023
 
