@@ -24,10 +24,7 @@
 
 #include "precompiled.hpp"
 #include "utilities/utf8.hpp"
-<<<<<<< HEAD
-=======
 #include "runtime/os.hpp"
->>>>>>> 478ef389dc3 (8296812: sprintf is deprecated in Xcode 14)
 
 // Assume the utf8 string is in legal form and has been
 // checked in the class file parser/format checker.
