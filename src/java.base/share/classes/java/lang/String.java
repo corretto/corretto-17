@@ -4423,7 +4423,7 @@ public final class String
         if (len == 0 || count == 0) {
             return "";
         }
-        if (Integer.MAX_VALUE / count < len) {
+        if (len * count > Integer.MAX_VALUE) {
             throw new OutOfMemoryError("Required length exceeds implementation limit");
         }
         if (len == 1) {
