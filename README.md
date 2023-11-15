@@ -20,16 +20,9 @@ Please read these files: "LICENSE", "ADDITIONAL_LICENSE_INFO", "ASSEMBLY_EXCEPTI
 ### Branches
 :warning: _generational-shenandoah_ :warning:
 
-This branch adds a young generation to the Shenandoah garbage collector. Although this branch is _experimental_, we are making these nightly builds available for expanded testing and additional feedback. Please don't put these builds into production (yet).
+This branch adds a young generation to the Shenandoah garbage collector. Although this branch is _experimental_, we are making these [nightly builds available](https://downloads.corretto.aws/#/downloads?build=nightly&version=17&branch=generational-shenandoah) for expanded testing and additional feedback. Please don't put these builds into production (yet).
 
-| Platform | Download Link | Checksum | Sig File |
-| :--------|:--------------|:---------|:---------|
-| Linux x86\_64 | [amazon-corretto-17.0.5.3.1-linux-x64-fe79750db3-gen.tar.gz](https://corretto.aws/downloads/resources/17.0.5.3.1/amazon-corretto-17.0.5.3.1-linux-x64-fe79750db3-gen.tar.gz) | e6f45fbc9f157ec84653a98a6f8418c6  /tmp/amazon-corretto-17.0.5.3.1-linux-x64-fe79750db3-gen.tar.gz | [Download](https://corretto.aws/downloads/resources/17.0.5.3.1/amazon-corretto-17.0.5.3.1-linux-x64-fe79750db3-gen.tar.gz.sig) |
-| Linux aarch64 | [amazon-corretto-17.0.5.3.1-linux-aarch64-fe79750db3-gen.tar.gz](https://corretto.aws/downloads/resources/17.0.5.3.1/amazon-corretto-17.0.5.3.1-linux-aarch64-fe79750db3-gen.tar.gz) | 7fd4df228693108aed0f58b1927ab24c  /tmp/amazon-corretto-17.0.5.3.1-linux-aarch64-fe79750db3-gen.tar.gz | [Download](https://corretto.aws/downloads/resources/17.0.5.3.1/amazon-corretto-17.0.5.3.1-linux-aarch64-fe79750db3-gen.tar.gz.sig) |
-
-
-To activate the young generation, you must change the gc mode with: `-XX:+UseShenandoahGC -XX:ShenandoahGCMode=generational`.
-
+To activate the young generation, you must change the gc mode with: `-XX:+UseShenandoahGC -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCMode=generational`.
 
 _develop_
 : The default branch. The branch that consumes development and patches to upstream jdk17u. Corretto builds are generated from this branch.
