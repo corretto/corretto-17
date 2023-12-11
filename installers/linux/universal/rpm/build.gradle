@@ -115,6 +115,7 @@ task generateJdkRpm(type: Rpm) {
     requires('zlib')
 
     provides(jdkPackageName, "${epoch}:${version}-${release}", EQUAL)
+    provides("java", "${epoch}:${version}-${release}", EQUAL)
     provides('java-17-devel', "${epoch}:${version}", EQUAL)
     provides('java-17-openjdk-devel', "${epoch}:${version}", EQUAL)
     provides('java-17-openjdk-devel', "${epoch}:${version}-${release}", EQUAL)
