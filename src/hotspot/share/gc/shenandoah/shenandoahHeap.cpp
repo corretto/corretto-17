@@ -564,7 +564,6 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _promoted_reserve(0),
   _old_evac_reserve(0),
   _young_evac_reserve(0),
-  _upgraded_to_full(false),
   _age_census(NULL),
   _has_evacuation_reserve_quantities(false),
   _cancel_requested_time(0),
@@ -2001,7 +2000,7 @@ void ShenandoahHeap::on_cycle_start(GCCause::Cause cause, ShenandoahGeneration* 
 
 void ShenandoahHeap::on_cycle_end(ShenandoahGeneration* generation) {
   generation->heuristics()->record_cycle_end();
-  if (mode()->is_generational() && (generation->is_global() || upgraded_to_full())) {
+  if (mode()->is_generational() && generation->is_global()) {
     // If we just completed a GLOBAL GC, claim credit for completion of young-gen and old-gen GC as well
     young_generation()->heuristics()->record_cycle_end();
     old_generation()->heuristics()->record_cycle_end();
@@ -2492,9 +2491,6 @@ void ShenandoahHeap::cancel_gc(GCCause::Cause cause) {
     log_info(gc)("%s", msg.buffer());
     Events::log(Thread::current(), "%s", msg.buffer());
     _cancel_requested_time = os::elapsedTime();
-    if (cause == GCCause::_shenandoah_upgrade_to_full_gc) {
-      _upgraded_to_full = true;
-    }
   }
 }
 
