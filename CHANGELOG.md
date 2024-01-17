@@ -26,9 +26,10 @@ The following issues are addressed in 17.0.10.7.1:
 | Import jdk-17.0.10+7 | All | Updates Corretto baseline to OpenJDK 17.0.10+7   | [jdk-17.0.10+7](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.10+7)                                 |
 | Data loss in AVX3 Base64 decoding | All | Base64 appears to give different (wrong) results in some rare cases when AVX3 is enabled.| [JDK-8321599](https://bugs.openjdk.org/browse/JDK-8321599)|
 | (tz) Update Timezone Data to 2023d | All | Update Timezone Data to 2023d |  [JDK-8322725](https://bugs.openjdk.org/browse/JDK-8322725)                        |
-| NPE in PKCS7.parseOldSignedData    | All | fixes exception PKCS7.parseOldSignedDat | [JDK-8315042](https://bugs.openjdk.org/browse/JDK-8315042)                                              |
-|Enable Neoverse N1 optimizations for Neoverse V2| ALL      |Enable Neoverse N1 optimizations for Neoverse V2| [JDK-8321025](https://bugs.openjdk.org/browse/JDK-8321025)                      |
-|Enable UseCryptoPmullForCRC32 for Neoverse V2| ALL      |Enable UseCryptoPmullForCRC32| [JDK-8321105](https://bugs.openjdk.org/browse/JDK-8321105)                                         |
+| NPE in PKCS7.parseOldSignedData    | All | Fixes exception PKCS7.parseOldSignedDat | [JDK-8315042](https://bugs.openjdk.org/browse/JDK-8315042)                                              |
+|Enable Neoverse N1 optimizations for Neoverse V2| All      |Enable Neoverse N1 optimizations for Neoverse V2| [JDK-8321025](https://bugs.openjdk.org/browse/JDK-8321025)                      |
+|Enable UseCryptoPmullForCRC32 for Neoverse V2| All      |Enable UseCryptoPmullForCRC32| [JDK-8321105](https://bugs.openjdk.org/browse/JDK-8321105)                                         |
+
 The following CVEs are addressed in 17.0.10.7.1:
 
 | CVE            | CVSS | Component                      |
