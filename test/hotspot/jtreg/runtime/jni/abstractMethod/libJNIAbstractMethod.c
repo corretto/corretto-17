@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,34 +19,25 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
+#include <jni.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-package gc;
+JNIEXPORT void JNICALL Java_TestJNIAbstractMethod_invokeAbstractM(JNIEnv* env,
+                                                                  jclass this_cls,
+                                                                  jclass target_cls,
+                                                                  jobject receiver) {
 
-/* @test TestAllocateHeapAt.java
- * @summary Test to check allocation of Java Heap with AllocateHeapAt option
- * @requires vm.gc != "Z" & os.family != "aix"
- * @library /test/lib
- * @modules java.base/jdk.internal.misc
- * @run driver gc.TestAllocateHeapAt
- */
-
-import jdk.test.lib.process.ProcessTools;
-import jdk.test.lib.process.OutputAnalyzer;
-
-public class TestAllocateHeapAt {
-  public static void main(String args[]) throws Exception {
-    ProcessBuilder pb = ProcessTools.createTestJvm(
-        "-XX:AllocateHeapAt=" + System.getProperty("test.dir", "."),
-        "-Xlog:gc+heap=info",
-        "-Xmx32m",
-        "-Xms32m",
-        "-version");
-    OutputAnalyzer output = new OutputAnalyzer(pb.start());
-
-    System.out.println("Output:\n" + output.getOutput());
-
-    output.shouldContain("Successfully allocated Java heap at location");
-    output.shouldHaveExitValue(0);
+  jmethodID mid = (*env)->GetMethodID(env, target_cls, "abstractM", "()V");
+  if (mid == NULL) {
+    fprintf(stderr, "Error looking up method abstractM\n");
+    (*env)->ExceptionDescribe(env);
+    exit(1);
   }
+
+  printf("Invoking abstract method ...\n");
+  (*env)->CallVoidMethod(env, receiver, mid);  // Should raise exception
+
 }

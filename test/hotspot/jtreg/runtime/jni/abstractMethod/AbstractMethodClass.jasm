@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,31 +21,23 @@
  * questions.
  *
  */
+/*
+ *  This is a non-abstract class with an abstract method.
+ *
+ */
+super public class AbstractMethodClass
+      extends java/lang/Object
+              version 51:0  // Java 7 version
+{
 
-#ifndef SHARE_SERVICES_DTRACEATTACHER_HPP
-#define SHARE_SERVICES_DTRACEATTACHER_HPP
+    public Method "<init>":"()V"
+       stack 1 locals 1
+    {
+        aload_0;
+        invokespecial Method java/lang/Object."<init>":"()V";
+        return;
+    }
 
-#define DTRACE_ALLOC_PROBES    0x1
-#define DTRACE_METHOD_PROBES   0x2
-#define DTRACE_MONITOR_PROBES  0x4
-#define DTRACE_ALL_PROBES      (DTRACE_ALLOC_PROBES  | \
-                                DTRACE_METHOD_PROBES | \
-                                DTRACE_MONITOR_PROBES)
+    public abstract Method "abstractM":"()V";
 
-class DTrace : public AllStatic {
- private:
-  // disable one or more probes - OR above constants
-  static void disable_dprobes(int probe_types);
-
- public:
-  // enable one or more probes - OR above constants
-  static void enable_dprobes(int probe_types);
-  // all clients detached, do any clean-up
-  static void detach_all_clients();
-  // set ExtendedDTraceProbes flag
-  static void set_extended_dprobes(bool value);
-  // set DTraceMonitorProbes flag
-  static void set_monitor_dprobes(bool value);
-};
-
-#endif // SHARE_SERVICES_DTRACEATTACHER_HPP
+}
