@@ -561,6 +561,7 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _regions(NULL),
   _affiliations(NULL),
   _update_refs_iterator(this),
+  _gc_state_changed(false),
   _promoted_reserve(0),
   _old_evac_reserve(0),
   _young_evac_reserve(0),
@@ -2382,16 +2383,21 @@ void ShenandoahHeap::prepare_update_heap_references(bool concurrent) {
   _update_refs_iterator.reset();
 }
 
-void ShenandoahHeap::set_gc_state_all_threads(char state) {
-  for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
-    ShenandoahThreadLocalData::set_gc_state(t, state);
+void ShenandoahHeap::set_gc_state_all_threads() {
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at Shenandoah safepoint");
+  if (_gc_state_changed) {
+    _gc_state_changed = false;
+    char state = gc_state();
+    for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
+      ShenandoahThreadLocalData::set_gc_state(t, state);
+    }
   }
 }
 
 void ShenandoahHeap::set_gc_state_mask(uint mask, bool value) {
-  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should really be Shenandoah safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at Shenandoah safepoint");
   _gc_state.set_cond(mask, value);
-  set_gc_state_all_threads(_gc_state.raw_value());
+  _gc_state_changed = true;
 }
 
 void ShenandoahHeap::set_evacuation_reserve_quantities(bool is_valid) {
@@ -2615,10 +2621,6 @@ address ShenandoahHeap::in_cset_fast_test_addr() {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   assert(heap->collection_set() != NULL, "Sanity");
   return (address) heap->collection_set()->biased_map_address();
-}
-
-address ShenandoahHeap::gc_state_addr() {
-  return (address) ShenandoahHeap::heap()->_gc_state.addr_of();
 }
 
 void ShenandoahHeap::reset_bytes_allocated_since_gc_start() {
