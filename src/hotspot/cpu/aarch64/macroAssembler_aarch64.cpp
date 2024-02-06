@@ -3904,7 +3904,7 @@ void MacroAssembler::kernel_crc32_common_fold_using_crypto_pmull(Register crc, R
     ldrq(v7, Address(pre(buf, 0x80)));
 
     movi(v31, T4S, 0);
-    mov(v31, S, 0, crc);
+    mov(v31, T4S, 0, crc);
     eor(v0, T16B, v0, v31);
 
     // Register v16 contains constants from the crc table.
@@ -4000,8 +4000,8 @@ void MacroAssembler::kernel_crc32_common_fold_using_crypto_pmull(Register crc, R
     add(len, len, 0x80);
     add(buf, buf, 0x10);
 
-    mov(tmp0, v0, D, 0);
-    mov(tmp1, v0, D, 1);
+    mov(tmp0, v0, T2D, 0);
+    mov(tmp1, v0, T2D, 1);
 }
 
 SkipIfEqual::SkipIfEqual(
