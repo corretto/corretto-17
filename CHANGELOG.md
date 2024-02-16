@@ -58,6 +58,7 @@ The following CVEs are addressed in 17.0.10.7.1:
 
 | CVE            | CVSS | Component                      |
 |----------------|------|--------------------------------|
+| CVE-2024-20932 | 7.5 | security-libs/java.security |
 | CVE-2024-20918 | 7.4  | hotspot/compiler               |
 | CVE-2024-20952 | 7.4  | security-libs/java.security    |
 | CVE-2024-20919 | 5.9  | hotspot/runtime                |
