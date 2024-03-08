@@ -1183,7 +1183,7 @@ public interface Stream<T> extends BaseStream<T, Stream<T>> {
      *
      * @implSpec The implementation in this interface returns a List produced as if by the following:
      * <pre>{@code
-     * Collections.unmodifiableList(new ArrayList<>(Arrays.asList(this.toArray())))
+     * Collections.unmodifiableList(Arrays.asList(this.toArray()))
      * }</pre>
      *
      * @implNote Most instances of Stream will override this method and provide an implementation
@@ -1195,7 +1195,7 @@ public interface Stream<T> extends BaseStream<T, Stream<T>> {
      */
     @SuppressWarnings("unchecked")
     default List<T> toList() {
-        return (List<T>) Collections.unmodifiableList(new ArrayList<>(Arrays.asList(this.toArray())));
+        return (List<T>) Collections.unmodifiableList(Arrays.asList(this.toArray()));
     }
 
     /**
