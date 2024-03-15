@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,10 +21,30 @@
  * questions.
  */
 
-/**
+import jdk.jpackage.test.Annotations.Test;
+import jdk.jpackage.test.Annotations.Parameter;
+import jdk.jpackage.test.JPackageCommand;
+
+/*
  * @test
- * @bug 8021112
- * @summary Verify that deprecated warnings are printed correctly for package-info.java
- * @clean pack.*
- * @compile/ref=PackageInfo.out --release 8 -XDrawDiagnostics -Xlint:deprecation,-options pack/package-info.java pack/DeprecatedClass.java
+ * @summary jpackage with values of --dest parameter breaking jpackage launcher
+ * @requires (os.family == "linux")
+ * @bug 8268974
+ * @library ../helpers
+ * @build jdk.jpackage.test.*
+ * @modules jdk.jpackage/jdk.jpackage.internal
+ * @compile LinuxWeirdOutputDirTest.java
+ * @run main/othervm/timeout=540 -Xmx512m jdk.jpackage.test.Main
+ *  --jpt-run=LinuxWeirdOutputDirTest
  */
+public class LinuxWeirdOutputDirTest {
+
+    @Test
+    @Parameter("bin")
+    @Parameter("lib")
+    public void test(String outputPath) {
+        JPackageCommand cmd = JPackageCommand.helloAppImage();
+        cmd.setArgumentValue("--dest", cmd.outputDir().resolve(outputPath));
+        cmd.executeAndAssertHelloAppImageCreated();
+    }
+}
