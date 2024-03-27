@@ -320,7 +320,7 @@ if [ \$1 -eq 1 ] ; then
 
   # Need to setup the jre alternatives separately when there is a higher priority jre java these don't get created above.
   alternatives --install %{_jvmdir}/jre-%{java_major_version} jre_%{java_major_version} %{java_home} %{alternatives_priority} \
-               --slave %{_jvmdir}/jre-%{java_major_version}-openjdk jre_%{java_major_version}_openjdk %{java_home}/jre
+               --slave %{_jvmdir}/jre-%{java_major_version}-openjdk jre_%{java_major_version}_openjdk %{java_home}
 fi
 
 %post devel
