@@ -2,6 +2,41 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.11.9.1
+Release Date: April 16, 2024
+**Target Platforms <sup>1</sup>**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Alpine-based Linux, x86_64
++ Alpine-based Linux, aarch64
++ Windows 10 or later, x86_64
++ macos 12.0 and later, x86_64
++ macos 12.0 and later, aarch64
+
+**1.** This is the platform targeted by the build. See [Using Amazon Corretto](https://aws.amazon.com/corretto/faqs/#Using_Amazon_Corretto)
+in the Amazon Corretto FAQ for supported platforms
+
+The following issues are addressed in 17.0.11.9.1:
+
+| Issue Name           | Platform | Description                                                                          | Link                                                                  |
+|----------------------|----------|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
+| Import jdk-17.0.11+9 | All      | Update Corretto baseline to OpenJDK 17.0.11+9 | [17.0.11+9](https://github.com/openjdk/jdk17u/releases/tag/17.0.11+9)  |
+| Fallback option for POST-only OCSP requests 8329213: Better validation for com.sun.security.ocsp.useget option | All | Add option to fallback to old OCSP behaviour | [JDK-8328638](https://bugs.openjdk.org/browse/JDK-8328638) |
+| Shenandoah: SIGSEGV crash in unnecessary_acquire due to LoadStore split through phi | All | Fix SIGSEGV crash when using Shenandoah garbage collector | [JDK-8325372](https://bugs.openjdk.org/browse/JDK-8325372) |
+
+The following CVEs are addressed in 17.0.11.9.1:
+
+| CVE            | CVSS | Component                      |
+|----------------|------|--------------------------------|
+| CVE-2024-21012 | 3.7  | core-libs/java.net             |
+| CVE-2024-21011 | 3.7  | hotspot/runtime                |
+| CVE-2024-21068 | 3.7  | hotspot/compiler               |
+| CVE-2024-21094 | 3.7  | hotspot/compiler               |
+
+
 ## Corretto version: 17.0.10.8.1
 Release Date: February 8, 2024
 **Target Platforms <sup>1</sup>**
