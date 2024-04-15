@@ -24,7 +24,7 @@ The following issues are addressed in 17.0.11.9.1:
 | Issue Name           | Platform | Description                                                                          | Link                                                                  |
 |----------------------|----------|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
 | Import jdk-17.0.11+9 | All      | Update Corretto baseline to OpenJDK 17.0.11+9 | [17.0.11+9](https://github.com/openjdk/jdk17u/releases/tag/17.0.11+9)  |
-| Fallback option for POST-only OCSP requests 8329213: Better validation for com.sun.security.ocsp.useget option | All | Add option to fallback to old OCSP behaviour | [JDK-8328638](https://bugs.openjdk.org/browse/JDK-8328638) |
+| Fallback option for POST-only OCSP requests | All | Add option to fallback to old OCSP behavior to not unconditionally use GET requests for small requests | [JDK-8328638](https://bugs.openjdk.org/browse/JDK-8328638) |
 | Shenandoah: SIGSEGV crash in unnecessary_acquire due to LoadStore split through phi | All | Fix SIGSEGV crash when using Shenandoah garbage collector | [JDK-8325372](https://bugs.openjdk.org/browse/JDK-8325372) |
 
 The following CVEs are addressed in 17.0.11.9.1:
