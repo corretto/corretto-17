@@ -2388,7 +2388,7 @@ void ShenandoahHeap::prepare_update_heap_references(bool concurrent) {
   _update_refs_iterator.reset();
 }
 
-void ShenandoahHeap::set_gc_state_all_threads() {
+void ShenandoahHeap::propagate_gc_state_to_java_threads() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at Shenandoah safepoint");
   if (_gc_state_changed) {
     _gc_state_changed = false;
@@ -2399,7 +2399,7 @@ void ShenandoahHeap::set_gc_state_all_threads() {
   }
 }
 
-void ShenandoahHeap::set_gc_state_mask(uint mask, bool value) {
+void ShenandoahHeap::set_gc_state(uint mask, bool value) {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at Shenandoah safepoint");
   _gc_state.set_cond(mask, value);
   _gc_state_changed = true;
@@ -2420,7 +2420,7 @@ void ShenandoahHeap::set_concurrent_young_mark_in_progress(bool in_progress) {
   } else {
     mask = MARKING | YOUNG_MARKING;
   }
-  set_gc_state_mask(mask, in_progress);
+  set_gc_state(mask, in_progress);
   manage_satb_barrier(in_progress);
 }
 
@@ -2436,9 +2436,9 @@ void ShenandoahHeap::set_concurrent_old_mark_in_progress(bool in_progress) {
   if (!in_progress && is_concurrent_young_mark_in_progress()) {
     // If young-marking is in progress when we turn off OLD_MARKING, leave MARKING (and YOUNG_MARKING) on
     assert(_gc_state.is_set(MARKING), "concurrent_young_marking_in_progress implies MARKING");
-    set_gc_state_mask(OLD_MARKING, in_progress);
+    set_gc_state(OLD_MARKING, in_progress);
   } else {
-    set_gc_state_mask(MARKING | OLD_MARKING, in_progress);
+    set_gc_state(MARKING | OLD_MARKING, in_progress);
   }
   manage_satb_barrier(in_progress);
 }
@@ -2469,7 +2469,7 @@ void ShenandoahHeap::manage_satb_barrier(bool active) {
 
 void ShenandoahHeap::set_evacuation_in_progress(bool in_progress) {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Only call this at safepoint");
-  set_gc_state_mask(EVACUATION, in_progress);
+  set_gc_state(EVACUATION, in_progress);
 }
 
 void ShenandoahHeap::set_concurrent_strong_root_in_progress(bool in_progress) {
@@ -2481,7 +2481,7 @@ void ShenandoahHeap::set_concurrent_strong_root_in_progress(bool in_progress) {
 }
 
 void ShenandoahHeap::set_concurrent_weak_root_in_progress(bool cond) {
-  set_gc_state_mask(WEAK_ROOTS, cond);
+  set_gc_state(WEAK_ROOTS, cond);
 }
 
 GCTracer* ShenandoahHeap::tracer() {
@@ -2611,7 +2611,7 @@ void ShenandoahHeap::parallel_cleaning(bool full_gc) {
 }
 
 void ShenandoahHeap::set_has_forwarded_objects(bool cond) {
-  set_gc_state_mask(HAS_FORWARDED, cond);
+  set_gc_state(HAS_FORWARDED, cond);
 }
 
 void ShenandoahHeap::set_unload_classes(bool uc) {
@@ -2651,7 +2651,7 @@ void ShenandoahHeap::set_full_gc_move_in_progress(bool in_progress) {
 }
 
 void ShenandoahHeap::set_update_refs_in_progress(bool in_progress) {
-  set_gc_state_mask(UPDATEREFS, in_progress);
+  set_gc_state(UPDATEREFS, in_progress);
 }
 
 void ShenandoahHeap::register_nmethod(nmethod* nm) {
