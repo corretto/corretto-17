@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <stdio.h>
-
-#if (defined(WIN32) || defined (_WIN32))
-#include <process.h>
-#define getpid _getpid
-#define pidType int
-#else
-#include <unistd.h>
-#define pidType pid_t
-#endif
-
-#include <sys/types.h>
-#include <jni.h>
-
-extern "C" {
-
-JNIEXPORT jlong
-JNICALL Java_nsk_share_NativeUtils_getCurrentPID(JNIEnv * jni, jobject  jobj) {
-        return (jlong) getpid();
-}
+ /*
+ * @test
+ * @bug 8312229
+ * @summary Ensure javac does not crash when a variable is used from an anonymous class
+ * @compile --enable-preview -source ${jdk.version} T8312229.java
+ */
+public class T8312229 {
+    void test(Object o) {
+        Runnable r = () -> {
+            var l = switch (o) {
+                default -> {
+                    Integer i = 42;
+                    yield new Runnable() {
+                        public void run() {
+                            i.toString(); // should not crash here
+                        }
+                    };
+                }
+            };
+        };
+    }
 }

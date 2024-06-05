@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,12 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package nsk.share;
 
-public class NativeUtils {
-    static {
-        System.loadLibrary("native_utils");
-    }
+#include "jni.h"
 
-    public static native long getCurrentPID();
-}
+JNIEXPORT
+void JNICALL Java_compiler_calls_NativeCalls_emptyStaticNative(JNIEnv* env, jclass jclazz) {}
