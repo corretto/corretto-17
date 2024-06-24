@@ -212,11 +212,7 @@ void VM_Version::initialize() {
     }
   }
 
-  // Neoverse
-  //   N1: 0xd0c
-  //   N2: 0xd49
-  //   V1: 0xd40
-  //   V2: 0xd4f
+  // Neoverse N1, N2, V1, V2
   if (_cpu == CPU_ARM && (model_is(0xd0c) || model_is(0xd49) ||
                           model_is(0xd40) || model_is(0xd4f))) {
     if (FLAG_IS_DEFAULT(UseSIMDForMemoryOps)) {
