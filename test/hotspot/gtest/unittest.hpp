@@ -48,10 +48,6 @@
 #undef F1
 #undef F2
 
-// A work around for GCC math header bug leaving isfinite() undefined,
-// see: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=14608
-#include "utilities/globalDefinitions.hpp"
-
 #include "utilities/vmassert_uninstall.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -61,6 +57,9 @@
   #define Log(...)  LogImpl<LOG_TAGS(__VA_ARGS__)> // copied from logging/log.hpp
   #undef UNDEFINED_Log
 #endif
+
+// Wrapper around os::exit so we don't need to include os.hpp here.
+extern void gtest_exit_from_child_vm(int num);
 
 #define CONCAT(a, b) a ## b
 
