@@ -40,9 +40,8 @@ ext {
 		throw new GradleException("${arch} is not suported")
     }
 }
-
-def jdkResultingImage = "$buildRoot/build/linux-${arch}-server-release/images/jdk"
-def testResultingImage = "$buildRoot/build/linux-${arch}-server-release/images/test"
+def jdkResultingImage = "$buildRoot/build/linux-${arch}-server-${correttoDebugLevel}/images/jdk"
+def testResultingImage = "$buildRoot/build/linux-${arch}-server-${correttoDebugLevel}/images/test"
 
 // deps
 def depsMap = [:]
