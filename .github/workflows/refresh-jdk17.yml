@@ -34,11 +34,6 @@ jobs:
               with:
                 upstream: 'develop'
                 merge-branch: 'nightly'
-            - name: "Merge Corretto-17 develop to generational-shenandoah"
-              uses: ./.github/actions/merge-repo
-              with:
-                upstream: 'develop'
-                merge-branch: 'generational-shenandoah'
             - name: "Merge Corretto-17 develop to lilliput"
               uses: ./.github/actions/merge-repo
               with:
