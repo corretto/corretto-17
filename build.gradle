@@ -112,6 +112,12 @@ allprojects {
             correttoCommonFlags += ["--with-gtest=${gtest}"]
         }
 
+        // This should be public so we can know if we should build the micro-benchmarks
+        jmh = project.findProperty("corretto.jmh")
+        if (jmh) {
+            correttoCommonFlags += ["--with-jmh=${jmh}"]
+        }
+
         // Valid value: null, release, debug, fastdebug, slowdebug
         correttoDebugLevel = "release" // Default: release
         switch(project.findProperty("corretto.debug_level")) {
