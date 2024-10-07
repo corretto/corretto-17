@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,24 +19,13 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
-import jdk.test.lib.cds.CDSOptions;
 
-// This class represents options used for
-// during creation of the archive and/or running JVM with archive
+public class ResolvedReferencesTestApp {
+    // These strings must be in the resolved references array
+    static String foo = "fooString";
+    static String bar = "barString";
 
-public class AppCDSOptions extends CDSOptions {
-    public String appJar;
-    public String appJarDir;
-
-    public AppCDSOptions setAppJar(String appJar) {
-        this.appJar = appJar;
-        return this;
-    }
-
-    public AppCDSOptions setAppJarDir(String appJarDir) {
-        this.appJarDir = appJarDir;
-        return this;
-    }
+    // This method is never called so the string should not be added to the resolved references array
+    String qux() { return "quxString"; }
 }
