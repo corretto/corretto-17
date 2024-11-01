@@ -5807,8 +5807,8 @@ void ClassFileParser::parse_stream(const ClassFileStream* const stream,
         Exceptions::fthrow(THREAD_AND_LOCATION,
                            vmSymbols::java_lang_NoClassDefFoundError(),
                            "%s (wrong name: %s)",
-                           class_name_in_cp->as_C_string(),
-                           _class_name->as_C_string()
+                           _class_name->as_C_string(),
+                           class_name_in_cp->as_C_string()
                            );
         return;
       } else {
