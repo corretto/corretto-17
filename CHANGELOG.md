@@ -2,6 +2,41 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.14.7.1
+Release Date: January 21, 2025
+
+**Target Platforms <sup>1</sup>**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Linux using glibc 2.25 or later, Arm
++ Linux using muslc 1.2.2 or later, Arm
++ Alpine-based Linux, x86_64
++ Alpine-based Linux, aarch64
++ Windows 10 or later, x86, x86_64
++ macOS 13.0 and later, x86_64
++ macOS 13.0 and later, aarch64
+
+**1.** This is the platform targeted by the build. See [Using Amazon Corretto](https://aws.amazon.com/corretto/faqs/#Using_Amazon_Corretto)
+in the Amazon Corretto FAQ for supported platforms
+
+The following issues are addressed in 17.0.14.7.1:
+
+| Issue Name                                 | Platform | Description                                                          | Link                                                                          |
+|--------------------------------------------|----------|----------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| Import jdk-17.0.14+7                      | All      | Update Corretto baseline to OpenJDK 17.0.14+7                       | [jdk-17.0.14+7](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.14+7) |
+| JDK-8345296         | aarch64      | VM crashes with SIGILL when prctl is disallowed | [JDK-8345296](https://bugs.openjdk.org/browse/JDK-8345296)                 |
+
+
+The following CVEs are addressed in 17.0.14.7.1:
+
+| CVE            | CVSS | Component                       |
+|----------------|------|---------------------------------|
+| CVE-2025-21502 | 4.8  | hotspot/compiler                |
+
+
 ## Corretto version: 17.0.13.11.1
 Release Date: October 15, 2024
 
@@ -65,7 +100,7 @@ The following issues are addressed in 17.0.12.7.1:
 
 | Issue Name           | Platform | Description                                                                          | Link                                                                  |
 |----------------------|----------|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
-| Import jdk-17.0.12+7 | All      | Update Corretto baseline to OpenJDK 17.0.12+7 | [17.0.12+7](https://github.com/openjdk/jdk17u/releases/tag/17.0.12+7)  |
+| Import jdk-17.0.12+7 | All      | Update Corretto baseline to OpenJDK 17.0.12+7 | [17.0.12+7](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.12+7)  |
 
 The following CVEs are addressed in 17.0.12.7.1:
 
@@ -98,7 +133,7 @@ The following issues are addressed in 17.0.11.9.1:
 
 | Issue Name           | Platform | Description                                                                          | Link                                                                  |
 |----------------------|----------|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
-| Import jdk-17.0.11+9 | All      | Update Corretto baseline to OpenJDK 17.0.11+9 | [17.0.11+9](https://github.com/openjdk/jdk17u/releases/tag/17.0.11+9)  |
+| Import jdk-17.0.11+9 | All      | Update Corretto baseline to OpenJDK 17.0.11+9 | [17.0.11+9](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.11+9)  |
 | Fallback option for POST-only OCSP requests | All | Add option to fallback to old OCSP behavior to not unconditionally use GET requests for small requests | [JDK-8328638](https://bugs.openjdk.org/browse/JDK-8328638) |
 | Shenandoah: SIGSEGV crash in unnecessary_acquire due to LoadStore split through phi | All | Fix SIGSEGV crash when using Shenandoah garbage collector | [JDK-8325372](https://bugs.openjdk.org/browse/JDK-8325372) |
 
@@ -514,7 +549,7 @@ The following issues are addressed in 17.0.4.8.1
 
  | Issue Name | Platform | Description | Link |
  | --- | --- | --- | --- |
- | Import jdk-17.0.2+8 | All | Updates Corretto patch set to OpenJDK 17.0.2+8 | [jdk-17.0.2+8](https://github.com/openjdk/jdk17/releases/tag/jdk-17.0.2%2B8)
+ | Import jdk-17.0.2+8 | All | Updates Corretto patch set to OpenJDK 17.0.2+8 | [jdk-17.0.2+8](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.2%2B8)
  | Use SHA256 hashes in RPM File Digest | RPM-based Linux | Update plugins to support FIPS compliant file digests in generated RPMs | [#344](https://github.com/corretto/corretto-8/issues/344) |
  | Sign Mac bundle | Macos | The Macos tgz contained signed files, but was not signed as a bundle. | |
  | Update Amazon CACerts | All | Pull in the latest CA Certificates from Amazon Linux | |
