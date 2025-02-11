@@ -1058,7 +1058,8 @@ intptr_t ObjectSynchronizer::FastHashCode(Thread* current, oop obj) {
       if (hash != 0) {                  // if it has a hash, just return it
         return hash;
       }
-    } else if (LockingMode == LM_LEGACY && mark.has_locker() && current->is_lock_owned((address)mark.locker())) {
+    } else if (LockingMode == LM_LEGACY && mark.has_locker() && current->is_Java_thread()
+               && current->as_Java_thread()->is_lock_owned((address)mark.locker())) {
       // This is a stack lock owned by the calling thread so fetch the
       // displaced markWord from the BasicLock on the stack.
       temp = mark.displaced_mark_helper();
