@@ -2,6 +2,42 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.15.6.1
+Release Date: April 15, 2025
+
+**Target Platforms <sup>1</sup>**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Linux using glibc 2.25 or later, Arm
++ Linux using muslc 1.2.2 or later, Arm
++ Alpine-based Linux, x86_64
++ Alpine-based Linux, aarch64
++ Windows 10 or later, x86, x86_64
++ macOS 13.0 and later, x86_64
++ macOS 13.0 and later, aarch64
+
+**1.** This is the platform targeted by the build. See [Using Amazon Corretto](https://aws.amazon.com/corretto/faqs/#Using_Amazon_Corretto)
+in the Amazon Corretto FAQ for supported platforms
+
+The following issues are addressed in 17.0.15.6.1:
+
+| Issue Name | Platform | Description | Link |
+|------------|----------|-------------|------|
+| Import jdk-17.0.15+6 | All | Update Corretto baseline to OpenJDK 17.0.15+6 | [jdk-17.0.15+6](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.15+6) |
+| (tz) Update Timezone Data to 2025b | All | Update tz code and data to use 2025b release | [JDK-8352716](https://bugs.openjdk.org/browse/JDK-8352716) |
+
+
+The following CVEs are addressed in 17.0.15.6.1:
+
+| CVE | CVSS | Component |
+|-----|------|-----------|
+| CVE-2025-21587 | security-libs/javax.net.ssl | 7.4 |
+| CVE-2025-30698 | client-libs/2d | 5.6 |
+| CVE-2025-30691 | hotspot/compiler | 4.8 |
+
 ## Corretto version: 17.0.14.7.1
 Release Date: January 21, 2025
 
