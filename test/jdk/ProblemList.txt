@@ -203,6 +203,8 @@ java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java 8129778
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java 8129778 generic-all
 java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java 8129778 generic-all
 
+java/awt/dnd/DnDCursorCrashTest.java 8242805 macosx-all
+java/awt/dnd/DnDClipboardDeadlockTest.java 8079553 linux-all
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.java 8194947 generic-all
 java/awt/Frame/FramesGC/FramesGC.java 8079069 macosx-all
 java/awt/GridLayout/LayoutExtraGaps/LayoutExtraGaps.java 8000171 windows-all
@@ -838,6 +840,9 @@ java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-x64
 java/awt/Frame/SizeMinimizedTest.java 8305915 linux-x64
 java/awt/PopupMenu/PopupHangTest.java 8340022 windows-all
 java/awt/Focus/InactiveFocusRace.java 8023263 linux-all
+java/awt/Checkbox/CheckboxBoxSizeTest.java 8340870 windows-all
+java/awt/Checkbox/CheckboxIndicatorSizeTest.java 8340870 windows-all
+java/awt/Checkbox/CheckboxNullLabelTest.java 8340870 windows-all
 java/awt/dnd/WinMoveFileToShellTest.java 8341665 windows-all
 
 
