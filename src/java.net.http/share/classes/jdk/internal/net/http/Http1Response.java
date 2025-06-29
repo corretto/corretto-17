@@ -67,14 +67,14 @@ class Http1Response<T> {
     private volatile EOFException eof;
     private volatile BodyParser bodyParser;
     // max number of bytes of (fixed length) body to ignore on redirect
-    private final static int MAX_IGNORE = 1024;
+    private static final int MAX_IGNORE = 1024;
 
     // Revisit: can we get rid of this?
     enum State {INITIAL, READING_HEADERS, READING_BODY, DONE}
     private volatile State readProgress = State.INITIAL;
 
     final Logger debug = Utils.getDebugLogger(this::dbgString, Utils.DEBUG);
-    final static AtomicLong responseCount = new AtomicLong();
+    static final AtomicLong responseCount = new AtomicLong();
     final long id = responseCount.incrementAndGet();
     private Http1HeaderParser hd;
 
@@ -110,7 +110,7 @@ class Http1Response<T> {
     }
 
     // The ClientRefCountTracker is used to track the state
-    // of a pending operation. Altough there usually is a single
+    // of a pending operation. Although there usually is a single
     // point where the operation starts, it may terminate at
     // different places.
     private final class ClientRefCountTracker {
@@ -475,7 +475,7 @@ class Http1Response<T> {
 
     }
 
-    static abstract class Receiver<T>
+    abstract static class Receiver<T>
             implements Http1AsyncReceiver.Http1AsyncDelegate {
         abstract void start(T parser);
         abstract CompletableFuture<State> completion();
@@ -734,7 +734,7 @@ class Http1Response<T> {
 
         @Override
         public String toString() {
-            return super.toString() + "/parser=" + String.valueOf(parser);
+            return super.toString() + "/parser=" + parser;
         }
     }
 }
