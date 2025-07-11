@@ -34,9 +34,9 @@ The following CVEs are addressed in 17.0.15.6.1:
 
 | CVE | CVSS | Component |
 |-----|------|-----------|
-| CVE-2025-21587 | security-libs/javax.net.ssl | 7.4 |
-| CVE-2025-30698 | client-libs/2d | 5.6 |
-| CVE-2025-30691 | hotspot/compiler | 4.8 |
+| CVE-2025-21587 | 7.4 | security-libs/javax.net.ssl |
+| CVE-2025-30698 | 5.6 | client-libs/2d |
+| CVE-2025-30691 | 4.8 | hotspot/compiler |
 
 ## Corretto version: 17.0.14.7.1
 Release Date: January 21, 2025
