@@ -28,14 +28,15 @@ The following issues are addressed in 17.0.16.8.1:
 |------------|----------|-------------|------|
 | Import jdk-17.0.16+8 | All | Update Corretto baseline to OpenJDK 17.0.16+8 | [jdk-17.0.16+8](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.16+8) |
 
+
 The following CVEs are addressed in 17.0.16.8.1:
 
 | CVE | CVSS | Component |
 |-----|------|-----------|
-| CVE-2025-50059 | core-libs/java.net | 8.6 |
-| CVE-2025-30749 | client-libs/2d | 8.1 |
-| CVE-2025-50106 | client-libs/2d | 8.1 |
-| CVE-2025-30754 | security-libs/javax.net.ssl | 4.8 |
+| CVE-2025-50059 | 8.6 | core-libs/java.net |
+| CVE-2025-30749 | 8.1 | client-libs/2d |
+| CVE-2025-50106 | 8.1 | client-libs/2d |
+| CVE-2025-30754 | 4.8 | security-libs/javax.net.ssl |
 ## Corretto version: 17.0.15.6.1
 Release Date: April 15, 2025
 
@@ -68,9 +69,9 @@ The following CVEs are addressed in 17.0.15.6.1:
 
 | CVE | CVSS | Component |
 |-----|------|-----------|
-| CVE-2025-21587 | security-libs/javax.net.ssl | 7.4 |
-| CVE-2025-30698 | client-libs/2d | 5.6 |
-| CVE-2025-30691 | hotspot/compiler | 4.8 |
+| CVE-2025-21587 | 7.4 | security-libs/javax.net.ssl |
+| CVE-2025-30698 | 5.6 | client-libs/2d |
+| CVE-2025-30691 | 4.8 | hotspot/compiler |
 
 ## Corretto version: 17.0.14.7.1
 Release Date: January 21, 2025
