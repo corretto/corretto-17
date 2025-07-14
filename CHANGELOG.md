@@ -27,6 +27,9 @@ The following issues are addressed in 17.0.16.8.1:
 | Issue Name | Platform | Description | Link |
 |------------|----------|-------------|------|
 | Import jdk-17.0.16+8 | All | Update Corretto baseline to OpenJDK 17.0.16+8 | [jdk-17.0.16+8](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.16+8) |
+| JDK-8353013 | All | java.net.URI.create(String) may have low performance to scan the host/domain name from URI string when the hostname starts with number | [PR-231](https://github.com/corretto/corretto-17/pull/231) |
+| JDK-8349705 | All | java.net.URI.scanIPv4Address throws unnecessary URISyntaxException | [PR-233](https://github.com/corretto/corretto-17/pull/233) |
+| JDK-8339725 | All | Concurrent GC crashed due to GetMethodDeclaringClass | [PR-237](https://github.com/corretto/corretto-17/pull/237) |
 
 
 The following CVEs are addressed in 17.0.16.8.1:
