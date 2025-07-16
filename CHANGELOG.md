@@ -2,6 +2,44 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.16.8.1
+Release Date: July 15, 2025
+
+**Target Platforms <sup>1</sup>**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Linux using glibc 2.25 or later, Arm
++ Linux using muslc 1.2.2 or later, Arm
++ Alpine-based Linux, x86_64
++ Alpine-based Linux, aarch64
++ Windows 10 or later, x86, x86_64
++ macOS 13.0 and later, x86_64
++ macOS 13.0 and later, aarch64
+
+**1.** This is the platform targeted by the build. See [Using Amazon Corretto](https://aws.amazon.com/corretto/faqs/#Using_Amazon_Corretto)
+in the Amazon Corretto FAQ for supported platforms
+
+The following issues are addressed in 17.0.16.8.1:
+
+| Issue Name | Platform | Description | Link |
+|------------|----------|-------------|------|
+| Import jdk-17.0.16+8 | All | Update Corretto baseline to OpenJDK 17.0.16+8 | [jdk-17.0.16+8](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.16+8) |
+| JDK-8353013 | All | java.net.URI.create(String) may have low performance to scan the host/domain name from URI string when the hostname starts with number | [PR-231](https://github.com/corretto/corretto-17/pull/231) |
+| JDK-8349705 | All | java.net.URI.scanIPv4Address throws unnecessary URISyntaxException | [PR-233](https://github.com/corretto/corretto-17/pull/233) |
+| JDK-8339725 | All | Concurrent GC crashed due to GetMethodDeclaringClass | [PR-237](https://github.com/corretto/corretto-17/pull/237) |
+
+
+The following CVEs are addressed in 17.0.16.8.1:
+
+| CVE | CVSS | Component |
+|-----|------|-----------|
+| CVE-2025-50059 | 8.6 | core-libs/java.net |
+| CVE-2025-30749 | 8.1 | client-libs/2d |
+| CVE-2025-50106 | 8.1 | client-libs/2d |
+| CVE-2025-30754 | 4.8 | security-libs/javax.net.ssl |
 ## Corretto version: 17.0.15.6.1
 Release Date: April 15, 2025
 
