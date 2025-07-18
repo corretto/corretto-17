@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,29 +21,20 @@
  * questions.
  */
 
-#include <jni.h>
-#include <stdio.h>
+package com.test;
 
-void reduceLocalCapacity(JNIEnv* env) {
-    puts("reduceLocalCapacity: setting to 1");
-    (*env)->EnsureLocalCapacity(env,1);
-}
+import javax.naming.Context;
+import javax.naming.Name;
+import javax.naming.spi.ObjectFactory;
+import java.util.Hashtable;
 
-JNIEXPORT void JNICALL
-Java_TestCheckedEnsureLocalCapacity_ensureCapacity(JNIEnv *env,
-                                                   jobject unused,
-                                                   jobject target,
-                                                   jint capacity,
-                                                   jint copies) {
-  int i;
-  printf("ensureCapacity: setting to %d\n", capacity);
-  (*env)->EnsureLocalCapacity(env, capacity); // set high
-  reduceLocalCapacity(env);     // sets low
+public class TestFactory implements ObjectFactory {
+    public static final String RUNTIME_EXCEPTION_MESSAGE =
+            "Test object factory is called to instantiate factory";
 
-  printf("ensureCapacity: creating %d LocalRefs\n", copies);
-  for (i = 0; i < copies; i++) {
-    target = (*env)->NewLocalRef(env, target);
-  }
-
-  puts("ensureCapacity: done");
+    @Override
+    public Object getObjectInstance(Object obj, Name name, Context nameCtx, Hashtable<?, ?> environment) throws Exception {
+        System.err.println("obj:" + obj);
+        throw new RuntimeException(RUNTIME_EXCEPTION_MESSAGE);
+    }
 }
