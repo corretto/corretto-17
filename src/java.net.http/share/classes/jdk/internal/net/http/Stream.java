@@ -190,9 +190,9 @@ class Stream<T> extends ExchangeImpl<T> {
             }
             while (!inputQ.isEmpty() && errorRef.get() == null) {
                 Http2Frame frame = inputQ.peek();
-                if (frame instanceof ResetFrame) {
+                if (frame instanceof ResetFrame rf) {
                     inputQ.remove();
-                    handleReset((ResetFrame)frame, subscriber);
+                    handleReset(rf, subscriber);
                     return;
                 }
                 DataFrame df = (DataFrame)frame;
@@ -472,24 +472,23 @@ class Stream<T> extends ExchangeImpl<T> {
     void incoming(Http2Frame frame) throws IOException {
         if (debug.on()) debug.log("incoming: %s", frame);
         var cancelled = checkRequestCancelled() || closed;
-        if ((frame instanceof HeaderFrame)) {
-            HeaderFrame hframe = (HeaderFrame) frame;
-            if (hframe.endHeaders()) {
+        if ((frame instanceof HeaderFrame hf)) {
+            if (hf.endHeaders()) {
                 Log.logTrace("handling response (streamid={0})", streamid);
                 handleResponse();
             }
-            if (hframe.getFlag(HeaderFrame.END_STREAM)) {
+            if (hf.getFlag(HeaderFrame.END_STREAM)) {
                 if (debug.on()) debug.log("handling END_STREAM: %d", streamid);
                 receiveDataFrame(new DataFrame(streamid, DataFrame.END_STREAM, List.of()));
             }
-        } else if (frame instanceof DataFrame) {
+        } else if (frame instanceof DataFrame df) {
             if (cancelled) {
                 if (debug.on()) {
                     debug.log("request cancelled or stream closed: dropping data frame");
                 }
-                connection.dropDataFrame((DataFrame) frame);
+                connection.dropDataFrame(df);
             } else {
-                receiveDataFrame((DataFrame) frame);
+                receiveDataFrame(df);
             }
         } else {
             if (!cancelled) otherFrame(frame);
@@ -606,6 +605,16 @@ class Stream<T> extends ExchangeImpl<T> {
         } else {
             Flow.Subscriber<?> subscriber =
                     responseSubscriber == null ? pendingResponseSubscriber : responseSubscriber;
+            if (!requestBodyCF.isDone()) {
+                // If a RST_STREAM is received, complete the requestBody. This will allow the
+                // response to be read before the Reset is handled in the case where the client's
+                // input stream is partially consumed or not consumed at all by the server.
+                if (frame.getErrorCode() != ResetFrame.NO_ERROR) {
+                    requestBodyCF.completeExceptionally(new IOException("RST_STREAM received"));
+                } else {
+                    requestBodyCF.complete(null);
+                }
+            }
             if (response == null && subscriber == null) {
                 // we haven't received the headers yet, and won't receive any!
                 // handle reset now.
@@ -842,9 +851,14 @@ class Stream<T> extends ExchangeImpl<T> {
         hdrs.setHeader(":method", method);
         URI uri = request.uri();
         hdrs.setHeader(":scheme", uri.getScheme());
-        // TODO: userinfo deprecated. Needs to be removed
-        hdrs.setHeader(":authority", uri.getAuthority());
-        // TODO: ensure header names beginning with : not in user headers
+        String host = uri.getHost();
+        int port = uri.getPort();
+        assert host != null;
+        if (port != -1) {
+            hdrs.setHeader(":authority", host + ":" + port);
+        } else {
+            hdrs.setHeader(":authority", host);
+        }
         String query = uri.getRawQuery();
         String path = uri.getRawPath();
         if (path == null || path.isEmpty()) {
