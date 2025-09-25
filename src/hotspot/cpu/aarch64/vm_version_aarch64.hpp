@@ -126,6 +126,7 @@ public:
     decl(SHA3,          "sha3",          17)  \
     decl(SHA512,        "sha512",        21)  \
     decl(SVE,           "sve",           22)  \
+    decl(SB,            "sb",            29)  \
     /* flags above must follow Linux HWCAP */ \
     decl(SVE2,          "sve2",          28)  \
     decl(A53MAC,        "a53mac",        30)
