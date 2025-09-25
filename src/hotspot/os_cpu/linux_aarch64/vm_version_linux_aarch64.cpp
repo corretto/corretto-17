@@ -72,6 +72,10 @@
 #define HWCAP_SVE (1 << 22)
 #endif
 
+#ifndef HWCAP_SB
+#define HWCAP_SB (1 << 29)
+#endif
+
 #ifndef HWCAP2_SVE2
 #define HWCAP2_SVE2 (1 << 1)
 #endif
@@ -124,7 +128,8 @@ void VM_Version::get_os_cpu_info() {
       HWCAP_DCPOP   |
       HWCAP_SHA3    |
       HWCAP_SHA512  |
-      HWCAP_SVE);
+      HWCAP_SVE     |
+      HWCAP_SB);
 
   if (auxv2 & HWCAP2_SVE2) _features |= CPU_SVE2;
 

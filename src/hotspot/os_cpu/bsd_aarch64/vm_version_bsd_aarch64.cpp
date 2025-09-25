@@ -65,6 +65,10 @@ void VM_Version::get_os_cpu_info() {
   if (cpu_has("hw.optional.armv8_crc32"))     _features |= CPU_CRC32;
   if (cpu_has("hw.optional.armv8_1_atomics")) _features |= CPU_LSE;
 
+  if (cpu_has("hw.optional.arm.FEAT_SB")) {
+    _features |= CPU_SB;
+  }
+
   int cache_line_size;
   int hw_conf_cache_line[] = { CTL_HW, HW_CACHELINE };
   sysctllen = sizeof(cache_line_size);
