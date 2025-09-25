@@ -177,7 +177,7 @@ public class AArch64 extends Architecture {
         SHA3,
         SHA512,
         SVE,
-	SB,
+        SB,
         SVE2,
         A53MAC,
     }
