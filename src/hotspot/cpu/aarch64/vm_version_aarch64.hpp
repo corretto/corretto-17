@@ -128,7 +128,6 @@ public:
     decl(SVE,           "sve",           22)  \
     /* flags above must follow Linux HWCAP */ \
     decl(SVE2,          "sve2",          28)  \
-    decl(STXR_PREFETCH, "stxr_prefetch", 29)  \
     decl(A53MAC,        "a53mac",        30)
 
 #define DECLARE_CPU_FEATURE_FLAG(id, name, bit) CPU_##id = (1 << bit),
