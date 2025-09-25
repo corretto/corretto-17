@@ -23,50 +23,49 @@
 
 /*
  * @test
- * @bug 4967768
- * @requires (os.family != "mac")
- * @summary Tests that underline is painted correctly in mnemonics
+ * @bug 5046491 6423258
+ * @summary CheckboxMenuItem: menu text is missing from test frame
  * @library /java/awt/regtesthelpers
  * @build PassFailJFrame
- * @run main/manual bug4967768
- */
+ * @run main/manual MenuVisibilityTest
+*/
 
-import java.awt.Font;
-import javax.swing.JButton;
-import javax.swing.JPanel;
+import java.awt.Frame;
+import java.awt.Menu;
+import java.awt.MenuBar;
+import java.awt.MenuItem;
 
-public class bug4967768 {
-    private static final String INSTRUCTIONS = """
-            When the test starts you'll see a button "Oops".
-
-            For Windows and GTK Look and Feel, you will need to
-            press the ALT key to make the mnemonic visible.
-            Once the ALT key is pressed, the letter "p" will be
-            underlined at the bottom of the instruction frame.
-
-            Ensure the underline cuts through the descender
-            of letter "p", i.e. the underline is painted
-            not below the letter but below the baseline.
-
-            Press Pass if you see the expected behaviour else
-            press Fail.
-            """;
-
+public class MenuVisibilityTest {
     public static void main(String[] args) throws Exception {
+        String INSTRUCTIONS = """
+                1. Press on a MenuBar with a long name.
+                2. Select "First item" in an opened menu.
+                   If you see that "First menu item was pressed" in
+                   the test log area, press PASS
+                   Otherwise press FAIL"
+                 """;
         PassFailJFrame.builder()
                 .instructions(INSTRUCTIONS)
                 .columns(35)
-                .splitUIBottom(bug4967768::createTestUI)
+                .testUI(MenuVisibilityTest::initialize)
+                .logArea()
                 .build()
                 .awaitAndCheck();
     }
 
-    private static JPanel createTestUI() {
-        JPanel panel = new JPanel();
-        JButton but = new JButton("Oops");
-        but.setFont(new Font("Dialog", Font.BOLD, 24));
-        but.setMnemonic('p');
-        panel.add(but);
-        return panel;
+    public static Frame initialize() {
+        Frame frame = new Frame("Menu visibility test");
+        String menuTitle = "I_have_never_seen_so_long_Menu_Title_" +
+                "!_ehe-eha-ehu-ehi_ugu-gu!!!_;)_BANG_BANG...";
+        MenuBar menubar = new MenuBar();
+        Menu menu = new Menu(menuTitle);
+        MenuItem menuItem = new MenuItem("First item");
+        menuItem.addActionListener(e ->
+                PassFailJFrame.log("First menu item was pressed."));
+        menu.add(menuItem);
+        menubar.add(menu);
+        frame.setMenuBar(menubar);
+        frame.setSize(100, 200);
+        return frame;
     }
 }
