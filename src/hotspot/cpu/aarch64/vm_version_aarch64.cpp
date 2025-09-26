@@ -229,7 +229,11 @@ void VM_Version::initialize() {
     }
 
     if (FLAG_IS_DEFAULT(OnSpinWaitInst)) {
-      FLAG_SET_DEFAULT(OnSpinWaitInst, "isb");
+      if (model_is(0xd4f)) {
+        FLAG_SET_DEFAULT(OnSpinWaitInst, "sb");
+      } else {
+        FLAG_SET_DEFAULT(OnSpinWaitInst, "isb");
+      }
     }
 
     if (FLAG_IS_DEFAULT(OnSpinWaitInstCount)) {
