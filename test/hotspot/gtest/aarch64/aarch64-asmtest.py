@@ -1277,7 +1277,7 @@ generate (CondBranchOp, ["EQ", "NE", "HS", "CS", "LO", "CC", "MI", "PL", "VS", "
 generate (ImmOp, ["svc", "hvc", "smc", "brk", "hlt", # "dcps1",  "dcps2",  "dcps3"
                ])
 
-generate (Op, ["nop", "eret", "drps", "isb"])
+generate (Op, ["nop", "eret", "drps", "isb", "sb"])
 
 barriers = ["OSHLD", "OSHST", "OSH", "NSHLD", "NSHST", "NSH",
             "ISHLD", "ISHST", "ISH", "LD", "ST", "SY"]
@@ -1638,7 +1638,7 @@ outfile.write("forth:\n")
 outfile.close()
 
 # compile for sve with 8.2 and sha3 because of SHA3 crypto extension.
-subprocess.check_call([AARCH64_AS, "-march=armv8.2-a+sha3+sve", "aarch64ops.s", "-o", "aarch64ops.o"])
+subprocess.check_call([AARCH64_AS, "-march=armv8.2-a+sha3+sve+sb", "aarch64ops.s", "-o", "aarch64ops.o"])
 
 print
 print "/*"

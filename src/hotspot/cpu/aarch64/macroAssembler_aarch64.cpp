@@ -5767,6 +5767,9 @@ void MacroAssembler::spin_wait() {
       case SpinWait::YIELD:
         yield();
         break;
+      case SpinWait::SB:
+        sb();
+        break;
       default:
         ShouldNotReachHere();
     }
