@@ -49,6 +49,10 @@ int VM_Version::_initial_sve_vector_length;
 
 SpinWait VM_Version::_spin_wait;
 
+static inline bool vm_version_supports_sb() {
+  return (VM_Version::features() & VM_Version::CPU_SB) != 0;
+}
+
 static SpinWait get_spin_wait_desc() {
   if (strcmp(OnSpinWaitInst, "nop") == 0) {
     return SpinWait(SpinWait::NOP, OnSpinWaitInstCount);
@@ -57,7 +61,7 @@ static SpinWait get_spin_wait_desc() {
   } else if (strcmp(OnSpinWaitInst, "yield") == 0) {
     return SpinWait(SpinWait::YIELD, OnSpinWaitInstCount);
   } else if (strcmp(OnSpinWaitInst, "sb") == 0) {
-    if ((VM_Version::features() & VM_Version::CPU_SB) == 0) {
+    if (!vm_version_supports_sb()) {
       vm_exit_during_initialization("OnSpinWaitInst is SB but current CPU does not support SB instruction");
     }
     return SpinWait(SpinWait::SB, OnSpinWaitInstCount);
@@ -229,7 +233,7 @@ void VM_Version::initialize() {
     }
 
     if (FLAG_IS_DEFAULT(OnSpinWaitInst)) {
-      if (model_is(0xd4f)) {
+      if (model_is(0xd4f) && vm_version_supports_sb()) {
         FLAG_SET_DEFAULT(OnSpinWaitInst, "sb");
       } else {
         FLAG_SET_DEFAULT(OnSpinWaitInst, "isb");
