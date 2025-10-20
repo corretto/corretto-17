@@ -48,7 +48,6 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -336,6 +335,8 @@ jobs:
   remove-bundles:
     name: 'Remove bundle artifacts'
     runs-on: ubuntu-22.04
+    permissions:
+      actions: write
     if: always()
     needs:
       - build-linux-x64
