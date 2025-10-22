@@ -2,6 +2,43 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.17.10.1
+Release Date: October 21, 2025
+
+**Target Platforms <sup>1</sup>**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Linux using glibc 2.25 or later, Arm
++ Linux using muslc 1.2.2 or later, Arm
++ Alpine-based Linux, x86_64
++ Alpine-based Linux, aarch64
++ Windows 10 or later, x86, x86_64
++ macOS 14.0 and later, x86_64
++ macOS 14.0 and later, aarch64
+
+**1.** This is the platform targeted by the build. See [Using Amazon Corretto](https://aws.amazon.com/corretto/faqs/#Using_Amazon_Corretto)
+in the Amazon Corretto FAQ for supported platforms
+
+The following issues are addressed in 17.0.17.10.1:
+
+| Issue Name | Platform | Description | Link |
+|------------|----------|-------------|------|
+| Import jdk-17.0.17+10 | All | Update Corretto baseline to OpenJDK 17.0.17+10 | [jdk-17.0.17+10](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.17+10) |
+| JDK-8360936 | aarch64 | Test compiler/onSpinWait/TestOnSpinWaitAArch64.java fails after JDK-8359435 | [#244](https://github.com/corretto/corretto-17/pull/244) |
+| JDK-8359435 | aarch64 | AArch64: add support for SB instruction to MacroAssembler::spin_wait | [#243](https://github.com/corretto/corretto-17/pull/243) |
+| JDK-8284990 | aarch64 | AArch64: Remove STXR_PREFETCH from CPU features | [#242](https://github.com/corretto/corretto-17/pull/242) |
+| JDK-8277444 | All | Data race between JvmtiClassFileReconstituter::copy_bytecodes and class linking | [#241](https://github.com/corretto/corretto-17/pull/241) |
+| Bundling async profiler | Alpine, MacOS, RPM-based Linux, Debian-based Linux  | Binaries for the [async-profiler](https://github.com/async-profiler/async-profiler) are included in official builds for supported platforms | [#248](https://github.com/corretto/corretto-17/pull/248) |
+
+The following CVEs are addressed in 17.0.17.10.1:
+
+| CVE | CVSS | Component |
+|-----|------|-----------|
+| CVE-2025-53057 | 5.9 | security-libs/java.security |
+| CVE-2025-53066 | 4.8 | xml/jaxp |
 ## Corretto version: 17.0.16.8.1
 Release Date: July 15, 2025
 
