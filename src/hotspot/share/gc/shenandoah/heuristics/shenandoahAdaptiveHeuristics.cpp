@@ -196,31 +196,34 @@ static double saturate(double value, double min, double max) {
 }
 
 bool ShenandoahAdaptiveHeuristics::should_start_gc() {
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
-  size_t max_capacity = heap->max_capacity();
-  size_t capacity = heap->soft_max_capacity();
-  size_t available = heap->free_set()->available();
-  size_t allocated = heap->bytes_allocated_since_gc_start();
-
-  // Make sure the code below treats available without the soft tail.
-  size_t soft_tail = max_capacity - capacity;
-  available = (available > soft_tail) ? (available - soft_tail) : 0;
-
-  // Track allocation rate even if we decide to start a cycle for other reasons.
-  double rate = _allocation_rate.sample(allocated);
   _last_trigger = OTHER;
 
-  size_t min_threshold = capacity / 100 * ShenandoahMinFreeThreshold;
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  size_t max_capacity = heap->max_capacity();
+  size_t soft_max_capacity = heap->soft_max_capacity();
+  size_t soft_mutator_capacity = soft_max_capacity * (100.0 - ShenandoahEvacReserve) / 100;
+
+  size_t allocated = heap->bytes_allocated_since_gc_start();
+  // Track allocation rate even if we decide to start a cycle for other reasons.
+  double rate = _allocation_rate.sample(allocated);
+
+  size_t used = heap->free_set()->used();
+  size_t available = (soft_mutator_capacity > used) ? soft_mutator_capacity - used : 0;
+  size_t min_threshold = soft_max_capacity / 100 * ShenandoahMinFreeThreshold;
+
   if (available < min_threshold) {
-    log_info(gc)("Trigger: Free (" SIZE_FORMAT "%s) is below minimum threshold (" SIZE_FORMAT "%s)",
-                 byte_size_in_proper_unit(available),     proper_unit_for_byte_size(available),
-                 byte_size_in_proper_unit(min_threshold), proper_unit_for_byte_size(min_threshold));
+    log_debug(gc, ergo)("should_start_gc calculation: available: " PROPERFMT ", soft_max_capacity: "  PROPERFMT ", "
+              "allocated_since_gc_start: "  PROPERFMT,
+              PROPERFMTARGS(available), PROPERFMTARGS(soft_max_capacity), PROPERFMTARGS(allocated));
+
+    log_info(gc)("Trigger: Free (Soft) (" PROPERFMT ") is below minimum threshold (" PROPERFMT ")",
+                 PROPERFMTARGS(available), PROPERFMTARGS(min_threshold));
     return true;
   }
 
   const size_t max_learn = ShenandoahLearningSteps;
   if (_gc_times_learned < max_learn) {
-    size_t init_threshold = capacity / 100 * ShenandoahInitFreeThreshold;
+    size_t init_threshold = soft_max_capacity / 100 * ShenandoahInitFreeThreshold;
     if (available < init_threshold) {
       log_info(gc)("Trigger: Learning " SIZE_FORMAT " of " SIZE_FORMAT ". Free (" SIZE_FORMAT "%s) is below initial threshold (" SIZE_FORMAT "%s)",
                    _gc_times_learned + 1, max_learn,
@@ -235,8 +238,8 @@ bool ShenandoahAdaptiveHeuristics::should_start_gc() {
   //   2. Accumulated penalties from Degenerated and Full GC
   size_t allocation_headroom = available;
 
-  size_t spike_headroom = capacity / 100 * ShenandoahAllocSpikeFactor;
-  size_t penalties      = capacity / 100 * _gc_time_penalties;
+  size_t spike_headroom = soft_max_capacity / 100 * ShenandoahAllocSpikeFactor;
+  size_t penalties      = soft_max_capacity / 100 * _gc_time_penalties;
 
   allocation_headroom -= MIN2(allocation_headroom, spike_headroom);
   allocation_headroom -= MIN2(allocation_headroom, penalties);
