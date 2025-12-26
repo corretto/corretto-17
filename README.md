@@ -28,6 +28,9 @@ _upstream-jdk17_
 _upstream-jdk17u_
 : The branch is similar to master at [openjdk/jdk17u](https://github.com/openjdk/jdk17u). This branch merges into develop.
 
+### Download Links
+Release builds can be found by version on the github [release page](https://github.com/corretto/corretto-17/releases). Nightly builds can be found on our [download page](https://downloads.corretto.aws/#/downloads?build=nightly&version=17).
+
 ### OpenJDK Readme
 ```
 
