@@ -2,6 +2,32 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.18.9.1
+Release Date: January 28, 2026
+
+**Target Platforms <sup>1</sup>**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Linux using glibc 2.25 or later, Arm
++ Linux using muslc 1.2.2 or later, Arm
++ Alpine-based Linux, x86_64
++ Alpine-based Linux, aarch64
++ Windows 10 or later, x86, x86_64
++ macOS 14.0 and later, x86_64
++ macOS 14.0 and later, aarch64
+
+**1.** This is the platform targeted by the build. See [Using Amazon Corretto](https://aws.amazon.com/corretto/faqs/#Using_Amazon_Corretto)
+in the Amazon Corretto FAQ for supported platforms
+
+The following issues are addressed in 17.0.18.9.1:
+
+| Issue Name         | Platform | Description                                                                                     | Link                                                     |
+|--------------------|----------|-------------------------------------------------------------------------------------------------|----------------------------------------------------------|
+| Revert JDK-8372543 | All      | Revert Shenandoah soft max fix due to incorrect heap usage calculation causing longer GC pauses | [#263](https://github.com/corretto/corretto-17/pull/263) |
+
 ## Corretto version: 17.0.18.8.1
 Release Date: January 20, 2026
 
