@@ -264,7 +264,6 @@ sun/java2d/SunGraphics2D/SourceClippingBlitTest/SourceClippingBlitTest.java 8196
 java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java 8169469 windows-all
 java/awt/print/PrinterJob/PSQuestionMark.java 7003378 generic-all
 java/awt/print/PrinterJob/GlyphPositions.java 7003378 generic-all
-java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 7100044 macosx-all,linux-all
 java/awt/Component/GetScreenLocTest/GetScreenLocTest.java 4753654 generic-all
 java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java 8165863 macosx-all
 java/awt/Clipboard/PasteNullToTextComponentsTest.java 8234140 macosx-all,windows-all
