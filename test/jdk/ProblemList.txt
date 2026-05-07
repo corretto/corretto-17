@@ -812,6 +812,7 @@ jdk/jfr/api/consumer/recordingstream/TestOnEvent.java           8255404 linux-x6
 # Client manual tests
 
 javax/swing/JTabbedPane/bug4499556.java 8267500 macosx-all
+javax/swing/JInternalFrame/bug4134077.java 8184985 windows-all
 
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_1.java 7131438,8022539 generic-all
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_2.java 7131438,8022539 generic-all
