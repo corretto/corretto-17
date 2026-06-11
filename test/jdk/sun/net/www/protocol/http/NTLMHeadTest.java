@@ -55,6 +55,7 @@
  * @bug 8270290
  * @comment Only run on specific Windows OS versions because NTLMv1 is no longer supported starting Windows 11 and Windows Server 2025
  * @requires os.family == "windows" & (os.name == "Windows 10" | os.name == "Windows Server 2016" | os.name == "Windows Server 2019" | os.name == "Windows Server 2022")
+ * @modules java.base/sun.net.www
  * @library /test/lib
  * @run main/othervm NTLMHeadTest SERVER
  * @run main/othervm NTLMHeadTest PROXY
