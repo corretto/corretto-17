@@ -1534,7 +1534,8 @@ public class StampedLockTest extends JSR166TestCase {
     public void testShortTimeoutAcquisition() throws InterruptedException {
         final int width = Runtime.getRuntime().availableProcessors();
         final StampedLock s = new StampedLock();
-        try (var pool = Executors.newFixedThreadPool(width)) {
+        final var pool = Executors.newFixedThreadPool(width);
+        try {
             // Setup
             final AtomicBoolean done = new AtomicBoolean(false);
             final CountDownLatch waitingToRun = new CountDownLatch(width);
@@ -1559,6 +1560,8 @@ public class StampedLockTest extends JSR166TestCase {
             s.unlockWrite(stamp);                 // Hand out permits
             Thread.sleep(1000);             // Wait a while for permit acquisitions
             done.set(true);                       // Ensure that tasks can exit
+        } finally {
+            pool.shutdown();
         }
         assertTrue(s.validate(s.writeLockInterruptibly())); // Should succeed
     }

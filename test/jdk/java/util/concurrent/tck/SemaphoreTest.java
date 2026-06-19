@@ -683,7 +683,8 @@ public class SemaphoreTest extends JSR166TestCase {
      */
     public void testShortTimeoutAcquisition() throws InterruptedException {
         final int width = Runtime.getRuntime().availableProcessors();
-        try (var pool = Executors.newFixedThreadPool(width)) {
+        final var pool = Executors.newFixedThreadPool(width);
+        try {
             // Setup
             final AtomicBoolean done = new AtomicBoolean(false);
             final CountDownLatch waitingToRun = new CountDownLatch(width);
@@ -708,6 +709,8 @@ public class SemaphoreTest extends JSR166TestCase {
             final int permitsAvailable = s.availablePermits();
             done.set(true);                       // Ensure that tasks can exit
             assertTrue(permitsAvailable < width); // Some permits should've been taken
+        } finally {
+            pool.shutdown();
         }
     }
 
