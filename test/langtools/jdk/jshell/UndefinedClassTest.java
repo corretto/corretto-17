@@ -59,6 +59,7 @@ public class UndefinedClassTest extends UITesting {
         doRunTest((inputSink, out) -> {
             inputSink.write(code + "\n");
             waitOutput(out, "NotExist");
+            waitOutput(out, PROMPT);
         });
     }
 
@@ -74,6 +75,7 @@ public class UndefinedClassTest extends UITesting {
         doRunTest((inputSink, out) -> {
             inputSink.write(code + "\n");
             waitOutput(out, "NotExist");
+            waitOutput(out, PROMPT);
         });
     }
 }
