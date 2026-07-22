@@ -2,6 +2,48 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.20.8.1
+Release Date: July 21, 2026
+
+**Target Platforms <sup>1</sup>**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Linux using glibc 2.25 or later, Arm
++ Linux using muslc 1.2.2 or later, Arm
++ Alpine-based Linux, x86_64
++ Alpine-based Linux, aarch64
++ Windows 11 or later, x86, x86_64
++ macOS 14.0 and later, x86_64
++ macOS 14.0 and later, aarch64
+
+**1.** This is the platform targeted by the build. See [Using Amazon Corretto](https://aws.amazon.com/corretto/faqs/#Using_Amazon_Corretto)
+in the Amazon Corretto FAQ for supported platforms
+
+The following issues are addressed in 17.0.20.8.1:
+
+| Issue Name | Platform | Description | Link |
+|------------|----------|-------------|------|
+| Import jdk-17.0.20+8 | All | Update Corretto baseline to OpenJDK 17.0.20+8 | [jdk-17.0.20+8](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.20+8) |
+| JDK-8386085 | All | Livelock in AbstractQueuedSyncronizer.cleanQueue() when multiple threads do tryAcquire() with a short timeout and no permits available | [#272](https://github.com/corretto/corretto-17/pull/272) |
+| Recommend instead of Require dependencies for AL2023 headless | AL2023 | Improve dependencies for AL2023+ headless | [#269](https://github.com/corretto/corretto-17/pull/269) |
+
+The following CVEs are addressed in 17.0.20.8.1:
+
+| CVE | CVSS | Component |
+|-----|------|-----------|
+| CVE-2026-41254 | 7.5 | client-libs/2d |
+| CVE-2026-47063 | 7.5 | security-libs/java.security |
+| CVE-2026-60147 | 6.5 | security-libs/java.security |
+| CVE-2026-46968 | 5.9 | security-libs/javax.net.ssl |
+| CVE-2026-47059 | 5.9 | client-libs/2d |
+| CVE-2026-47027 | 5.3 | security-libs/java.security |
+| CVE-2026-47021 | 5.3 | client-libs/2d |
+| CVE-2026-46917 | 5.3 | security-libs/javax.net.ssl |
+| CVE-2026-47010 | 3.7 | client-libs/javax.imageio |
+
 ## Corretto version: 17.0.19.10.1
 Release Date: April 21, 2026
 
