@@ -185,7 +185,7 @@ task packageBuildResults(type: Tar) {
     from("${jdkResultingImage}/legal") {
         include '**'
         fileMode 0444
-        into "amazon-corretto-${project.version.full}-alpine-linux-${arch_alias}/legal"
+        into "legal"
     }
     into "amazon-corretto-${project.version.full}-alpine-linux-${arch_alias}"
 }
