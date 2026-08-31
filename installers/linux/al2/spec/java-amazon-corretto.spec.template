@@ -425,7 +425,7 @@ fi
 %postun headless
 if [ \$1 -eq 0 ] ; then
   alternatives --remove java %{java_home}/bin/java
-  alternatives --remove jre_%{java_major_version} %{java_home}/jre
+  alternatives --remove jre_%{java_major_version} %{java_home}
 fi
 
 %postun devel
