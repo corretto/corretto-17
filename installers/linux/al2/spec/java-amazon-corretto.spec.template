@@ -274,13 +274,37 @@ Amazon Corretto's packaging of the OpenJDK ${java_spec_version} debug symbols.
 %define GIFLIB_DEFINE "-DGIFLIB_MAJOR=4"
 %endif
 
+# %%build_cflags/%%build_cxxflags/%%build_ldflags carry the distro's compiler and
+# linker flags (optimization, hardening such as fortify, stack-protector, PIE,
+# relro/now, etc.). They are only defined on distros that provide them, so pull
+# them in with %%{?...} and append them after our own flags. Whole-program LTO
+# (-flto*/-ffat-lto-objects) is stripped out: linking libjvm.so under it makes
+# gcc's lto1 OOM (observed exceeding 690GB combined RAM+swap), so it is not
+# viable for this codebase regardless of how much memory the build host has.
+# -fexceptions is also stripped to avoid additional compilation errors
+%if "%{dist}" == ".amzn2027"
+%global extra_dist_cflags   %(echo '%{?build_cflags}'   | sed -E 's/-flto([a-zA-Z0-9=_,-]*)?//g; s/-ffat-lto-objects//g; s/-fexceptions//g')
+%global extra_dist_cxxflags %(echo '%{?build_cxxflags}' | sed -E 's/-flto([a-zA-Z0-9=_,-]*)?//g; s/-ffat-lto-objects//g; s/-fexceptions//g')
+%endif
+
 bash ./configure \\
+%if "%{dist}" == ".amzn2027"
+%ifarch aarch64
+        --with-extra-cflags="-moutline-atomics%{?GIFLIB_DEFINE: %{GIFLIB_DEFINE}} %{extra_dist_cflags}" \\
+        --with-extra-cxxflags="-moutline-atomics %{extra_dist_cxxflags}" \\
+%else
+        --with-extra-cflags="%{?GIFLIB_DEFINE:%{GIFLIB_DEFINE}} %{extra_dist_cflags}" \\
+        --with-extra-cxxflags="%{extra_dist_cxxflags}" \\
+%endif
+        --with-extra-ldflags="%{?build_ldflags}" \\
+%else
 %ifarch aarch64
         --with-extra-cflags="-moutline-atomics%{?GIFLIB_DEFINE: %{GIFLIB_DEFINE}}" \\
         --with-extra-cxxflags="-moutline-atomics" \\
 %else
 %if "%{?GIFLIB_DEFINE:1}" == "1"
         --with-extra-cflags="%{GIFLIB_DEFINE}" \\
+%endif
 %endif
 %endif
 %if 0%{?additional_configure_options:1}
