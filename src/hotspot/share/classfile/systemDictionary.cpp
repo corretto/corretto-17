@@ -623,7 +623,7 @@ InstanceKlass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
 
   bool super_load_in_progress  = false;
   InstanceKlass* loaded_class = NULL;
-  Symbol* superclassname = NULL;
+  Symbol* superclassname = NULL; // Keep alive while loading in parallel thread.
 
   assert(THREAD->can_call_java(),
          "can not load classes with compiler thread: class=%s, classloader=%s",
@@ -645,6 +645,7 @@ InstanceKlass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
          super_load_in_progress = true;
          superclassname = placeholder->supername();
          assert(superclassname != NULL, "superclass has to have a name");
+         superclassname->increment_refcount();
       }
     }
   }
@@ -655,7 +656,11 @@ InstanceKlass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
     handle_parallel_super_load(name, superclassname,
                                class_loader,
                                protection_domain,
-                               CHECK_NULL);
+                               THREAD);
+    superclassname->decrement_refcount();
+    if (HAS_PENDING_EXCEPTION) {
+      return NULL;
+    }
   }
 
   bool throw_circularity_error = false;
