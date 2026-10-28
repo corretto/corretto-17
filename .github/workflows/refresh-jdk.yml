@@ -1,0 +1,69 @@
+name: "Refresh jdk17 from Upstream"
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+env:
+  UPSTREAM_REMOTE: https://github.com/openjdk/jdk17u.git
+  UPSTREAM_MIRROR: upstream-jdk17u
+  LOCAL_BRANCH: develop
+
+permissions:
+  contents: write
+
+jobs:
+    refresh-jdk17:
+        runs-on: ubuntu-latest
+        name: "Update Corretto-17"
+        if: github.repository_owner == 'corretto'
+        steps:
+            - name: "Checkout code"
+              uses: actions/checkout@v2
+              with:
+                fetch-depth: 0
+                ref: ${{ env.LOCAL_BRANCH }}
+
+            - name: "Configure the user"
+              run: |
+                git config user.email "no-reply@amazon.com"
+                git config user.name "corretto-github-robot"
+
+            - name: "Merge openjdk/jdk17u:master to the corretto-17:develop"
+              run: |
+                git fetch $UPSTREAM_REMOTE master || exit 1
+                git push origin FETCH_HEAD:refs/heads/$UPSTREAM_MIRROR
+                git merge -m "Merge $UPSTREAM_MIRROR" FETCH_HEAD
+
+            - name: "Update Corretto version"
+              shell: bash
+              run: bash ./.github/scripts/update-version.sh $UPSTREAM_REMOTE
+
+            - name: "Push to the corretto-17"
+              run: git push origin $LOCAL_BRANCH
+
+            # Different merges to branches.
+            # lilliput goes first so that a nightly merge conflict does not block it.
+            - name: "Merge Corretto-17 develop to lilliput"
+              shell: bash
+              run: |
+                git checkout lilliput
+                git merge -m "Merge $LOCAL_BRANCH into lilliput" origin/$LOCAL_BRANCH
+                git push origin lilliput
+
+            - name: "Merge Corretto-17 develop to nightly"
+              shell: bash
+              run: |
+                git checkout nightly
+                if ! git merge --no-ff --no-commit origin/$LOCAL_BRANCH; then
+                  # The only conflict we expect/accept is version.txt
+                  unmerged=$(git diff --name-only --diff-filter=U)
+                  if [ "$unmerged" != "version.txt" ]; then
+                    echo "Unexpected merge conflicts: $unmerged" >&2
+                    exit 1
+                  fi
+                fi
+                # Always keep nightly's version.txt — whether the merge was clean or conflicted
+                git checkout HEAD -- version.txt
+                git add version.txt
+                git commit -m "Merge $LOCAL_BRANCH into nightly" || echo "Nothing to merge; nightly up to date"
+                git push origin nightly
