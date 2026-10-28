@@ -41,8 +41,6 @@ jobs:
             - name: "Push to the corretto-17"
               run: git push origin $LOCAL_BRANCH
 
-            # Different merges to branches.
-            # lilliput goes first so that a nightly merge conflict does not block it.
             - name: "Merge Corretto-17 develop to lilliput"
               shell: bash
               run: |
