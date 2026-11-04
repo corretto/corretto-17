@@ -40,13 +40,14 @@ The following CVEs are addressed in 17.0.21.0.10:
 
 | CVE | CVSS | Component |
 |-----|------|-----------|
-| CVE-2026-91403 | 9.1 | security-libs/javax.net.ssl |
+| CVE-2026-91403 | 9.1 | security-libs/java.security |
 | CVE-2026-91415 | 7.0 | client-libs/2d |
 | CVE-2026-91398 | 6.8 | core-libs/java.net |
 | CVE-2026-91382 | 6.5 | client-libs/2d |
 | CVE-2026-91411 | 6.5 | security-libs/org.ietf.jgss |
 | CVE-2026-87294 | 6.5 | security-libs/java.security |
 | CVE-2026-83395 | 6.5 | core-libs/java.net |
+| CVE-2026-101516| 6.5 | security-libs/java.security |
 | CVE-2026-91394 | 5.9 | core-libs/java.net |
 | CVE-2026-83387 | 5.9 | core-libs/java.sql |
 | CVE-2026-91462 | 5.9 | security-libs/org.ietf.jgss |
