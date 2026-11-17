@@ -2,6 +2,48 @@
 
 The following sections describe the changes for each release of Amazon Corretto 17.
 
+## Corretto version: 17.0.21.1.2
+Release Date: November 17, 2026
+
+**Target Platforms <sup>1</sup>**
+
++ RPM-based Linux using glibc 2.12 or later, x86, x86_64
++ Debian-based Linux using glibc 2.12 or later, x86, x86_64
++ RPM-based Linux using glibc 2.17 or later, aarch64
++ Debian-based Linux using glibc 2.17 or later, aarch64
++ Linux using glibc 2.25 or later, Arm
++ Linux using muslc 1.2.2 or later, Arm
++ Alpine-based Linux, x86_64
++ Alpine-based Linux, aarch64
++ Windows 11 or later, x86, x86_64
++ macOS 15.0 and later, x86_64
++ macOS 15.0 and later, aarch64
+
+**1.** This is the platform targeted by the build. See [Using Amazon Corretto](https://aws.amazon.com/corretto/faqs/#Using_Amazon_Corretto)
+in the Amazon Corretto FAQ for supported platforms
+
+The following issues are addressed in 17.0.21.1.2:
+
+| Issue Name | Platform | Description | Link |
+|------------|----------|-------------|------|
+| Import jdk-17.0.21.1+2 | All | Update Corretto baseline to OpenJDK 17.0.21.1+2 | [jdk-17.0.21.1+2](https://github.com/openjdk/jdk17u/releases/tag/jdk-17.0.21.1+2) |
+| Remove emSign C1 and C3 roots from amazon-cacerts | All | Remove emSign C1 and C3 roots from amazon-cacerts | [#288](https://github.com/corretto/corretto-17/pull/288) |
+| JDK-8361892 | aarch64 | AArch64: Incorrect matching rule leading to improper oop instruction encoding | [JDK-8361892](https://bugs.openjdk.org/browse/JDK-8361892) |
+| JDK-8396048 | All | (tz) Update to tzdata2026f | [JDK-8396048](https://bugs.openjdk.org/browse/JDK-8396048) |
+
+The following CVEs are addressed in 17.0.21.1.2:
+
+| CVE | CVSS | Component |
+|-----|------|-----------|
+| CVE-2026-114938 | 8.1 | hotspot/compiler |
+| CVE-2026-114939 | 7.4 | security-libs/org.ietf.jgss |
+| CVE-2026-114940 | 7.4 | security-libs/javax.net.ssl |
+| CVE-2026-114942 | 7.0 | core-libs |
+| CVE-2026-114943 | 6.5 | hotspot/runtime |
+| CVE-2026-114944 | 5.9 | core-svc/java.lang.management |
+| CVE-2026-114945 | 5.3 | core-libs/java.lang |
+| CVE-2026-114946 | 4.8 | hotspot/compiler |
+
 ## Corretto version: 17.0.21.0.11
 Release Date: October 24, 2026
 
